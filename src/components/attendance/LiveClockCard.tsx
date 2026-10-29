@@ -22,6 +22,8 @@ import {
   formatMinutes,
   formatTimeAmPm,
   format12HourClock,
+  formatLateArrival,
+  parseDateInput,
 } from '@/lib/attendanceEngine';
 
 interface LiveClockCardProps {
@@ -102,6 +104,47 @@ export default function LiveClockCard({
   }, [sessions, todayStr, now]);
 
   const isClockedIn = evaluation.isCurrentlyWorking;
+
+  // Work shift parameters (09:00 AM to 07:00 PM = 10h = 600m)
+  // Calculates accurate shift timeline fill starting from employee check-in time
+  const shiftMetrics = useMemo(() => {
+    const shiftStartMinutes = 9 * 60; // 09:00 AM = 540 min
+    const shiftEndMinutes = 19 * 60; // 07:00 PM = 1140 min
+    const totalShiftMinutes = shiftEndMinutes - shiftStartMinutes; // 600 min
+
+    const firstCheckInDate = evaluation.firstCheckIn ? parseDateInput(evaluation.firstCheckIn) : null;
+
+    if (!firstCheckInDate || sessions.length === 0) {
+      return {
+        hasCheckIn: false,
+        checkInOffsetPercent: 0,
+        workedWidthPercent: 0,
+        checkInFormatted: '--',
+        isLate: false,
+        lateCutoffPercent: ((9 * 60 + 15 - shiftStartMinutes) / totalShiftMinutes) * 100, // 2.5%
+      };
+    }
+
+    const checkInTotalMin = firstCheckInDate.getHours() * 60 + firstCheckInDate.getMinutes() + firstCheckInDate.getSeconds() / 60;
+    const offsetMinFromStart = Math.max(0, checkInTotalMin - shiftStartMinutes);
+    const checkInOffsetPercent = Math.min(95, (offsetMinFromStart / totalShiftMinutes) * 100);
+
+    // Worked width starting from checkInOffsetPercent
+    const workedDurationMinutes = evaluation.effectiveWorkedMinutes;
+    const workedWidthPercent = Math.min(
+      100 - checkInOffsetPercent,
+      Math.max(1, (workedDurationMinutes / totalShiftMinutes) * 100)
+    );
+
+    return {
+      hasCheckIn: true,
+      checkInOffsetPercent,
+      workedWidthPercent,
+      checkInFormatted: evaluation.firstPunchInFormatted,
+      isLate: evaluation.isLate,
+      lateCutoffPercent: ((9 * 60 + 15 - shiftStartMinutes) / totalShiftMinutes) * 100,
+    };
+  }, [evaluation, sessions]);
 
   const handleToggleClock = async () => {
     if (!user?.id) return;
@@ -241,11 +284,11 @@ export default function LiveClockCard({
               <span>First Check-In: <strong className="font-mono font-bold text-slate-900">{evaluation.firstPunchInFormatted.toLowerCase()}</strong></span>
             </div>
 
-            {/* Late Arrival Badge */}
+            {/* Late Arrival Badge - Displays both hours and minutes */}
             {evaluation.isLate ? (
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-rose-50/70 border border-rose-200 text-rose-700 shadow-2xs">
                 <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                <span>Late Arrival ({evaluation.lateByMinutes}m after 9:15 AM)</span>
+                <span>Late Arrival ({formatLateArrival(evaluation.lateByMinutes)} after 9:15 AM)</span>
               </div>
             ) : (
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-50/70 border border-emerald-200 text-emerald-700 shadow-2xs">
@@ -254,23 +297,108 @@ export default function LiveClockCard({
               </div>
             )}
 
-            {/* Half Day / Full Day Badge */}
+            {/* Half Day / Full Day / In Progress Badge */}
             {evaluation.effectiveWorkedMinutes >= 480 ? (
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-50/70 border border-emerald-200 text-emerald-700 shadow-2xs">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Full Day (8h+ Met)</span>
               </div>
+            ) : isClockedIn ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-teal-50/70 border border-teal-200 text-teal-700 shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+                <span>In Progress ({evaluation.formattedWorked} / 8h)</span>
+              </div>
             ) : (
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50/70 border border-amber-200 text-amber-700 shadow-2xs">
                 <Info className="w-3.5 h-3.5 text-amber-600" />
-                <span>Half Day (&lt; 8h Completed)</span>
+                <span>Half Day ({evaluation.formattedWorked} / 8h Completed)</span>
               </div>
             )}
           </div>
         )}
 
-        {/* Total Hours Worked Today with Progress Track & Markers (Matching Image 5) */}
-        <div className="space-y-2 pt-1">
+        {/* 1. Shift Timeline Track (09:00 AM - 07:00 PM) - Starts filling from Employee Check-In Time */}
+        <div className="space-y-2 pt-2 border-t border-slate-100/80">
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center space-x-1.5">
+              <span className="font-bold text-slate-800">
+                Shift Timeline (09:00 AM – 07:00 PM)
+              </span>
+              {shiftMetrics.hasCheckIn && (
+                <span className="text-[11px] text-slate-500 font-medium">
+                  • Starts at <strong className="text-slate-700 font-mono">{shiftMetrics.checkInFormatted}</strong>
+                </span>
+              )}
+            </div>
+            <div className="text-[11px] font-semibold text-slate-500">
+              {shiftMetrics.hasCheckIn ? (
+                <span>
+                  Worked: <strong className="text-emerald-600 font-mono">{evaluation.formattedWorked}</strong>
+                </span>
+              ) : (
+                <span className="text-slate-400">Not checked in yet</span>
+              )}
+            </div>
+          </div>
+
+          {/* Timeline Bar Track */}
+          <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden relative shadow-inner">
+            {/* Late Arrival Window before Check-In */}
+            {shiftMetrics.hasCheckIn && shiftMetrics.isLate && shiftMetrics.checkInOffsetPercent > 0 && (
+              <div
+                className="absolute top-0 bottom-0 bg-rose-100/70 border-r border-rose-300 transition-all duration-300"
+                style={{
+                  left: 0,
+                  width: `${shiftMetrics.checkInOffsetPercent}%`,
+                }}
+                title={`Late arrival period before check-in (${formatLateArrival(evaluation.lateByMinutes)})`}
+              />
+            )}
+
+            {/* Active / Worked Segments starting from Check-In Time */}
+            {shiftMetrics.hasCheckIn && (
+              <div
+                className={`absolute top-0 bottom-0 rounded-full transition-all duration-500 ${
+                  evaluation.effectiveWorkedMinutes >= 480
+                    ? 'bg-emerald-500'
+                    : isClockedIn
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 animate-pulse'
+                    : 'bg-[#635BFF]'
+                }`}
+                style={{
+                  left: `${shiftMetrics.checkInOffsetPercent}%`,
+                  width: `${Math.max(1.5, shiftMetrics.workedWidthPercent)}%`,
+                }}
+                title={`Active work segment starting from check-in at ${shiftMetrics.checkInFormatted}`}
+              />
+            )}
+
+            {/* Check-In Pin Marker */}
+            {shiftMetrics.hasCheckIn && (
+              <div
+                className="absolute top-0 bottom-0 w-0.5 bg-slate-900 z-10"
+                style={{ left: `${shiftMetrics.checkInOffsetPercent}%` }}
+                title={`Check-In: ${shiftMetrics.checkInFormatted}`}
+              />
+            )}
+          </div>
+
+          {/* Timeline Step Markers */}
+          <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium pt-0.5">
+            <span>09:00 AM (Start)</span>
+            {shiftMetrics.hasCheckIn ? (
+              <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 shadow-2xs">
+                Check-In: {shiftMetrics.checkInFormatted}
+              </span>
+            ) : (
+              <span>09:15 AM (Cutoff)</span>
+            )}
+            <span>07:00 PM (Shift End)</span>
+          </div>
+        </div>
+
+        {/* 2. 8-Hour Target Progress Track (0h Start -> 4h Half Day -> 8h Full Day) */}
+        <div className="space-y-2 pt-2 border-t border-slate-100/80">
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center space-x-2">
               <span className="font-bold text-slate-800">
@@ -286,22 +414,24 @@ export default function LiveClockCard({
                   <span>8h 00m target completed</span>
                 </span>
               ) : (
-                <span className="font-mono font-medium">
-                  {formatMinutes(evaluation.remainingMinutes)} remaining
+                <span className="font-mono font-medium text-slate-500">
+                  {formatMinutes(evaluation.remainingMinutes)} remaining to reach 8h
                 </span>
               )}
             </div>
           </div>
 
-          {/* Minimalist Progress Track */}
-          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+          {/* Target Progress Bar Track */}
+          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
                 evaluation.effectiveWorkedMinutes >= 480
                   ? 'bg-emerald-500'
-                  : 'bg-[#635BFF]'
+                  : 'bg-gradient-to-r from-[#635BFF] to-[#7B73FF]'
               }`}
-              style={{ width: `${Math.max(2, Math.min(100, evaluation.progressPercent))}%` }}
+              style={{
+                width: `${Math.max(sessions.length > 0 ? 2 : 0, Math.min(100, evaluation.progressPercent))}%`,
+              }}
             />
           </div>
 

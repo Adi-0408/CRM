@@ -20,6 +20,7 @@ import {
   AttendanceSession,
   formatMinutes,
   formatTimeAmPm,
+  formatLateArrival,
   evaluateDailyAttendance,
 } from '@/lib/attendanceEngine';
 
@@ -508,7 +509,7 @@ export default function RegularizeAttendanceModal({
             {calculatedPreview.isLate ? (
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-50/70 border border-rose-200 text-rose-700">
                 <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                <span>Late Arrival ({calculatedPreview.lateByMinutes}m after 9:15 AM)</span>
+                <span>Late Arrival ({formatLateArrival(calculatedPreview.lateByMinutes)} after 9:15 AM)</span>
               </div>
             ) : calculatedPreview.firstCheckIn ? (
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50/70 border border-emerald-200 text-emerald-700">

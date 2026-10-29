@@ -66,6 +66,48 @@ export interface EvaluatedDailyAttendance {
 }
 
 /**
+ * Universal date parser that safely handles Date instances, ISO strings,
+ * numbers, and Firestore Timestamp objects ({ seconds, nanoseconds } or { _seconds, _nanoseconds })
+ */
+export function parseDateInput(input: any): Date | null {
+  if (!input) return null;
+  if (input instanceof Date) return isNaN(input.getTime()) ? null : input;
+  if (typeof input === 'object') {
+    if (typeof input.toDate === 'function') {
+      try {
+        const d = input.toDate();
+        if (d instanceof Date && !isNaN(d.getTime())) return d;
+      } catch {
+        // ignore
+      }
+    }
+    if (typeof input.seconds === 'number') {
+      const ms = input.seconds * 1000 + (input.nanoseconds ? Math.round(input.nanoseconds / 1000000) : 0);
+      return new Date(ms);
+    }
+    if (typeof input._seconds === 'number') {
+      const ms = input._seconds * 1000 + (input._nanoseconds ? Math.round(input._nanoseconds / 1000000) : 0);
+      return new Date(ms);
+    }
+  }
+  const d = new Date(input);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Format late minutes into hours and minutes
+ * e.g. 325m -> "5h 25m (325m)"
+ * e.g. 25m -> "25m"
+ */
+export function formatLateArrival(lateByMinutes: number): string {
+  if (lateByMinutes <= 0) return '0m';
+  if (lateByMinutes < 60) return `${lateByMinutes}m`;
+  const hours = Math.floor(lateByMinutes / 60);
+  const mins = lateByMinutes % 60;
+  return `${hours}h ${mins > 0 ? `${mins}m ` : ''}(${lateByMinutes}m)`;
+}
+
+/**
  * Format minutes into "Xh Ym" or "Ym"
  */
 export function formatMinutes(totalMinutes: number): string {
@@ -79,10 +121,10 @@ export function formatMinutes(totalMinutes: number): string {
 /**
  * Format Date/ISO to strict 12-hour time "09:15 AM"
  */
-export function formatTimeAmPm(dateInput?: string | Date | null): string {
+export function formatTimeAmPm(dateInput?: any): string {
   if (!dateInput) return '--';
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return '--';
+  const d = parseDateInput(dateInput);
+  if (!d) return '--';
   let hours = d.getHours();
   const minutes = String(d.getMinutes()).padStart(2, '0');
   const ampm = hours >= 12 ? 'PM' : 'AM';
@@ -144,13 +186,14 @@ export function calculateSessionEffectiveMinutes(
   now: Date = new Date(),
   config: AttendanceConfig = DEFAULT_ATTENDANCE_CONFIG
 ): number {
-  if (!session.checkIn) return 0;
+  const checkIn = parseDateInput(session.checkIn);
+  if (!checkIn) return 0;
 
-  const checkIn = new Date(session.checkIn);
-  if (isNaN(checkIn.getTime())) return 0;
-
-  const checkOut = session.checkOut ? new Date(session.checkOut) : now;
-  if (isNaN(checkOut.getTime())) return 0;
+  const rawCheckOut = parseDateInput(session.checkOut);
+  const isToday = dateStr === getLocalTodayStr(now);
+  const checkOut = rawCheckOut
+    ? (isToday ? new Date(Math.min(rawCheckOut.getTime(), now.getTime())) : rawCheckOut)
+    : now;
 
   // Company work window for that date: 09:00 AM to 07:00 PM
   const windowStart = createDateAt(dateStr, config.workStartHour, config.workStartMinute);
@@ -177,10 +220,22 @@ export function evaluateDailyAttendance(
 ): EvaluatedDailyAttendance {
   const REQUIRED_MINUTES = config.fullDayMinutes || 480; // 8 Hours = 480 Minutes
 
-  // Sort sessions chronologically
-  const sessions = [...rawSessions].sort((a, b) => {
-    const timeA = new Date(a.checkIn).getTime() || 0;
-    const timeB = new Date(b.checkIn).getTime() || 0;
+  // Parse and sort sessions chronologically using parseDateInput
+  const parsedSessions = (Array.isArray(rawSessions) ? rawSessions : [])
+    .map((s) => {
+      const cIn = parseDateInput(s?.checkIn);
+      const cOut = parseDateInput(s?.checkOut);
+      return {
+        ...s,
+        _parsedCheckIn: cIn,
+        _parsedCheckOut: cOut,
+      };
+    })
+    .filter((s) => s._parsedCheckIn !== null);
+
+  const sessions = [...parsedSessions].sort((a, b) => {
+    const timeA = a._parsedCheckIn!.getTime();
+    const timeB = b._parsedCheckIn!.getTime();
     return timeA - timeB;
   });
 
@@ -210,12 +265,12 @@ export function evaluateDailyAttendance(
 
   // First check-in / punch in
   const firstSession = sessions[0];
-  const firstCheckIn = new Date(firstSession.checkIn);
+  const firstCheckIn = firstSession._parsedCheckIn!;
 
   // Latest session
   const lastSession = sessions[sessions.length - 1];
-  const isCurrentlyWorking = lastSession.checkOut === null || lastSession.checkOut === undefined;
-  const lastCheckOut = lastSession.checkOut ? new Date(lastSession.checkOut) : null;
+  const isCurrentlyWorking = lastSession._parsedCheckOut === null || lastSession._parsedCheckOut === undefined;
+  const lastCheckOut = lastSession._parsedCheckOut || null;
 
   // 1. Punctuality Check: 09:15:00 AM Cutoff
   const cutoffTime = createDateAt(dateStr, config.lateCutoffHour, config.lateCutoffMinute);
@@ -228,10 +283,15 @@ export function evaluateDailyAttendance(
   // 2. Sum up Total Worked Minutes across all daily sessions
   // Overtime worked past evening hours is fully counted so late employees can cover missed morning time
   let totalRawMinutes = 0;
+  const isToday = dateStr === getLocalTodayStr(now);
   for (const s of sessions) {
-    const cIn = new Date(s.checkIn).getTime();
-    if (isNaN(cIn)) continue;
-    const cOut = s.checkOut ? new Date(s.checkOut).getTime() : now.getTime();
+    const cIn = s._parsedCheckIn!.getTime();
+    let cOut: number;
+    if (s._parsedCheckOut) {
+      cOut = isToday ? Math.min(s._parsedCheckOut.getTime(), now.getTime()) : s._parsedCheckOut.getTime();
+    } else {
+      cOut = now.getTime();
+    }
     if (cOut > cIn) {
       totalRawMinutes += Math.round((cOut - cIn) / 60000);
     }
@@ -287,7 +347,12 @@ export function evaluateDailyAttendance(
 
   return {
     date: dateStr,
-    sessions,
+    sessions: sessions.map((s) => ({
+      checkIn: s._parsedCheckIn || s.checkIn,
+      checkOut: s._parsedCheckOut || (s.checkOut ?? null),
+      notes: s.notes || '',
+      durationMinutes: s.durationMinutes,
+    })),
     firstCheckIn,
     lastCheckOut,
     isCurrentlyWorking,

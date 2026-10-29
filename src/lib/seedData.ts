@@ -69,28 +69,30 @@ export async function wipeAndSeedDatabase() {
     status: 'active',
   });
 
-  // 3. Seed Today's Attendance Record for Admin (09:10 am -> 06:00 pm, 2 Sessions, Full Day)
-  const todayStr = getLocalTodayStr();
-  const makeTodayIso = (hours: number, minutes: number) => {
-    const d = new Date();
+  // 3. Seed Yesterday's Attendance Record for Admin (historical reports & telemetry)
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = getLocalTodayStr(yesterday);
+  const makeYesterdayIso = (hours: number, minutes: number) => {
+    const d = new Date(yesterday);
     d.setHours(hours, minutes, 0, 0);
     return d.toISOString();
   };
 
   await Attendance.create({
-    _id: `admin_${todayStr}`,
+    _id: `admin_${yesterdayStr}`,
     employee: 'admin',
-    date: todayStr,
+    date: yesterdayStr,
     sessions: [
       {
-        checkIn: makeTodayIso(9, 10),
-        checkOut: makeTodayIso(13, 10),
+        checkIn: makeYesterdayIso(9, 10),
+        checkOut: makeYesterdayIso(13, 10),
         durationMinutes: 240,
         notes: 'Morning executive planning session',
       },
       {
-        checkIn: makeTodayIso(13, 55),
-        checkOut: makeTodayIso(18, 0),
+        checkIn: makeYesterdayIso(13, 55),
+        checkOut: makeYesterdayIso(18, 0),
         durationMinutes: 245,
         notes: 'Afternoon operations review',
       },

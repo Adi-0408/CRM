@@ -23,6 +23,7 @@ import {
   getLocalTodayStr,
   formatMinutes,
   formatTimeAmPm,
+  formatLateArrival,
   AttendanceSession,
 } from '@/lib/attendanceEngine';
 
@@ -405,7 +406,7 @@ export default function AttendanceView({
                           ) : isLate ? (
                             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs">
                               <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                              <span>Late ({lateMinutes}m)</span>
+                              <span>Late ({formatLateArrival(lateMinutes)})</span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
