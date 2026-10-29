@@ -1,0 +1,309 @@
+/**
+ * Multi-Session Attendance Engine & Business Rules
+ *
+ * Rules:
+ * 1. Company Work Window: 09:00 AM to 07:00 PM (10-hour window).
+ * 2. 9:15 AM Punctuality Rule:
+ *    - First check-in <= 09:15:00 AM => On Time
+ *    - First check-in > 09:15:00 AM => Late (calculate lateByMinutes)
+ * 3. 8-Hour Work Duration Rule:
+ *    - Full Day: >= 8 hours (480 minutes) within work window.
+ *    - Half Day: Checked in at least once, checked out, < 8 hours (< 480 minutes).
+ *    - Working: Active session (checkOut === null).
+ *    - Absent: No check-in records for the day.
+ */
+
+export interface AttendanceSession {
+  _id?: string | any;
+  checkIn: string | Date;
+  checkOut?: string | Date | null;
+  durationMinutes?: number;
+  notes?: string;
+}
+
+export interface AttendanceConfig {
+  workStartHour: number; // default 9
+  workStartMinute: number; // default 0
+  workEndHour: number; // default 19 (7 PM)
+  workEndMinute: number; // default 0
+  lateCutoffHour: number; // default 9
+  lateCutoffMinute: number; // default 15
+  fullDayMinutes: number; // default 480 (8 hours)
+  halfDayMinMinutes?: number; // default 240 (4 hours)
+}
+
+export const DEFAULT_ATTENDANCE_CONFIG: AttendanceConfig = {
+  workStartHour: 9,
+  workStartMinute: 0,
+  workEndHour: 19,
+  workEndMinute: 0,
+  lateCutoffHour: 9,
+  lateCutoffMinute: 15,
+  fullDayMinutes: 480, // 8 Hours
+  halfDayMinMinutes: 240, // 4 Hours
+};
+
+export interface EvaluatedDailyAttendance {
+  date: string;
+  sessions: AttendanceSession[];
+  firstCheckIn: Date | null;
+  lastCheckOut: Date | null;
+  isCurrentlyWorking: boolean;
+  totalWorkedMinutes: number;
+  effectiveWorkedMinutes: number;
+  isLate: boolean;
+  lateByMinutes: number;
+  isOvertimeCompensated: boolean;
+  status: 'present' | 'late' | 'half_day' | 'absent' | 'working' | 'full_day';
+  statusDisplay: 'Present' | 'Late' | 'Half Day' | 'Absent';
+  punctualityStatus: 'on_time' | 'late' | 'not_marked';
+  progressPercent: number; // 0 - 100
+  remainingMinutes: number; // Remaining to achieve Present (480 min)
+  formattedWorked: string; // e.g. "7h 45m"
+  formattedRemaining: string; // e.g. "15m remaining to reach Present"
+  firstPunchInFormatted: string; // e.g. "09:30 AM" or "--"
+  lastPunchOutFormatted: string; // e.g. "06:15 PM" or "Active"
+}
+
+/**
+ * Format minutes into "Xh Ym" or "Ym"
+ */
+export function formatMinutes(totalMinutes: number): string {
+  if (totalMinutes <= 0) return '0h 00m';
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = Math.round(totalMinutes % 60);
+  if (hours === 0) return `${mins}m`;
+  return `${hours}h ${mins.toString().padStart(2, '0')}m`;
+}
+
+/**
+ * Format Date/ISO to strict 12-hour time "09:15 AM"
+ */
+export function formatTimeAmPm(dateInput?: string | Date | null): string {
+  if (!dateInput) return '--';
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return '--';
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const formattedHours = String(hours).padStart(2, '0');
+  return `${formattedHours}:${minutes} ${ampm}`;
+}
+
+/**
+ * Format live clock to strict 12-hour format "09:15:30 AM"
+ */
+export function format12HourClock(d: Date = new Date(), withSeconds = true): string {
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const formattedHours = String(hours).padStart(2, '0');
+  if (withSeconds) {
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${formattedHours}:${minutes}:${seconds} ${ampm}`;
+  }
+  return `${formattedHours}:${minutes} ${ampm}`;
+}
+
+/**
+ * Parses or normalizes a date into local YYYY-MM-DD
+ */
+export function getLocalTodayStr(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Construct a Date object for a specific hour and minute on a given date (YYYY-MM-DD)
+ */
+function createDateAt(dateStr: string, hour: number, minute: number): Date {
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    return new Date(year, month, day, hour, minute, 0, 0);
+  }
+  const d = new Date(dateStr);
+  d.setHours(hour, minute, 0, 0);
+  return d;
+}
+
+/**
+ * Calculates effective worked minutes of a single session clamped to the Company Work Window
+ */
+export function calculateSessionEffectiveMinutes(
+  session: AttendanceSession,
+  dateStr: string,
+  now: Date = new Date(),
+  config: AttendanceConfig = DEFAULT_ATTENDANCE_CONFIG
+): number {
+  if (!session.checkIn) return 0;
+
+  const checkIn = new Date(session.checkIn);
+  if (isNaN(checkIn.getTime())) return 0;
+
+  const checkOut = session.checkOut ? new Date(session.checkOut) : now;
+  if (isNaN(checkOut.getTime())) return 0;
+
+  // Company work window for that date: 09:00 AM to 07:00 PM
+  const windowStart = createDateAt(dateStr, config.workStartHour, config.workStartMinute);
+  const windowEnd = createDateAt(dateStr, config.workEndHour, config.workEndMinute);
+
+  const startMillis = Math.max(checkIn.getTime(), windowStart.getTime());
+  const endMillis = Math.min(checkOut.getTime(), windowEnd.getTime());
+
+  if (endMillis <= startMillis) {
+    return 0;
+  }
+
+  return Math.round((endMillis - startMillis) / 60000);
+}
+
+/**
+ * Evaluates the entire daily attendance record for an employee
+ */
+export function evaluateDailyAttendance(
+  rawSessions: AttendanceSession[] = [],
+  dateStr: string = getLocalTodayStr(),
+  now: Date = new Date(),
+  config: AttendanceConfig = DEFAULT_ATTENDANCE_CONFIG
+): EvaluatedDailyAttendance {
+  const REQUIRED_MINUTES = config.fullDayMinutes || 480; // 8 Hours = 480 Minutes
+
+  // Sort sessions chronologically
+  const sessions = [...rawSessions].sort((a, b) => {
+    const timeA = new Date(a.checkIn).getTime() || 0;
+    const timeB = new Date(b.checkIn).getTime() || 0;
+    return timeA - timeB;
+  });
+
+  if (sessions.length === 0) {
+    return {
+      date: dateStr,
+      sessions: [],
+      firstCheckIn: null,
+      lastCheckOut: null,
+      isCurrentlyWorking: false,
+      totalWorkedMinutes: 0,
+      effectiveWorkedMinutes: 0,
+      isLate: false,
+      lateByMinutes: 0,
+      isOvertimeCompensated: false,
+      status: 'absent',
+      statusDisplay: 'Absent',
+      punctualityStatus: 'not_marked',
+      progressPercent: 0,
+      remainingMinutes: REQUIRED_MINUTES,
+      formattedWorked: '0h 00m',
+      formattedRemaining: '8h 00m remaining to reach Present',
+      firstPunchInFormatted: '--',
+      lastPunchOutFormatted: '--',
+    };
+  }
+
+  // First check-in / punch in
+  const firstSession = sessions[0];
+  const firstCheckIn = new Date(firstSession.checkIn);
+
+  // Latest session
+  const lastSession = sessions[sessions.length - 1];
+  const isCurrentlyWorking = lastSession.checkOut === null || lastSession.checkOut === undefined;
+  const lastCheckOut = lastSession.checkOut ? new Date(lastSession.checkOut) : null;
+
+  // 1. Punctuality Check: 09:15:00 AM Cutoff
+  const cutoffTime = createDateAt(dateStr, config.lateCutoffHour, config.lateCutoffMinute);
+  const isLate = firstCheckIn.getTime() > cutoffTime.getTime();
+  const lateByMinutes = isLate
+    ? Math.max(1, Math.round((firstCheckIn.getTime() - cutoffTime.getTime()) / 60000))
+    : 0;
+  const punctualityStatus: 'on_time' | 'late' = isLate ? 'late' : 'on_time';
+
+  // 2. Sum up Total Worked Minutes across all daily sessions
+  // Overtime worked past evening hours is fully counted so late employees can cover missed morning time
+  let totalRawMinutes = 0;
+  for (const s of sessions) {
+    const cIn = new Date(s.checkIn).getTime();
+    if (isNaN(cIn)) continue;
+    const cOut = s.checkOut ? new Date(s.checkOut).getTime() : now.getTime();
+    if (cOut > cIn) {
+      totalRawMinutes += Math.round((cOut - cIn) / 60000);
+    }
+  }
+
+  const effectiveMinutes = totalRawMinutes;
+  const is8HoursCompleted = effectiveMinutes >= REQUIRED_MINUTES;
+  const isOvertimeCompensated = isLate && is8HoursCompleted;
+
+  // 3. Strict Status Rules:
+  // - Completed >= 480 mins (8 hours) -> 'present' (Overtime compensated if late)
+  // - < 480 mins:
+  //    - If currently working and late -> 'late' (while shift is incomplete after 9:15 AM)
+  //    - If currently working and on-time -> 'working'
+  //    - If completed shift (all sessions checked out) without reaching 480 mins -> 'half_day'
+  let status: 'present' | 'late' | 'half_day' | 'absent' | 'working' | 'full_day';
+  let statusDisplay: 'Present' | 'Late' | 'Half Day' | 'Absent';
+
+  if (is8HoursCompleted) {
+    status = 'present';
+    statusDisplay = 'Present';
+  } else if (isCurrentlyWorking) {
+    if (isLate) {
+      status = 'late';
+      statusDisplay = 'Late';
+    } else {
+      status = 'working';
+      statusDisplay = 'Present';
+    }
+  } else {
+    // Shift ended without completing required 8 hours
+    status = 'half_day';
+    statusDisplay = 'Half Day';
+  }
+
+  const remainingMinutes = Math.max(0, REQUIRED_MINUTES - effectiveMinutes);
+  const progressPercent = Math.min(100, Math.round((effectiveMinutes / REQUIRED_MINUTES) * 100));
+
+  const formattedWorked = formatMinutes(effectiveMinutes);
+  let formattedRemaining = `${formatMinutes(remainingMinutes)} remaining to reach Present`;
+  if (is8HoursCompleted) {
+    formattedRemaining = isOvertimeCompensated
+      ? 'Present (Late Covered via Overtime)'
+      : 'Present (8h Completed)';
+  }
+
+  const firstPunchInFormatted = formatTimeAmPm(firstCheckIn);
+  const lastPunchOutFormatted = isCurrentlyWorking
+    ? 'Active'
+    : lastCheckOut
+    ? formatTimeAmPm(lastCheckOut)
+    : '--';
+
+  return {
+    date: dateStr,
+    sessions,
+    firstCheckIn,
+    lastCheckOut,
+    isCurrentlyWorking,
+    totalWorkedMinutes: totalRawMinutes,
+    effectiveWorkedMinutes: effectiveMinutes,
+    isLate,
+    lateByMinutes,
+    isOvertimeCompensated,
+    status,
+    statusDisplay,
+    punctualityStatus,
+    progressPercent,
+    remainingMinutes,
+    formattedWorked,
+    formattedRemaining,
+    firstPunchInFormatted,
+    lastPunchOutFormatted,
+  };
+}
