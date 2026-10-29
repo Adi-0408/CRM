@@ -39,21 +39,21 @@ export default function Header({
 
   const renderRoleActionButtons = (isMobile = false) => {
     const btnBaseClass =
-      'whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold active:scale-95 transition-all';
+      'whitespace-nowrap shrink-0 px-4 py-2 text-xs rounded-full inline-flex items-center justify-center gap-1.5 font-bold active:scale-95 transition-all duration-200 cursor-pointer hover:-translate-y-0.5';
 
     if (role === 'admin_manager') {
       return (
         <>
           <button
             onClick={onOpenCreateTask}
-            className={`${btnBaseClass} text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 shadow-xs`}
+            className={`${btnBaseClass} text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 hover:border-slate-300 shadow-2xs hover:shadow-xs`}
           >
             <Plus className="w-3.5 h-3.5 text-slate-500 shrink-0" />
             <span>Create Task</span>
           </button>
           <button
             onClick={onOpenAddLead}
-            className={`${btnBaseClass} text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm`}
+            className={`${btnBaseClass} text-white bg-gradient-to-r from-[#635BFF] to-[#7B73FF] hover:brightness-105 shadow-sm shadow-indigo-500/20 hover:shadow-md hover:shadow-indigo-500/30`}
           >
             <Plus className="w-3.5 h-3.5 text-white/90 shrink-0" />
             <span>Add Leads</span>
@@ -61,7 +61,7 @@ export default function Header({
           {onOpenCreateProject && (
             <button
               onClick={onOpenCreateProject}
-              className={`${btnBaseClass} text-white bg-blue-600 hover:bg-blue-700 shadow-sm`}
+              className={`${btnBaseClass} text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:brightness-105 shadow-sm shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/30`}
             >
               <Plus className="w-3.5 h-3.5 text-white/90 shrink-0" />
               <span>New Project</span>
@@ -70,7 +70,7 @@ export default function Header({
           {onOpenAddEmployee && (
             <button
               onClick={onOpenAddEmployee}
-              className={`${btnBaseClass} text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm`}
+              className={`${btnBaseClass} text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-105 shadow-sm shadow-emerald-500/20 hover:shadow-md hover:shadow-emerald-500/30`}
             >
               <Plus className="w-3.5 h-3.5 text-white/90 shrink-0" />
               <span>Add Member</span>

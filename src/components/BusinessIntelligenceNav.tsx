@@ -51,7 +51,7 @@ export default function BusinessIntelligenceNav({
       {/* Title & Live Status Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-3.5 mb-4 sm:mb-5">
         <div className="flex items-center space-x-2.5 sm:space-x-3">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-[#F0EEFF] flex items-center justify-center text-[#635BFF] shrink-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-purple-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/25 shrink-0 transition-transform duration-300 hover:scale-105">
             <Rocket className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
           </div>
           <div>
@@ -66,7 +66,7 @@ export default function BusinessIntelligenceNav({
         </div>
 
         {/* Live data sync indicator */}
-        <div className="flex items-center space-x-2 text-xs font-medium text-emerald-700 bg-emerald-50/80 border border-emerald-100 px-3 py-1 rounded-full self-start sm:self-auto shrink-0">
+        <div className="flex items-center space-x-2 text-xs font-semibold text-emerald-700 bg-emerald-50/90 border border-emerald-200/60 shadow-2xs px-3.5 py-1.5 rounded-full self-start sm:self-auto shrink-0 transition-all hover:shadow-xs">
           <span className="relative flex h-2 w-2">
             <span
               className={`animate-ping absolute inline-flex h-full w-full rounded-full ${
@@ -84,7 +84,7 @@ export default function BusinessIntelligenceNav({
       </div>
 
       {/* Touch-Friendly Horizontal Scroll Pill-Bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full p-1 bg-slate-100/80 rounded-full border border-slate-200/50">
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full p-1.5 bg-slate-100/80 rounded-full border border-slate-200/60 shadow-inner">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive =
@@ -94,13 +94,13 @@ export default function BusinessIntelligenceNav({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`whitespace-nowrap shrink-0 px-3.5 py-1.5 text-xs sm:text-sm rounded-full inline-flex items-center gap-1.5 font-semibold transition-all duration-150 active:scale-95 ${
+              className={`whitespace-nowrap shrink-0 px-4 py-1.5 text-xs rounded-full inline-flex items-center gap-1.5 transition-all duration-200 active:scale-95 ${
                 isActive
-                  ? 'bg-white shadow-sm text-slate-900 font-bold'
-                  : 'text-slate-500 hover:text-slate-800'
+                  ? 'bg-white shadow-[0_2px_8px_-2px_rgba(15,23,42,0.1)] text-slate-900 font-bold border border-slate-200/80 scale-[1.02]'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-white/70 hover:shadow-2xs font-semibold'
               }`}
             >
-              <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[#635BFF]' : 'text-slate-400'}`} />
+              <Icon className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isActive ? 'text-[#635BFF] scale-110' : 'text-slate-400'}`} />
               <span>{tab.label}</span>
             </button>
           );
