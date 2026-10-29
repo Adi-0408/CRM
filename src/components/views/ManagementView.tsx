@@ -3,8 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Building2,
-  Database,
-  Cloud,
   CheckCircle2,
   RefreshCw,
   Sparkles,
@@ -238,52 +236,7 @@ export default function ManagementView({ onRefresh }: ManagementViewProps) {
         </div>
       )}
 
-      {/* 2. Cloud & Database Infrastructure Integrations */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)]">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-[#E6F7F0] text-[#10B981] flex items-center justify-center">
-                <Database className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">MongoDB Atlas Connection</h4>
-                <p className="text-xs text-slate-400">Cloud Replica Set Cluster</p>
-              </div>
-            </div>
-            <span className="flex items-center space-x-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/60">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Connected</span>
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Connected to <code className="bg-slate-50 px-1 py-0.5 rounded border border-slate-200/60">crm_database</code> on Atlas cluster <code className="bg-slate-50 px-1 py-0.5 rounded border border-slate-200/60">crmdb.iznbnzc.mongodb.net</code>. Automatic pooling and schema index verification active.
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)]">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-[#EEF2FF] text-[#635BFF] flex items-center justify-center">
-                <Cloud className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">Cloudinary Asset Pipeline</h4>
-                <p className="text-xs text-slate-400">Avatar &amp; Attachment CDN</p>
-              </div>
-            </div>
-            <span className="flex items-center space-x-1 text-xs font-semibold text-[#635BFF] bg-[#EEF2FF] px-2.5 py-0.5 rounded-full border border-indigo-200/60">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Active</span>
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Cloudinary v2 uploader connected to <code className="bg-slate-50 px-1 py-0.5 rounded border border-slate-200/60">fjnxnivd</code>. Supports automated facial thumbnail cropping and multi-format document conversion.
-          </p>
-        </div>
-      </div>
-
-      {/* 3. Office & Branch Locations Directory (Editable, Deletable & Addable) */}
+      {/* 2. Office & Branch Locations Directory (Editable, Deletable & Addable) */}
       <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
