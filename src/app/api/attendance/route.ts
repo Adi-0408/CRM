@@ -158,16 +158,16 @@ export async function POST(req: NextRequest) {
       }
 
       record.sessions = newSessions as any;
-      record.checkIn = evaluation.firstCheckIn || undefined;
-      record.checkOut = evaluation.lastCheckOut || undefined;
-      record.totalMinutes = evaluation.totalWorkedMinutes;
-      record.effectiveMinutes = evaluation.effectiveWorkedMinutes;
-      record.isLate = evaluation.isLate;
-      record.lateByMinutes = evaluation.lateByMinutes;
-      record.status = reqStatus || evaluation.status;
-      if (overrideReason) record.overrideReason = overrideReason;
-      if (validOverriddenById) record.overriddenBy = validOverriddenById;
-      if (notes) record.notes = notes;
+      record.checkIn = evaluation.firstCheckIn || null;
+      record.checkOut = evaluation.lastCheckOut || null;
+      record.totalMinutes = evaluation.totalWorkedMinutes || 0;
+      record.effectiveMinutes = evaluation.effectiveWorkedMinutes || 0;
+      record.isLate = Boolean(evaluation.isLate);
+      record.lateByMinutes = evaluation.lateByMinutes || 0;
+      record.status = reqStatus || evaluation.status || 'working';
+      record.overrideReason = overrideReason ? String(overrideReason).trim() : '';
+      record.overriddenBy = validOverriddenById || null;
+      record.notes = notes ? String(notes).trim() : '';
 
       await record.save();
 

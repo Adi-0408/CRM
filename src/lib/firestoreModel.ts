@@ -31,6 +31,37 @@ const RELATION_MAP: Record<string, string> = {
   lead: 'leads',
 };
 
+/**
+ * Recursively sanitizes data payloads for Cloud Firestore:
+ * - Replaces `undefined` with `null` so Firestore setDoc / updateDoc never throws Unsupported field value: undefined
+ * - Normalizes Date instances to ISO strings
+ * - Handles nested objects and arrays
+ */
+export function sanitizeForFirestore(val: any): any {
+  if (val === undefined) {
+    return null;
+  }
+  if (val === null || typeof val !== 'object') {
+    return val;
+  }
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? null : val.toISOString();
+  }
+  if (Array.isArray(val)) {
+    return val.map((item) => sanitizeForFirestore(item));
+  }
+  const clean: Record<string, any> = {};
+  for (const k of Object.keys(val)) {
+    const v = val[k];
+    if (v === undefined) {
+      clean[k] = null;
+    } else {
+      clean[k] = sanitizeForFirestore(v);
+    }
+  }
+  return clean;
+}
+
 function deepClone<T>(obj: T): T {
   if (obj === null || typeof obj !== 'object') return obj;
   return JSON.parse(JSON.stringify(obj));
@@ -205,9 +236,10 @@ export function createDocumentWrapper(data: any, collectionName: string): any {
     },
     async save() {
       const colRef = collection(db, collectionName);
-      const payload = { ...this.toObject(), updatedAt: new Date().toISOString() };
-      delete payload._id;
-      delete payload.id;
+      const rawPayload = { ...this.toObject(), updatedAt: new Date().toISOString() };
+      delete rawPayload._id;
+      delete rawPayload.id;
+      const payload = sanitizeForFirestore(rawPayload);
 
       if (id) {
         await setDoc(doc(db, collectionName, String(id)), payload, { merge: true });
@@ -431,10 +463,11 @@ export function createFirestoreModel<T = any>(collectionName: string) {
     }
 
     async save() {
-      const payload: any = { ...this.toObject(), updatedAt: new Date().toISOString() };
+      const rawPayload: any = { ...this.toObject(), updatedAt: new Date().toISOString() };
       let currentId = this._id || this.id;
-      delete payload._id;
-      delete payload.id;
+      delete rawPayload._id;
+      delete rawPayload.id;
+      const payload: any = sanitizeForFirestore(rawPayload);
 
       if (!currentId) {
         currentId = await getUniqueReadableDocId(payload, collectionName);
@@ -469,14 +502,15 @@ export function createFirestoreModel<T = any>(collectionName: string) {
         return Promise.all(data.map((item) => ModelInstance.create(item)));
       }
 
-      const payload: any = {
+      const rawPayload: any = {
         ...data,
         createdAt: data.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
       let docId = data._id || data.id;
-      delete payload._id;
-      delete payload.id;
+      delete rawPayload._id;
+      delete rawPayload.id;
+      const payload: any = sanitizeForFirestore(rawPayload);
 
       if (!docId) {
         docId = await getUniqueReadableDocId(payload, collectionName);
@@ -493,24 +527,26 @@ export function createFirestoreModel<T = any>(collectionName: string) {
       if (!snap.exists()) return null;
 
       const current = snap.data();
-      const payload: any = { ...update, updatedAt: new Date().toISOString() };
+      const rawPayload: any = { ...update, updatedAt: new Date().toISOString() };
 
       // Handle $inc
       if (update.$inc) {
         for (const incKey of Object.keys(update.$inc)) {
-          payload[incKey] = (current[incKey] || 0) + update.$inc[incKey];
+          rawPayload[incKey] = (current[incKey] || 0) + update.$inc[incKey];
         }
-        delete payload.$inc;
+        delete rawPayload.$inc;
       }
 
       // Handle $set
       if (update.$set) {
-        Object.assign(payload, update.$set);
-        delete payload.$set;
+        Object.assign(rawPayload, update.$set);
+        delete rawPayload.$set;
       }
 
-      delete payload._id;
-      delete payload.id;
+      delete rawPayload._id;
+      delete rawPayload.id;
+
+      const payload: any = sanitizeForFirestore(rawPayload);
 
       await setDoc(docRef, payload, { merge: true });
       const updatedSnap = await getDoc(docRef);
