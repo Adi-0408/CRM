@@ -164,7 +164,7 @@ export default function LeavesView({ employees, onRefresh }: LeavesViewProps) {
       )}
 
       {/* Header Bar */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 p-5 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-base font-bold tracking-tight text-slate-900">
             {isStaff ? 'My Leave Requests & History' : 'Leave Management & Approvals'}
@@ -189,7 +189,7 @@ export default function LeavesView({ employees, onRefresh }: LeavesViewProps) {
       </div>
 
       {/* Leave Requests Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] overflow-hidden">
+      <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[700px]">
             <thead>

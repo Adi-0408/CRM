@@ -40,6 +40,7 @@ export default function AddEmployeeModal({
   const [department, setDepartment] = useState('Engineering');
   const [status, setStatus] = useState<'active' | 'suspended'>('active');
   const [salary, setSalary] = useState('60000');
+  const [phone, setPhone] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -106,6 +107,12 @@ export default function AddEmployeeModal({
       return;
     }
 
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone && cleanPhone.length !== 10) {
+      setError('Mobile number must be exactly 10 digits (no more, no less).');
+      return;
+    }
+
     const finalPassword = password.trim() || 'Emp#2026';
 
     try {
@@ -121,6 +128,7 @@ export default function AddEmployeeModal({
           role,
           department,
           status,
+          phone: cleanPhone || undefined,
           salary: Number(salary) || 45000,
           baseSalary: Number(salary) || 45000,
           avatar: avatarUrl || undefined,
@@ -163,6 +171,7 @@ export default function AddEmployeeModal({
     setName('');
     setEmail('');
     setPassword('');
+    setPhone('');
     setRole('employee');
     setStatus('active');
     setAvatarUrl('');
@@ -175,8 +184,8 @@ export default function AddEmployeeModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="w-[95vw] max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 p-5 sm:p-8 overflow-hidden relative max-h-[90vh] overflow-y-auto no-scrollbar">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="w-[95vw] max-w-lg bg-white/95 backdrop-blur-2xl rounded-3xl shadow-[0_25px_70px_-10px_rgba(15,23,42,0.25),0_10px_24px_-4px_rgba(15,23,42,0.10)] border border-white/90 p-5 sm:p-8 overflow-hidden relative max-h-[90vh] overflow-y-auto no-scrollbar">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <div className="flex items-center space-x-3">
@@ -469,17 +478,42 @@ export default function AddEmployeeModal({
                 </p>
               </div>
 
-              {/* Salary field */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Monthly Salary (₹)
-                </label>
-                <input
-                  type="number"
-                  value={salary}
-                  onChange={(e) => setSalary(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#635BFF]/15 focus:border-[#635BFF] text-base sm:text-xs text-slate-900 bg-white"
-                />
+              {/* Mobile Number & Monthly Salary */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Mobile Number
+                    </label>
+                    <span className={`text-[10px] font-mono ${phone.length === 10 ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>
+                      {phone.length}/10 digits
+                    </span>
+                  </div>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={10}
+                    placeholder="10-digit mobile number"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#635BFF]/15 focus:border-[#635BFF] text-base sm:text-xs text-slate-900 bg-white font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Monthly Salary (₹)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={salary}
+                    onChange={(e) => setSalary(e.target.value.replace(/\D/g, ''))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#635BFF]/15 focus:border-[#635BFF] text-base sm:text-xs text-slate-900 bg-white font-mono"
+                  />
+                </div>
               </div>
 
               {/* Action Buttons */}

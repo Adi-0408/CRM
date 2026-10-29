@@ -36,6 +36,11 @@ export default function AddLeadModal({
       setError('Name, company and email are required.');
       return;
     }
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      setError('Mobile number must be exactly 10 digits (no more, no less).');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -47,7 +52,7 @@ export default function AddLeadModal({
           name,
           company,
           email,
-          phone,
+          phone: cleanPhone,
           value: Number(value) || 0,
           source,
           status,
@@ -76,8 +81,8 @@ export default function AddLeadModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 md:p-8 overflow-hidden relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="w-full max-w-lg bg-white/95 backdrop-blur-2xl rounded-3xl shadow-[0_25px_70px_-10px_rgba(15,23,42,0.25),0_10px_24px_-4px_rgba(15,23,42,0.10)] border border-white/90 p-6 md:p-8 overflow-hidden relative">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <div className="flex items-center space-x-3">
@@ -152,17 +157,26 @@ export default function AddLeadModal({
               />
             </div>
 
-            {/* Phone */}
+            {/* Mobile Phone Number */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Phone Number
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Mobile Number *
+                </label>
+                <span className={`text-[10px] font-mono ${phone.length === 10 ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>
+                  {phone.length}/10 digits
+                </span>
+              </div>
               <input
                 type="tel"
-                placeholder="+91 98000 00000"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={10}
+                required
+                placeholder="10-digit mobile number"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 text-sm text-slate-900"
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 text-sm text-slate-900 font-mono"
               />
             </div>
           </div>
@@ -174,10 +188,12 @@ export default function AddLeadModal({
                 Est. Deal ($)
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={value}
-                onChange={(e) => setValue(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 text-sm text-slate-900"
+                onChange={(e) => setValue(e.target.value.replace(/\D/g, ''))}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 text-sm text-slate-900 font-mono"
               />
             </div>
 

@@ -145,7 +145,7 @@ export default function OverviewView({
   return (
     <div className="space-y-5 sm:space-y-6 animate-in fade-in duration-150">
       {/* Admin Action Banner */}
-      <div className="bg-white rounded-2xl border border-slate-100/90 p-4 sm:p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.04)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 sm:gap-4 transition-all duration-200">
+      <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-4 sm:p-5 shadow-[0_12px_32px_-4px_rgba(15,23,42,0.10),0_4px_10px_-2px_rgba(15,23,42,0.05)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 sm:gap-4 transition-all duration-200">
         <div>
           <h3 className="text-sm font-bold tracking-tight text-slate-900">
             Company Executive Overview
@@ -159,7 +159,7 @@ export default function OverviewView({
           {onOpenCreateTask && (
             <button
               onClick={onOpenCreateTask}
-              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 shadow-2xs hover:shadow-xs active:scale-95 transition-all duration-200 hover:-translate-y-0.5"
+              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-bold text-slate-700 bg-white/90 hover:bg-white border border-slate-200/90 shadow-[0_4px_14px_-2px_rgba(15,23,42,0.10)] hover:shadow-[0_8px_18px_-2px_rgba(15,23,42,0.15)] active:scale-95 transition-all duration-200 hover:-translate-y-0.5"
             >
               <Plus className="w-3.5 h-3.5 text-slate-500 shrink-0" />
               <span>Create Task</span>
@@ -168,7 +168,7 @@ export default function OverviewView({
           {onOpenAddLead && (
             <button
               onClick={onOpenAddLead}
-              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-white bg-gradient-to-r from-[#635BFF] to-[#7B73FF] hover:brightness-105 shadow-sm shadow-[#635BFF]/25 active:scale-95 transition-all duration-200 hover:-translate-y-0.5"
+              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-bold text-white bg-gradient-to-r from-[#635BFF] via-[#7067FF] to-[#7B73FF] hover:brightness-105 shadow-[0_6px_20px_-2px_rgba(99,91,255,0.40)] hover:shadow-[0_10px_25px_-2px_rgba(99,91,255,0.50)] border-t border-white/30 active:scale-95 transition-all duration-200 hover:-translate-y-0.5"
             >
               <Plus className="w-3.5 h-3.5 shrink-0" />
               <span>Add Leads</span>
@@ -177,7 +177,7 @@ export default function OverviewView({
           {onOpenAddEmployee && (
             <button
               onClick={onOpenAddEmployee}
-              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-105 shadow-sm shadow-emerald-500/25 active:scale-95 transition-all duration-200 hover:-translate-y-0.5"
+              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-bold text-white bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:brightness-105 shadow-[0_6px_20px_-2px_rgba(16,185,129,0.40)] hover:shadow-[0_10px_25px_-2px_rgba(16,185,129,0.50)] border-t border-white/30 active:scale-95 transition-all duration-200 hover:-translate-y-0.5"
             >
               <UserPlus className="w-3.5 h-3.5 shrink-0" />
               <span>Add Member</span>
@@ -189,7 +189,7 @@ export default function OverviewView({
       {/* 1. Stat KPI Cards (Adaptive 1 col mobile, 2 tablet, 4 desktop) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
         {/* Total Employees */}
-        <div className="bg-white rounded-2xl border border-slate-100/90 p-4 sm:p-5 lg:p-6 flex items-center justify-between shadow-[0_4px_20px_-4px_rgba(15,23,42,0.04)] hover:shadow-[0_12px_28px_-6px_rgba(99,91,255,0.08)] hover:-translate-y-1 transition-all duration-300 cursor-pointer group">
+        <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-4 sm:p-5 lg:p-6 flex items-center justify-between shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.05)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.16),0_8px_18px_-4px_rgba(99,91,255,0.16)] hover:-translate-y-1.5 transition-all duration-300 cursor-pointer group">
           <div>
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
               Total Employees
@@ -207,7 +207,7 @@ export default function OverviewView({
         </div>
 
         {/* Active Projects */}
-        <div className="bg-white rounded-2xl border border-slate-100/90 p-4 sm:p-5 lg:p-6 flex items-center justify-between shadow-[0_4px_20px_-4px_rgba(15,23,42,0.04)] hover:shadow-[0_12px_28px_-6px_rgba(16,185,129,0.08)] hover:-translate-y-1 transition-all duration-300 cursor-pointer group">
+        <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-4 sm:p-5 lg:p-6 flex items-center justify-between shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.05)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.16),0_8px_18px_-4px_rgba(16,185,129,0.16)] hover:-translate-y-1.5 transition-all duration-300 cursor-pointer group">
           <div>
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
               Active Projects
@@ -225,7 +225,7 @@ export default function OverviewView({
         </div>
 
         {/* Attendance Rate */}
-        <div className="bg-white rounded-2xl border border-slate-100/90 p-4 sm:p-5 lg:p-6 flex items-center justify-between shadow-[0_4px_20px_-4px_rgba(15,23,42,0.04)] hover:shadow-[0_12px_28px_-6px_rgba(249,115,22,0.08)] hover:-translate-y-1 transition-all duration-300 cursor-pointer group">
+        <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-4 sm:p-5 lg:p-6 flex items-center justify-between shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.05)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.16),0_8px_18px_-4px_rgba(249,115,22,0.16)] hover:-translate-y-1.5 transition-all duration-300 cursor-pointer group">
           <div>
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
               Attendance Rate
@@ -243,7 +243,7 @@ export default function OverviewView({
         </div>
 
         {/* Pipeline Value */}
-        <div className="bg-white rounded-2xl border border-slate-100/90 p-4 sm:p-5 lg:p-6 flex items-center justify-between shadow-[0_4px_20px_-4px_rgba(15,23,42,0.04)] hover:shadow-[0_12px_28px_-6px_rgba(59,130,246,0.08)] hover:-translate-y-1 transition-all duration-300 cursor-pointer group">
+        <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-4 sm:p-5 lg:p-6 flex items-center justify-between shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.05)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.16),0_8px_18px_-4px_rgba(59,130,246,0.16)] hover:-translate-y-1.5 transition-all duration-300 cursor-pointer group">
           <div>
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
               Pipeline Value
@@ -264,7 +264,7 @@ export default function OverviewView({
       {/* 2. Middle Row: Top Tasks Performers & Upcoming Deadlines */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Top Tasks Performers */}
-        <div className="bg-white rounded-2xl border border-slate-100/90 p-5 sm:p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.04)] hover:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.07)] transition-all duration-300">
+        <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-5 sm:p-6 shadow-[0_12px_32px_-4px_rgba(15,23,42,0.09),0_4px_12px_-2px_rgba(15,23,42,0.05)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.14)] transition-all duration-300">
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-base font-bold tracking-tight text-slate-900">
               Top Tasks Performers
@@ -327,7 +327,7 @@ export default function OverviewView({
         </div>
 
         {/* Upcoming Deadlines */}
-        <div className="bg-white rounded-2xl border border-slate-100/90 p-5 sm:p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.04)] hover:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.07)] transition-all duration-300">
+        <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-5 sm:p-6 shadow-[0_12px_32px_-4px_rgba(15,23,42,0.09),0_4px_12px_-2px_rgba(15,23,42,0.05)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.14)] transition-all duration-300">
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-base font-bold tracking-tight text-slate-900">
               Upcoming Deadlines
@@ -388,7 +388,7 @@ export default function OverviewView({
       {/* 3. Bottom Row: Project Status Distribution & Recent Tickets */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Project Status Distribution */}
-        <div className="bg-white rounded-2xl border border-slate-100/90 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.04)] hover:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.07)] transition-all duration-300">
+        <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-6 shadow-[0_12px_32px_-4px_rgba(15,23,42,0.09),0_4px_12px_-2px_rgba(15,23,42,0.05)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.14)] transition-all duration-300">
           <h3 className="text-base font-bold tracking-tight text-slate-900 mb-4">
             Project Status Distribution
           </h3>
@@ -442,7 +442,7 @@ export default function OverviewView({
         </div>
 
         {/* Recent Tickets */}
-        <div className="bg-white rounded-2xl border border-slate-100/90 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.04)] hover:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.07)] transition-all duration-300">
+        <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-6 shadow-[0_12px_32px_-4px_rgba(15,23,42,0.09),0_4px_12px_-2px_rgba(15,23,42,0.05)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.14)] transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-bold tracking-tight text-slate-900">Recent Tickets</h3>
             <button

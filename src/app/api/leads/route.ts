@@ -41,6 +41,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (body.phone) {
+      const cleanPhone = String(body.phone).replace(/\D/g, '');
+      if (cleanPhone.length !== 10) {
+        return NextResponse.json(
+          { error: 'Mobile number must be exactly 10 digits.' },
+          { status: 400 }
+        );
+      }
+      body.phone = cleanPhone;
+    }
+
+    if (body.value !== undefined) {
+      body.value = Number(String(body.value).replace(/\D/g, '')) || 0;
+    }
+
     const newLead = await Lead.create(body);
     const populated = await Lead.findById(newLead._id).populate(
       'assignedTo',

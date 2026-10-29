@@ -24,6 +24,17 @@ export async function PUT(
       body.baseSalary !== undefined ||
       body.password !== undefined;
 
+    if (body.phone) {
+      const cleanPhone = String(body.phone).replace(/\D/g, '');
+      if (cleanPhone.length !== 10) {
+        return NextResponse.json(
+          { error: 'Mobile number must be exactly 10 digits.' },
+          { status: 400 }
+        );
+      }
+      body.phone = cleanPhone;
+    }
+
     if (hasSensitiveFields && !isAdminOrHR) {
       return NextResponse.json(
         { error: 'Forbidden: Only HR and Admin (Manager) can update employee credentials, status, and role.' },

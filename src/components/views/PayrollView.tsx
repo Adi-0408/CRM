@@ -420,7 +420,7 @@ export default function PayrollView({ employees = [], onRefresh }: PayrollViewPr
   return (
     <div className="space-y-6">
       {/* 1. Header Toolbar with Month Selector, Role Switcher, and 1-Click Pay All */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 p-5 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center space-x-3.5">
           <div className="w-11 h-11 rounded-2xl bg-[#F0EEFF] text-[#635BFF] flex items-center justify-center font-bold text-lg shadow-xs flex-shrink-0">
             ₹
@@ -531,7 +531,7 @@ export default function PayrollView({ employees = [], onRefresh }: PayrollViewPr
       {isAdminOrHR && viewMode === 'admin' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* KPI 1: Net Disbursable Salary */}
-          <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-md transition">
+          <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-5 shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_2px_8px_-1px_rgba(15,23,42,0.04)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.15)] hover:-translate-y-0.5 transition-all duration-300">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 Total Net Payroll
@@ -549,7 +549,7 @@ export default function PayrollView({ employees = [], onRefresh }: PayrollViewPr
           </div>
 
           {/* KPI 2: Total Base Salary */}
-          <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-md transition">
+          <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-5 shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_2px_8px_-1px_rgba(15,23,42,0.04)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.15)] hover:-translate-y-0.5 transition-all duration-300">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 Gross Base Salary
@@ -567,7 +567,7 @@ export default function PayrollView({ employees = [], onRefresh }: PayrollViewPr
           </div>
 
           {/* KPI 3: Deductions */}
-          <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-md transition">
+          <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-5 shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_2px_8px_-1px_rgba(15,23,42,0.04)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.15)] hover:-translate-y-0.5 transition-all duration-300">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 Total Deductions
@@ -585,7 +585,7 @@ export default function PayrollView({ employees = [], onRefresh }: PayrollViewPr
           </div>
 
           {/* KPI 4: Disbursal Progress */}
-          <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-md transition">
+          <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-5 shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_2px_8px_-1px_rgba(15,23,42,0.04)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.15)] hover:-translate-y-0.5 transition-all duration-300">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 Disbursal Progress
@@ -610,7 +610,7 @@ export default function PayrollView({ employees = [], onRefresh }: PayrollViewPr
       {/* 3. Main Views: Admin Management Table vs Employee Payslip View */}
       {viewMode === 'admin' ? (
         /* ADMIN & HR VIEW */
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] overflow-hidden">
+        <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] overflow-hidden">
           <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/40">
             <div>
               <h3 className="text-sm font-bold text-slate-900">
@@ -690,11 +690,13 @@ export default function PayrollView({ employees = [], onRefresh }: PayrollViewPr
                               <div className="flex items-center space-x-1.5">
                                 <span className="text-xs font-bold text-slate-400">₹</span>
                                 <input
-                                  type="number"
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
                                   autoFocus
-                                  value={editSalaryVal}
+                                  value={editSalaryVal || ''}
                                   onChange={(e) =>
-                                    setEditSalaryVal(Number(e.target.value))
+                                    setEditSalaryVal(Number(e.target.value.replace(/\D/g, '')))
                                   }
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') handleSaveSalary(empId);

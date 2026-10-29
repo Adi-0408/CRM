@@ -32,19 +32,55 @@ body {
   background: #cbd5e1;
 }
 
-/* Soft minimalist floating card utility */
+/* =========================================================================
+   GLOSSY & ELEVATED DARK SHADOW DESIGN SYSTEM
+   ========================================================================= */
+
+/* High-end glossy glass card with deep multi-layered dark shadows */
+.glossy-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 
+    0 10px 28px -4px rgba(15, 23, 42, 0.10),
+    0 4px 10px -2px rgba(15, 23, 42, 0.06),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.95);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glossy-card:hover {
+  transform: translateY(-3px);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    0 22px 45px -8px rgba(15, 23, 42, 0.16),
+    0 8px 18px -4px rgba(99, 91, 255, 0.15),
+    inset 0 1px 2px 0 rgba(255, 255, 255, 1);
+  border-color: rgba(99, 91, 255, 0.25);
+}
+
+/* Updated Soft Card with Richer Dark Shadow & Inset Gloss Highlight */
 .soft-card {
-  background: #ffffff;
-  border: 1px solid rgba(241, 245, 249, 0.9);
+  background: rgba(255, 255, 255, 0.90);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
   border-radius: 1.25rem;
-  box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.04), 0 1px 3px 0 rgba(15, 23, 42, 0.02);
+  box-shadow: 
+    0 10px 28px -4px rgba(15, 23, 42, 0.09),
+    0 4px 10px -2px rgba(15, 23, 42, 0.05),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.95);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .soft-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 30px -6px rgba(99, 91, 255, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
-  border-color: rgba(99, 91, 255, 0.2);
+  background: #ffffff;
+  box-shadow: 
+    0 20px 42px -6px rgba(15, 23, 42, 0.15),
+    0 8px 18px -4px rgba(99, 91, 255, 0.14),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 1);
+  border-color: rgba(99, 91, 255, 0.25);
 }
 
 /* Card lift on hover */
@@ -53,25 +89,73 @@ body {
 }
 
 .hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px -6px rgba(15, 23, 42, 0.07), 0 4px 10px -2px rgba(15, 23, 42, 0.03);
+  transform: translateY(-3px);
+  box-shadow: 0 18px 38px -6px rgba(15, 23, 42, 0.14), 0 6px 14px -3px rgba(15, 23, 42, 0.07);
 }
 
 /* Glass panel effect */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(226, 232, 240, 0.7);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 
+    0 12px 32px -4px rgba(15, 23, 42, 0.10),
+    0 4px 10px -2px rgba(15, 23, 42, 0.05),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.95);
+}
+
+/* Dedicated dark shadows with distinct multi-layer depth */
+.dark-shadow-sm {
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.10), 0 2px 6px -1px rgba(15, 23, 42, 0.06);
+}
+
+.dark-shadow {
+  box-shadow: 0 12px 32px -4px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+}
+
+.dark-shadow-lg {
+  box-shadow: 0 20px 48px -6px rgba(15, 23, 42, 0.16), 0 8px 20px -4px rgba(15, 23, 42, 0.09);
+}
+
+.dark-shadow-xl {
+  box-shadow: 0 28px 64px -10px rgba(15, 23, 42, 0.22), 0 12px 28px -5px rgba(15, 23, 42, 0.12);
+}
+
+/* Glossy top specular reflection line */
+.glossy-sheen {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.5) 100%);
+  box-shadow: inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.95);
+}
+
+/* Glossy pill buttons */
+.glossy-btn {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 
+    0 6px 18px -2px rgba(15, 23, 42, 0.18),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.45);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glossy-btn:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 
+    0 10px 24px -2px rgba(15, 23, 42, 0.24),
+    inset 0 1px 2px 0 rgba(255, 255, 255, 0.6);
+}
+
+.glossy-btn:active {
+  transform: translateY(0.5px) scale(0.98);
 }
 
 /* Glow effects */
 .glow-purple {
-  box-shadow: 0 4px 20px -2px rgba(99, 91, 255, 0.25);
+  box-shadow: 0 6px 24px -2px rgba(99, 91, 255, 0.35);
 }
 
 .glow-purple-hover:hover {
-  box-shadow: 0 8px 25px -4px rgba(99, 91, 255, 0.35);
+  box-shadow: 0 10px 30px -4px rgba(99, 91, 255, 0.45);
 }
 
 /* Hide scrollbar utility while preserving touch scrolling */

@@ -137,22 +137,19 @@ export default function Sidebar({
       <aside
         className={`hidden lg:flex sticky top-0 h-[calc(100vh-1.5rem)] sm:h-[calc(100vh-2.5rem)] lg:h-[calc(100vh-3.5rem)] self-start z-30 transition-all duration-300 flex-col justify-between flex-shrink-0 ${
           collapsed ? 'w-[76px]' : 'w-64'
-        } bg-white/95 backdrop-blur-xl border-r border-slate-200/80 shadow-[4px_0_24px_-4px_rgba(15,23,42,0.03)] select-none`}
+        } bg-white/85 backdrop-blur-2xl border-r border-white/80 shadow-[8px_0_36px_-6px_rgba(15,23,42,0.12),2px_0_10px_-2px_rgba(15,23,42,0.06)] select-none`}
       >
         <div className="flex flex-col flex-1 min-h-0">
           {/* Brand Header */}
-          <div className="flex items-center justify-between px-4 py-4 border-b border-slate-100/90 flex-shrink-0">
+          <div className="flex items-center justify-between px-4 py-4 border-b border-white/60 flex-shrink-0">
             <div className="flex items-center space-x-2.5 overflow-hidden">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-purple-500 flex items-center justify-center text-white font-black text-base shadow-md shadow-indigo-500/25 shrink-0 transition-transform duration-300 hover:scale-105">
                 P
               </div>
               {!collapsed && (
-                <div className="flex items-center space-x-2 truncate animate-in fade-in duration-200">
+                <div className="flex items-center truncate animate-in fade-in duration-200">
                   <span className="text-slate-900 font-extrabold text-base tracking-tight">
                     Prism<span className="text-[#635BFF]">CRM</span>
-                  </span>
-                  <span className="bg-[#F0EEFF] text-[#635BFF] text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#635BFF]/20 shrink-0">
-                    Enterprise
                   </span>
                 </div>
               )}
@@ -160,7 +157,7 @@ export default function Sidebar({
             {!collapsed && (
               <button
                 onClick={() => setCollapsed(true)}
-                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-all active:scale-95"
+                className="p-1.5 rounded-xl hover:bg-slate-100/80 text-slate-400 hover:text-slate-700 transition-all active:scale-95"
                 title="Collapse sidebar"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -173,9 +170,9 @@ export default function Sidebar({
         </div>
 
         {/* Footer Role Badge & Expand Toggle */}
-        <div className="p-3 border-t border-slate-100/90 bg-gradient-to-b from-slate-50/30 to-slate-50/70">
+        <div className="p-3 border-t border-white/60 bg-gradient-to-b from-white/40 to-slate-50/80">
           {!collapsed ? (
-            <div className="flex items-center space-x-2.5 p-2 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:shadow-xs transition-all duration-200">
+            <div className="flex items-center space-x-2.5 p-2 rounded-2xl bg-white/90 backdrop-blur-md border border-white/90 shadow-[0_4px_16px_-2px_rgba(15,23,42,0.12)] hover:shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] transition-all duration-200">
               <div className="relative shrink-0">
                 <div className="w-8 h-8 rounded-full bg-[#F0EEFF] text-[#635BFF] border border-[#635BFF]/20 flex items-center justify-center font-bold text-xs shadow-xs overflow-hidden">
                   {user?.avatar ? (
@@ -205,7 +202,7 @@ export default function Sidebar({
             <div className="w-full flex justify-center py-1">
               <button
                 onClick={() => setCollapsed(false)}
-                className="w-10 h-10 rounded-2xl bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-700 border border-slate-200/60 shadow-2xs hover:shadow-xs transition-all duration-200 flex items-center justify-center active:scale-95"
+                className="w-10 h-10 rounded-2xl bg-white/90 hover:bg-white text-slate-500 hover:text-slate-800 border border-white/80 shadow-[0_4px_14px_-2px_rgba(15,23,42,0.12)] hover:shadow-[0_6px_18px_-2px_rgba(15,23,42,0.18)] transition-all duration-200 flex items-center justify-center active:scale-95"
                 title="Expand sidebar"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -225,7 +222,7 @@ export default function Sidebar({
           />
 
           {/* Slide-in Drawer Container */}
-          <div className="fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-2xl flex flex-col justify-between h-full border-r border-slate-100 animate-in slide-in-from-left duration-300 select-none">
+          <div className="fixed inset-y-0 left-0 z-50 w-72 bg-white/95 backdrop-blur-2xl shadow-[25px_0_60px_-10px_rgba(15,23,42,0.30)] flex flex-col justify-between h-full border-r border-white/80 animate-in slide-in-from-left duration-300 select-none">
             <div className="flex flex-col flex-1 min-h-0">
               {/* Drawer Top Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
@@ -236,9 +233,6 @@ export default function Sidebar({
                   <div>
                     <span className="text-slate-900 font-extrabold text-base tracking-tight">
                       Prism<span className="text-[#635BFF]">CRM</span>
-                    </span>
-                    <span className="ml-2 bg-[#F0EEFF] text-[#635BFF] text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#635BFF]/20">
-                      Enterprise
                     </span>
                   </div>
                 </div>

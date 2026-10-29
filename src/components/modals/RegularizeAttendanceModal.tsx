@@ -264,8 +264,8 @@ export default function RegularizeAttendanceModal({
   });
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200 select-none">
-      <div className="bg-white/95 backdrop-blur-xl rounded-3xl border border-slate-100 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.12)] w-[95vw] max-w-lg p-5 sm:p-7 relative overflow-hidden animate-in zoom-in-95 duration-150 max-h-[92vh] overflow-y-auto no-scrollbar">
+    <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200 select-none">
+      <div className="bg-white/95 backdrop-blur-2xl rounded-3xl border border-white/90 shadow-[0_25px_70px_-10px_rgba(15,23,42,0.25),0_10px_24px_-4px_rgba(15,23,42,0.10)] w-[95vw] max-w-lg p-5 sm:p-7 relative overflow-hidden animate-in zoom-in-95 duration-150 max-h-[92vh] overflow-y-auto no-scrollbar">
         {/* Decorative Floating Pill Gradient Accents */}
         <div className="absolute top-0 right-0 w-60 h-32 bg-purple-100/40 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-60 h-32 bg-emerald-100/30 rounded-full blur-2xl pointer-events-none" />

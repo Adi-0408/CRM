@@ -83,8 +83,8 @@ export default function BusinessIntelligenceNav({
         </div>
       </div>
 
-      {/* Touch-Friendly Horizontal Scroll Pill-Bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full p-1.5 bg-slate-100/80 rounded-full border border-slate-200/60 shadow-inner">
+      {/* Touch-Friendly Horizontal Scroll Pill-Bar with Glossy Sheen & Dark Ambient Shadow */}
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full p-1.5 bg-slate-100/90 backdrop-blur-md rounded-full border border-white/70 shadow-[inset_0_2px_4px_0_rgba(15,23,42,0.06),0_8px_24px_-4px_rgba(15,23,42,0.08)]">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive =
@@ -96,8 +96,8 @@ export default function BusinessIntelligenceNav({
               onClick={() => setActiveTab(tab.id)}
               className={`whitespace-nowrap shrink-0 px-4 py-1.5 text-xs rounded-full inline-flex items-center gap-1.5 transition-all duration-200 active:scale-95 ${
                 isActive
-                  ? 'bg-white shadow-[0_2px_8px_-2px_rgba(15,23,42,0.1)] text-slate-900 font-bold border border-slate-200/80 scale-[1.02]'
-                  : 'text-slate-500 hover:text-slate-900 hover:bg-white/70 hover:shadow-2xs font-semibold'
+                  ? 'bg-white shadow-[0_6px_18px_-2px_rgba(15,23,42,0.15),0_2px_6px_0_rgba(15,23,42,0.06)] text-slate-900 font-bold border border-white/90 scale-[1.02]'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-white/80 hover:shadow-xs font-semibold'
               }`}
             >
               <Icon className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isActive ? 'text-[#635BFF] scale-110' : 'text-slate-400'}`} />

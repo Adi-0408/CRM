@@ -39,21 +39,21 @@ export default function Header({
 
   const renderRoleActionButtons = (isMobile = false) => {
     const btnBaseClass =
-      'whitespace-nowrap shrink-0 px-4 py-2 text-xs rounded-full inline-flex items-center justify-center gap-1.5 font-bold active:scale-95 transition-all duration-200 cursor-pointer hover:-translate-y-0.5';
+      'whitespace-nowrap shrink-0 px-4 py-2 text-xs rounded-full inline-flex items-center justify-center gap-1.5 font-bold active:scale-95 transition-all duration-200 cursor-pointer hover:-translate-y-0.5 glossy-btn';
 
     if (role === 'admin_manager') {
       return (
         <>
           <button
             onClick={onOpenCreateTask}
-            className={`${btnBaseClass} text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 hover:border-slate-300 shadow-2xs hover:shadow-xs`}
+            className={`${btnBaseClass} text-slate-700 bg-white/90 hover:bg-white border border-slate-200/90 hover:border-slate-300 shadow-[0_4px_14px_-2px_rgba(15,23,42,0.12)] hover:shadow-[0_8px_20px_-3px_rgba(15,23,42,0.18)]`}
           >
             <Plus className="w-3.5 h-3.5 text-slate-500 shrink-0" />
             <span>Create Task</span>
           </button>
           <button
             onClick={onOpenAddLead}
-            className={`${btnBaseClass} text-white bg-gradient-to-r from-[#635BFF] to-[#7B73FF] hover:brightness-105 shadow-sm shadow-indigo-500/20 hover:shadow-md hover:shadow-indigo-500/30`}
+            className={`${btnBaseClass} text-white bg-gradient-to-r from-[#635BFF] via-[#7067FF] to-[#7B73FF] hover:brightness-105 shadow-[0_6px_20px_-2px_rgba(99,91,255,0.40)] hover:shadow-[0_10px_25px_-2px_rgba(99,91,255,0.50)] border-t border-white/30`}
           >
             <Plus className="w-3.5 h-3.5 text-white/90 shrink-0" />
             <span>Add Leads</span>
@@ -61,7 +61,7 @@ export default function Header({
           {onOpenCreateProject && (
             <button
               onClick={onOpenCreateProject}
-              className={`${btnBaseClass} text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:brightness-105 shadow-sm shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/30`}
+              className={`${btnBaseClass} text-white bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 hover:brightness-105 shadow-[0_6px_20px_-2px_rgba(37,99,235,0.40)] hover:shadow-[0_10px_25px_-2px_rgba(37,99,235,0.50)] border-t border-white/30`}
             >
               <Plus className="w-3.5 h-3.5 text-white/90 shrink-0" />
               <span>New Project</span>
@@ -70,7 +70,7 @@ export default function Header({
           {onOpenAddEmployee && (
             <button
               onClick={onOpenAddEmployee}
-              className={`${btnBaseClass} text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-105 shadow-sm shadow-emerald-500/20 hover:shadow-md hover:shadow-emerald-500/30`}
+              className={`${btnBaseClass} text-white bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:brightness-105 shadow-[0_6px_20px_-2px_rgba(16,185,129,0.40)] hover:shadow-[0_10px_25px_-2px_rgba(16,185,129,0.50)] border-t border-white/30`}
             >
               <Plus className="w-3.5 h-3.5 text-white/90 shrink-0" />
               <span>Add Member</span>
@@ -174,7 +174,7 @@ export default function Header({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-100/90 px-4 sm:px-6 py-3 transition-all">
+    <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-xl border-b border-white/70 shadow-[0_8px_30px_-4px_rgba(15,23,42,0.10),0_2px_8px_-1px_rgba(15,23,42,0.05)] px-4 sm:px-6 py-3 transition-all">
       <div className="flex items-center justify-between gap-3">
         {/* Left: Mobile Hamburger + Title + Active Role Context */}
         <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">

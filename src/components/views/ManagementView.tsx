@@ -93,15 +93,22 @@ export default function ManagementView({ onRefresh }: ManagementViewProps) {
 
   const handleSaveBranch = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanPhone = formData.phone ? formData.phone.replace(/\D/g, '') : '';
+    if (cleanPhone && cleanPhone.length !== 10) {
+      setMessage('❌ Phone number must be exactly 10 digits (no more, no less).');
+      return;
+    }
+
     try {
       setSaving(true);
       setMessage('');
+      const payload = { ...formData, phone: cleanPhone };
       if (editingBranch && editingBranch._id) {
         // Update existing
         const res = await fetch(`/api/branches/${editingBranch._id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
         if (res.ok) {
@@ -116,7 +123,7 @@ export default function ManagementView({ onRefresh }: ManagementViewProps) {
         const res = await fetch('/api/branches', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
         if (res.ok) {
@@ -187,7 +194,7 @@ export default function ManagementView({ onRefresh }: ManagementViewProps) {
   return (
     <div className="space-y-6">
       {/* 1. Organization Card */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 p-6 sm:p-7 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="flex items-center space-x-4">
           <div className="w-14 h-14 rounded-2xl bg-[#F0EEFF] flex items-center justify-center text-[#635BFF] font-extrabold text-2xl shadow-sm flex-shrink-0">
             UD
@@ -237,7 +244,7 @@ export default function ManagementView({ onRefresh }: ManagementViewProps) {
       )}
 
       {/* 2. Office & Branch Locations Directory (Editable, Deletable & Addable) */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)]">
+      <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 p-6 sm:p-7 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <h4 className="text-base font-bold tracking-tight text-slate-900 flex items-center space-x-2">
@@ -491,13 +498,21 @@ export default function ManagementView({ onRefresh }: ManagementViewProps) {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Phone</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-semibold text-slate-700">Phone</label>
+                    <span className={`text-[10px] font-mono ${formData.phone.replace(/\D/g, '').length === 10 ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>
+                      {formData.phone.replace(/\D/g, '').length}/10 digits
+                    </span>
+                  </div>
                   <input
-                    type="text"
-                    placeholder="e.g. +91 98230 41320"
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={10}
+                    placeholder="10-digit phone number"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono"
                   />
                 </div>
               </div>

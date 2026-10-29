@@ -71,7 +71,7 @@ export default function LeadsView({
     <div className="space-y-6">
       {/* 1. Pipeline Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 flex items-center justify-between shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.05)] transition-all">
+        <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-6 flex items-center justify-between shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_2px_8px_-1px_rgba(15,23,42,0.04)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.15)] hover:-translate-y-0.5 transition-all duration-300">
           <div>
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
               Total Pipeline Value
@@ -85,7 +85,7 @@ export default function LeadsView({
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 flex items-center justify-between shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.05)] transition-all">
+        <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-6 flex items-center justify-between shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_2px_8px_-1px_rgba(15,23,42,0.04)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.15)] hover:-translate-y-0.5 transition-all duration-300">
           <div>
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
               Total Prospects
@@ -99,7 +99,7 @@ export default function LeadsView({
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 flex items-center justify-between shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.05)] transition-all">
+        <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-6 flex items-center justify-between shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_2px_8px_-1px_rgba(15,23,42,0.04)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.15)] hover:-translate-y-0.5 transition-all duration-300">
           <div>
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
               Won Revenue
@@ -115,7 +115,7 @@ export default function LeadsView({
       </div>
 
       {/* 2. Filter & Actions Bar */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-5 shadow-[0_10px_28px_-4px_rgba(15,23,42,0.08)] flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full md:w-auto p-1 bg-slate-100/80 border border-slate-200/50 rounded-full">
           <button
             onClick={() => setSelectedStage('all')}

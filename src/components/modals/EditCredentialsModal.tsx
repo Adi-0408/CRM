@@ -35,6 +35,7 @@ export default function EditCredentialsModal({
   const [role, setRole] = useState('web_developer');
   const [department, setDepartment] = useState('Engineering');
   const [status, setStatus] = useState<'active' | 'suspended'>('active');
+  const [phone, setPhone] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -47,6 +48,7 @@ export default function EditCredentialsModal({
       setRole(employee.role || 'employee');
       setDepartment(employee.department || 'Engineering');
       setStatus(employee.status === 'suspended' ? 'suspended' : 'active');
+      setPhone(employee.phone || '');
       setMsg('');
       setError('');
     }
@@ -73,6 +75,12 @@ export default function EditCredentialsModal({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone && cleanPhone.length !== 10) {
+      setError('Mobile number must be exactly 10 digits (no more, no less).');
+      return;
+    }
+
     try {
       setSaving(true);
       setError('');
@@ -89,7 +97,7 @@ export default function EditCredentialsModal({
           department,
           status,
           salary: employee.salary,
-          phone: employee.phone,
+          phone: cleanPhone || '',
           avatar: employee.avatar,
         }),
       });
@@ -112,8 +120,8 @@ export default function EditCredentialsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-[95vw] max-w-md p-5 sm:p-6 animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto no-scrollbar">
+    <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-white/95 backdrop-blur-2xl rounded-3xl border border-white/90 shadow-[0_25px_70px_-10px_rgba(15,23,42,0.25),0_10px_24px_-4px_rgba(15,23,42,0.10)] w-[95vw] max-w-md p-5 sm:p-6 animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto no-scrollbar">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
           <div className="flex items-center space-x-2.5">
@@ -197,6 +205,28 @@ export default function EditCredentialsModal({
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+          </div>
+
+          {/* Mobile Number */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold text-slate-700">
+                Mobile Number
+              </label>
+              <span className={`text-[10px] font-mono ${phone.length === 10 ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>
+                {phone.length}/10 digits
+              </span>
+            </div>
+            <input
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={10}
+              placeholder="10-digit mobile number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#635BFF]/15 focus:border-[#635BFF] text-base sm:text-xs text-slate-900 bg-white font-mono"
+            />
           </div>
 
           {/* Role selection */}

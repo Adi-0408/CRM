@@ -172,7 +172,7 @@ export default function EmployeesView({
   return (
     <div className="space-y-6">
       {/* Top Bar with Title, View Switcher & Add Button */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 p-4 sm:p-5 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-base font-bold tracking-tight text-slate-900">
             Employee Credential &amp; Team Management ({employees.length})
@@ -226,7 +226,7 @@ export default function EmployeesView({
 
       {/* Main View: Credential Management Table (Table Mode) */}
       {viewMode === 'table' ? (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] overflow-hidden">
+        <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] overflow-hidden">
           <div className="overflow-x-auto no-scrollbar">
             <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
@@ -321,10 +321,12 @@ export default function EmployeesView({
                               <div className="flex items-center space-x-1.5">
                                 <span className="text-xs font-bold text-slate-400">₹</span>
                                 <input
-                                  type="number"
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
                                   autoFocus
-                                  value={editSalaryValue}
-                                  onChange={(e) => setEditSalaryValue(Number(e.target.value))}
+                                  value={editSalaryValue || ''}
+                                  onChange={(e) => setEditSalaryValue(Number(e.target.value.replace(/\D/g, '')))}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') handleUpdateSalary(emp._id, editSalaryValue);
                                     if (e.key === 'Escape') setEditingSalaryEmpId(null);

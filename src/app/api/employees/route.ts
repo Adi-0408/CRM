@@ -62,6 +62,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     body.email = cleanEmail;
     body.status = (body.status || 'active').toLowerCase();
 
+    if (body.phone) {
+      const cleanPhone = String(body.phone).replace(/\D/g, '');
+      if (cleanPhone.length !== 10) {
+        return NextResponse.json(
+          { error: 'Mobile number must be exactly 10 digits.' },
+          { status: 400 }
+        );
+      }
+      body.phone = cleanPhone;
+    }
+
     if (!body.avatar) {
       body.avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
         body.name

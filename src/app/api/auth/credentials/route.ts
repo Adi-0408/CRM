@@ -22,6 +22,17 @@ export async function POST(req: NextRequest) {
     const cleanRole = role || 'employee';
     const cleanStatus = (body.status || 'active').toLowerCase();
 
+    let cleanPhone = '';
+    if (phone) {
+      cleanPhone = String(phone).replace(/\D/g, '');
+      if (cleanPhone.length !== 10) {
+        return NextResponse.json(
+          { error: 'Mobile number must be exactly 10 digits.' },
+          { status: 400 }
+        );
+      }
+    }
+
     await connectToDatabase();
 
     // Upsert into Employee collection
@@ -35,7 +46,7 @@ export async function POST(req: NextRequest) {
           role: cleanRole,
           department: department || 'Engineering',
           salary: Number(salary) || 50000,
-          phone: phone || '',
+          phone: cleanPhone,
           avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
           status: cleanStatus,
           updatedAt: new Date(),
@@ -61,6 +72,7 @@ export async function POST(req: NextRequest) {
           department: department || 'Engineering',
           designation: cleanRole,
           status: cleanStatus,
+          phone: cleanPhone,
           updatedAt: new Date(),
         },
         $setOnInsert: {

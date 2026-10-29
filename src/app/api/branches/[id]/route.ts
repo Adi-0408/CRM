@@ -10,6 +10,17 @@ export async function PUT(
     await connectToDatabase();
     const body = await req.json();
 
+    if (body.phone) {
+      const cleanPhone = String(body.phone).replace(/\D/g, '');
+      if (cleanPhone.length !== 10) {
+        return NextResponse.json(
+          { error: 'Phone number must be exactly 10 digits.' },
+          { status: 400 }
+        );
+      }
+      body.phone = cleanPhone;
+    }
+
     if (body.isHeadOffice || body.status === 'Head Office') {
       body.isHeadOffice = true;
       body.status = 'Head Office';

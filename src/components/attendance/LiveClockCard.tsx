@@ -201,7 +201,7 @@ export default function LiveClockCard({
 
   return (
     <div
-      className={`bg-white rounded-3xl border border-slate-100 p-5 sm:p-7 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] relative overflow-hidden transition-all ${className}`}
+      className={`bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 p-5 sm:p-7 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] hover:shadow-[0_22px_48px_-8px_rgba(15,23,42,0.16)] relative overflow-hidden transition-all ${className}`}
     >
       <div className="space-y-5">
         {/* Top Header: Clock, Shift Window, and Primary Clock Button (Matching Image 5) */}
@@ -240,10 +240,10 @@ export default function LiveClockCard({
             <button
               onClick={handleToggleClock}
               disabled={loading}
-              className={`w-full sm:w-auto px-7 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all active:scale-95 shadow-sm min-h-[46px] disabled:opacity-50 ${
+              className={`w-full sm:w-auto px-7 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all active:scale-95 min-h-[46px] disabled:opacity-50 border-t border-white/30 ${
                 isClockedIn
-                  ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20'
-                  : 'bg-[#0D9488] hover:bg-[#0f766e] text-white shadow-emerald-600/20'
+                  ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-[0_8px_20px_-2px_rgba(245,158,11,0.40)]'
+                  : 'bg-[#0D9488] hover:bg-[#0f766e] text-white shadow-[0_8px_20px_-2px_rgba(13,148,136,0.40)]'
               }`}
             >
               {isClockedIn ? (

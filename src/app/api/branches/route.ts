@@ -41,6 +41,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (body.phone) {
+      const cleanPhone = String(body.phone).replace(/\D/g, '');
+      if (cleanPhone.length !== 10) {
+        return NextResponse.json(
+          { error: 'Phone number must be exactly 10 digits.' },
+          { status: 400 }
+        );
+      }
+      body.phone = cleanPhone;
+    }
+
     // If marked as head office, unset head office flag on others
     if (body.isHeadOffice || body.status === 'Head Office') {
       body.isHeadOffice = true;
