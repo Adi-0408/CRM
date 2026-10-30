@@ -4,6 +4,7 @@ import Task from '@/models/Task';
 import Employee from '@/models/Employee';
 import Project from '@/models/Project';
 import { getAuthUser, requireRoles, isValidDocId } from '@/lib/apiAuth';
+import { recalculateProjectProgress } from '@/lib/projectEngine';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,8 +43,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    // Only Admin (Manager) can create and delegate tasks
-    const authResult = await requireRoles(req, ['admin_manager']);
+    // Admin (Manager) and Team Leads can create and delegate tasks
+    const authResult = await requireRoles(req, ['admin_manager', 'team_lead']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
@@ -63,6 +64,11 @@ export async function POST(req: NextRequest) {
       await Employee.findByIdAndUpdate(body.assignedTo, {
         $inc: { completedTasksCount: 1 },
       });
+    }
+
+    // Auto-calculate dynamic project progress
+    if (newTask.project) {
+      await recalculateProjectProgress(String(newTask.project));
     }
 
     const populated = await Task.findById(newTask._id)

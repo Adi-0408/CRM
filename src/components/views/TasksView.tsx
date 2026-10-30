@@ -26,7 +26,7 @@ export default function TasksView({
   onRefresh,
 }: TasksViewProps) {
   const { user, role } = useAuth();
-  const isAdminOrManager = role === 'admin_manager';
+  const canManage = role === 'admin_manager' || role === 'team_lead';
 
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -46,7 +46,7 @@ export default function TasksView({
   };
 
   const deleteTask = async (id: string) => {
-    if (!isAdminOrManager) return;
+    if (!canManage) return;
     if (!confirm('Are you sure you want to delete this task?')) return;
     try {
       await authFetch(`/api/tasks/${id}`, { method: 'DELETE' });
@@ -56,24 +56,26 @@ export default function TasksView({
     }
   };
 
-  // Scope tasks to the current user if role is employee
+  // Scope tasks: Admins and Team Leads see organizational/project tasks; others see personal tasks
   const scopedTasks = useMemo(() => {
-    if (isAdminOrManager) return tasks;
+    if (role === 'admin_manager' || role === 'team_lead') return tasks;
+    const currentUserId = String(user?.id || (user as any)?._id || '');
+    const currentUserEmail = user?.email?.toLowerCase();
+
     return tasks.filter((t) => {
       const assignedId =
         t.assignedTo?._id ||
         t.assignedTo?.id ||
         (typeof t.assignedTo === 'string' ? t.assignedTo : null);
       const assignedEmail = t.assignedTo?.email;
-      const currentUserId = user?.id || (user as any)?._id;
       return (
-        (assignedId && String(assignedId) === String(currentUserId)) ||
+        (assignedId && String(assignedId) === currentUserId) ||
         (assignedEmail &&
-          user?.email &&
-          assignedEmail.toLowerCase() === user.email.toLowerCase())
+          currentUserEmail &&
+          assignedEmail.toLowerCase() === currentUserEmail)
       );
     });
-  }, [tasks, isAdminOrManager, user]);
+  }, [tasks, role, user]);
 
   const filteredTasks = scopedTasks.filter((t) => {
     const matchesFilter = filter === 'all' || t.status === filter;
@@ -117,8 +119,8 @@ export default function TasksView({
           </div>
         </div>
 
-        {/* Create Task button: only visible to Admin & Manager */}
-        {isAdminOrManager && (
+        {/* Create Task button: visible to Admin & Team Leads */}
+        {canManage && (
           <button
             onClick={onOpenCreateTask}
             className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm hover:shadow-md hover:shadow-indigo-500/15 active:scale-95 transition-all w-full md:w-auto"
@@ -202,7 +204,7 @@ export default function TasksView({
                   </span>
 
                   {/* Delete Task button: only visible to Admin & Manager */}
-                  {isAdminOrManager && (
+                  {canManage && (
                     <button
                       onClick={() => deleteTask(task._id)}
                       className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors rounded-lg hover:bg-rose-50"
@@ -220,7 +222,7 @@ export default function TasksView({
             <CheckSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <h4 className="text-sm font-bold text-slate-700">No tasks found</h4>
             <p className="text-xs text-slate-400 mt-1">
-              {isAdminOrManager
+              {canManage
                 ? 'Click "New Task" above to add your first work item.'
                 : 'No tasks currently assigned to you.'}
             </p>

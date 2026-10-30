@@ -12,6 +12,8 @@ export interface IProject {
   priority?: 'low' | 'medium' | 'high' | 'urgent';
   deadline: Date | string;
   teamMembers?: any[];
+  projectLead?: any;
+  leadId?: string;
   createdAt?: Date | string;
   updatedAt?: Date | string;
 }

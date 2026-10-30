@@ -1,5 +1,6 @@
 export type UserRole =
   | 'admin_manager'
+  | 'team_lead'
   | 'hr'
   | 'accounts'
   | 'sales'
@@ -79,6 +80,19 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
       'employees',
       'management',
     ],
+  },
+
+  team_lead: {
+    role: 'team_lead',
+    label: 'Team Lead / PM',
+    shortLabel: 'Team Lead',
+    description: 'Project deliverable oversight, task delegation to developers & milestone tracking',
+    badgeBg: 'bg-indigo-50',
+    badgeText: 'text-indigo-700',
+    badgeBorder: 'border-indigo-200',
+    sidebarTabs: ['dashboard', 'projects', 'tasks', 'attendance', 'leave', 'payroll'],
+    biNavTabs: ['overview', 'projects', 'tasks', 'attendance', 'payroll'],
+    allowedViews: ['overview', 'dashboard', 'projects', 'tasks', 'attendance', 'leave', 'payroll'],
   },
 
   hr: {
@@ -167,9 +181,9 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
     badgeBg: 'bg-violet-50',
     badgeText: 'text-violet-800',
     badgeBorder: 'border-violet-200',
-    sidebarTabs: ['dashboard', 'tasks', 'support', 'attendance', 'leave', 'payroll'],
-    biNavTabs: ['overview', 'tasks', 'support', 'attendance', 'payroll'],
-    allowedViews: ['overview', 'dashboard', 'tasks', 'support', 'attendance', 'leave', 'payroll'],
+    sidebarTabs: ['dashboard', 'projects', 'tasks', 'support', 'attendance', 'leave', 'payroll'],
+    biNavTabs: ['overview', 'projects', 'tasks', 'support', 'attendance', 'payroll'],
+    allowedViews: ['overview', 'dashboard', 'projects', 'tasks', 'support', 'attendance', 'leave', 'payroll'],
   },
 };
 

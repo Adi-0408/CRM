@@ -383,6 +383,7 @@ export default function AddEmployeeModal({
                     onChange={setRole}
                     options={[
                       ...(isAdminManager ? [{ value: 'admin_manager', label: 'Admin (Manager)' }] : []),
+                      { value: 'team_lead', label: 'Team Lead / PM' },
                       { value: 'hr', label: 'HR' },
                       { value: 'accounts', label: 'Accounts' },
                       { value: 'sales', label: 'Sales' },

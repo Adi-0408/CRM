@@ -10,6 +10,7 @@ import {
   CalendarCheck,
   CreditCard,
   Luggage,
+  FolderKanban,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -65,6 +66,31 @@ export default function Header({
               <span>Add Member</span>
             </button>
           )}
+        </>
+      );
+    }
+
+    if (role === 'team_lead') {
+      return (
+        <>
+          <button onClick={onOpenCreateTask} className={primaryBtnClass}>
+            <Plus className="w-3.5 h-3.5 text-white/90 shrink-0" />
+            <span>Create Task</span>
+          </button>
+          <button
+            onClick={() => onNavigateTab && onNavigateTab('projects')}
+            className={secondaryBtnClass}
+          >
+            <FolderKanban className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+            <span>My Projects</span>
+          </button>
+          <button
+            onClick={() => onNavigateTab && onNavigateTab('attendance')}
+            className={secondaryBtnClass}
+          >
+            <Clock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <span>Clock In / Out</span>
+          </button>
         </>
       );
     }

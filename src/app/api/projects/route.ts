@@ -53,6 +53,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Verify that assigned team members are strictly developers or interns
+    if (Array.isArray(body.teamMembers) && body.teamMembers.length > 0) {
+      const allowedRoles = ['web_developer', 'android_developer', 'intern'];
+      const members = await Promise.all(
+        body.teamMembers.map((id: string) => Employee.findById(id))
+      );
+      const invalid = members.find(
+        (m) =>
+          m &&
+          !allowedRoles.includes(String(m.role || '').toLowerCase().trim()) &&
+          !String(m.role || '').toLowerCase().includes('developer') &&
+          !String(m.role || '').toLowerCase().includes('intern')
+      );
+      if (invalid) {
+        return NextResponse.json(
+          { error: `Projects can only be assigned to Developers and Interns. (${invalid.name} has role: ${invalid.role})` },
+          { status: 400 }
+        );
+      }
+    }
+
     const newProject = await Project.create(body);
     const populated = await Project.findById(newProject._id).populate(
       'teamMembers',

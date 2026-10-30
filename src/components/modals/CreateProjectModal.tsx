@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X, FolderKanban, DollarSign, Calendar, Users, Flag } from 'lucide-react';
 import TeamMemberPicker from '@/components/common/TeamMemberPicker';
 import CustomSelect from '@/components/common/CustomSelect';
@@ -8,9 +8,13 @@ import CustomSelect from '@/components/common/CustomSelect';
 interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onProjectCreated: () => void;
+  onProjectCreated: (newProject?: any) => void;
   employees: Array<any>;
   tasks?: any[];
+  initialClient?: string;
+  initialBudget?: number | string;
+  initialTitle?: string;
+  initialLeadId?: string;
 }
 
 export default function CreateProjectModal({
@@ -19,6 +23,10 @@ export default function CreateProjectModal({
   onProjectCreated,
   employees,
   tasks = [],
+  initialClient,
+  initialBudget,
+  initialTitle,
+  initialLeadId,
 }: CreateProjectModalProps) {
   const [title, setTitle] = useState('');
   const [client, setClient] = useState('');
@@ -29,6 +37,28 @@ export default function CreateProjectModal({
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialClient) setClient(initialClient);
+      if (initialBudget) setBudget(String(initialBudget));
+      if (initialTitle) setTitle(initialTitle);
+      else if (initialClient) setTitle(`${initialClient} Project`);
+    }
+  }, [isOpen, initialClient, initialBudget, initialTitle]);
+
+  // Restrict project assignment exclusively to Developers and Interns
+  const assignableEmployees = useMemo(() => {
+    const allowedRoles = ['web_developer', 'android_developer', 'intern'];
+    return (employees || []).filter((emp) => {
+      const r = String(emp.role || '').toLowerCase().trim();
+      return (
+        allowedRoles.includes(r) ||
+        r.includes('developer') ||
+        r.includes('intern')
+      );
+    });
+  }, [employees]);
 
   if (!isOpen) return null;
 
@@ -59,8 +89,9 @@ export default function CreateProjectModal({
           priority,
           teamMembers: selectedMembers,
           description,
-          status: 'in_progress',
-          progress: 10,
+          status: 'planning',
+          progress: 0,
+          leadId: initialLeadId || undefined,
         }),
       });
 
@@ -69,7 +100,22 @@ export default function CreateProjectModal({
         throw new Error(data.error || 'Failed to create project');
       }
 
-      onProjectCreated();
+      const created = await res.json();
+
+      // If created from a Lead, update the Lead with the linked projectId
+      if (initialLeadId && created?._id) {
+        await fetch(`/api/leads/${initialLeadId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectId: created._id,
+            projectTitle: created.title,
+            status: 'won',
+          }),
+        }).catch((err) => console.error('Failed to link lead to project:', err));
+      }
+
+      onProjectCreated(created);
       onClose();
       setTitle('');
       setClient('');
@@ -183,14 +229,15 @@ export default function CreateProjectModal({
             </div>
           </div>
 
-          {/* Smart Scalable Assignee Selector */}
+          {/* Smart Scalable Assignee Selector - restricted to Developers & Interns */}
           <TeamMemberPicker
-            label="Assign Team Members"
-            employees={employees}
+            label="Assign Team Members (Developers & Interns Only)"
+            employees={assignableEmployees}
             selectedIds={selectedMembers}
             onChange={(ids) => setSelectedMembers(ids)}
             tasks={tasks}
             multiple={true}
+            allowedRoles={['web_developer', 'android_developer', 'intern']}
           />
 
           <div>

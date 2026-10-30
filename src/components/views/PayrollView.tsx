@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
+import ClientInvoicesTab from '@/components/invoices/ClientInvoicesTab';
 
 interface PayrollRecord {
   _id?: string;
@@ -60,12 +61,16 @@ interface PayrollRecord {
 
 interface PayrollViewProps {
   employees: any[];
+  projects?: any[];
   onRefresh?: () => void;
 }
 
-export default function PayrollView({ employees = [], onRefresh }: PayrollViewProps) {
+export default function PayrollView({ employees = [], projects = [], onRefresh }: PayrollViewProps) {
   const { user: currentUser, role } = useAuth();
   const isAdminOrHR = role === 'admin_manager' || role === 'accounts';
+
+  // Accounts sub-tab: Staff Payroll vs Client Invoicing
+  const [accountsSection, setAccountsSection] = useState<'payroll' | 'invoices'>('payroll');
 
   // Current month in YYYY-MM
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
@@ -419,7 +424,44 @@ export default function PayrollView({ employees = [], onRefresh }: PayrollViewPr
 
   return (
     <div className="space-y-6">
-      {/* 1. Header Toolbar with Month Selector, Role Switcher, and 1-Click Pay All */}
+      {/* 0. Top Accounts Switcher: Staff Payroll (Payables) vs Client Invoicing (Receivables) */}
+      {isAdminOrHR && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-2 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center space-x-1.5 w-full sm:w-auto">
+            <button
+              onClick={() => setAccountsSection('payroll')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 flex-1 sm:flex-initial ${
+                accountsSection === 'payroll'
+                  ? 'bg-[#635BFF] text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <IndianRupee className="w-3.5 h-3.5" />
+              <span>Staff Payroll (Outgoing Payables)</span>
+            </button>
+            <button
+              onClick={() => setAccountsSection('invoices')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 flex-1 sm:flex-initial ${
+                accountsSection === 'invoices'
+                  ? 'bg-[#635BFF] text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Client Invoices & Receivables (Incoming Revenue)</span>
+            </button>
+          </div>
+          <span className="text-[11px] font-bold text-slate-400 mr-2 hidden md:inline-block">
+            Accounts & Finance Hub
+          </span>
+        </div>
+      )}
+
+      {accountsSection === 'invoices' ? (
+        <ClientInvoicesTab projects={projects} />
+      ) : (
+        <>
+          {/* 1. Header Toolbar with Month Selector, Role Switcher, and 1-Click Pay All */}
       <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 p-5 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center space-x-3.5">
           <div className="w-11 h-11 rounded-2xl bg-[#F0EEFF] text-[#635BFF] flex items-center justify-center font-bold text-lg shadow-xs flex-shrink-0">
@@ -1251,6 +1293,8 @@ export default function PayrollView({ employees = [], onRefresh }: PayrollViewPr
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

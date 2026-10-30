@@ -20,6 +20,7 @@ interface TeamMemberPickerProps {
   onChange: (selectedIds: string[]) => void;
   tasks?: any[];
   multiple?: boolean;
+  allowedRoles?: string[];
 }
 
 export default function TeamMemberPicker({
@@ -29,6 +30,7 @@ export default function TeamMemberPicker({
   onChange,
   tasks = [],
   multiple = true,
+  allowedRoles,
 }: TeamMemberPickerProps) {
   const [search, setSearch] = useState('');
   const [selectedDept, setSelectedDept] = useState('All');
@@ -56,6 +58,16 @@ export default function TeamMemberPicker({
       if (seenIds.has(idStr)) return;
       if (emailStr && seenEmails.has(emailStr)) return;
 
+      // Optional role restriction
+      if (allowedRoles && allowedRoles.length > 0) {
+        const empRole = String(emp.role || '').toLowerCase().trim();
+        const matchesAllowed = allowedRoles.some((ar) => {
+          const arLower = ar.toLowerCase();
+          return empRole === arLower || empRole.includes(arLower) || (arLower.includes('developer') && empRole.includes('dev'));
+        });
+        if (!matchesAllowed) return;
+      }
+
       seenIds.add(idStr);
       if (emailStr) seenEmails.add(emailStr);
 
@@ -63,7 +75,7 @@ export default function TeamMemberPicker({
     });
 
     return cleanList;
-  }, [employees]);
+  }, [employees, allowedRoles]);
 
   // Compute live active workload map from tasks
   const workloadMap = useMemo(() => {
@@ -82,16 +94,26 @@ export default function TeamMemberPicker({
     return workloadMap[String(emp._id)] || 0;
   };
 
-  // Role filter chips as requested: All, Web Dev, Android Dev, Interns, Sales, Tech Support, ⚡ Least Busy
-  const departments = [
-    'All',
-    'Web Dev',
-    'Android Dev',
-    'Interns',
-    'Sales',
-    'Tech Support',
-    '⚡ Least Busy',
-  ];
+  // Role filter chips: dynamically tailored based on allowedRoles
+  const departments = useMemo(() => {
+    if (allowedRoles && allowedRoles.length > 0) {
+      const chips = ['All'];
+      if (allowedRoles.some((r) => r.toLowerCase().includes('web'))) chips.push('Web Dev');
+      if (allowedRoles.some((r) => r.toLowerCase().includes('android'))) chips.push('Android Dev');
+      if (allowedRoles.some((r) => r.toLowerCase().includes('intern'))) chips.push('Interns');
+      chips.push('⚡ Least Busy');
+      return chips;
+    }
+    return [
+      'All',
+      'Web Dev',
+      'Android Dev',
+      'Interns',
+      'Sales',
+      'Tech Support',
+      '⚡ Least Busy',
+    ];
+  }, [allowedRoles]);
 
   // Filtered & Sorted Employees
   const filteredEmployees = useMemo(() => {

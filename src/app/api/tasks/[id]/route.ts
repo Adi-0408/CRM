@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/db';
 import Task from '@/models/Task';
 import Employee from '@/models/Employee';
 import { getAuthUser, requireRoles } from '@/lib/apiAuth';
+import { recalculateProjectProgress } from '@/lib/projectEngine';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,8 +21,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
-    // Role check: Non-admin users can ONLY update status on their assigned task
-    if (authUser && authUser.role !== 'admin_manager') {
+    // Role check: Non-admin & Non-TeamLead users can ONLY update status on their assigned task
+    if (authUser && authUser.role !== 'admin_manager' && authUser.role !== 'team_lead') {
       const isAssigned =
         oldTask.assignedTo?.toString() === authUser.id ||
         (authUser.email && (oldTask as any).assignedTo?.email === authUser.email);
@@ -42,6 +43,10 @@ export async function PUT(
       const updated = await Task.findByIdAndUpdate(params.id, safeUpdate, { new: true })
         .populate('assignedTo', 'name email avatar role')
         .populate('project', 'title client status');
+
+      if (oldTask.project) {
+        await recalculateProjectProgress(String(oldTask.project));
+      }
 
       return NextResponse.json(updated);
     }
@@ -70,6 +75,13 @@ export async function PUT(
       .populate('assignedTo', 'name email avatar role')
       .populate('project', 'title client status');
 
+    if (updated?.project) {
+      await recalculateProjectProgress(String(updated.project));
+    }
+    if (oldTask.project && String(oldTask.project) !== String(updated?.project)) {
+      await recalculateProjectProgress(String(oldTask.project));
+    }
+
     return NextResponse.json(updated);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -81,8 +93,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
-    // Only Admin (Manager) can delete tasks
-    const authResult = await requireRoles(req, ['admin_manager']);
+    // Admin (Manager) and Team Leads can delete tasks
+    const authResult = await requireRoles(req, ['admin_manager', 'team_lead']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
@@ -98,6 +110,11 @@ export async function DELETE(
     }
 
     await Task.findByIdAndDelete(params.id);
+
+    if (task.project) {
+      await recalculateProjectProgress(String(task.project));
+    }
+
     return NextResponse.json({ message: 'Task deleted successfully' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -58,6 +58,12 @@ export default function CRMApp() {
   const [showAddLead, setShowAddLead] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showAddEmployee, setShowAddEmployee] = useState(false);
+  const [projectPrefill, setProjectPrefill] = useState<{
+    client?: string;
+    budget?: number;
+    title?: string;
+    leadId?: string;
+  } | null>(null);
 
   const fetchData = async () => {
     try {
@@ -230,7 +236,13 @@ export default function CRMApp() {
               {activeTab === 'leads' && (
                 <LeadsView
                   leads={leads}
+                  projects={projects}
                   onOpenAddLead={() => setShowAddLead(true)}
+                  onOpenCreateProject={(prefill) => {
+                    setProjectPrefill(prefill || null);
+                    setShowCreateProject(true);
+                  }}
+                  onNavigateTab={(tab) => setActiveTab(tab)}
                   onRefresh={fetchData}
                 />
               )}
@@ -261,10 +273,11 @@ export default function CRMApp() {
                 />
               )}
 
-              {/* 7. Payroll */}
+              {/* 7. Payroll & Invoicing */}
               {activeTab === 'payroll' && (
                 <PayrollView
                   employees={employees}
+                  projects={projects}
                   onRefresh={fetchData}
                 />
               )}
@@ -314,10 +327,21 @@ export default function CRMApp() {
 
       <CreateProjectModal
         isOpen={showCreateProject}
-        onClose={() => setShowCreateProject(false)}
-        onProjectCreated={fetchData}
+        onClose={() => {
+          setShowCreateProject(false);
+          setProjectPrefill(null);
+        }}
+        onProjectCreated={() => {
+          setShowCreateProject(false);
+          setProjectPrefill(null);
+          fetchData();
+        }}
         employees={employees}
         tasks={tasks}
+        initialClient={projectPrefill?.client}
+        initialBudget={projectPrefill?.budget}
+        initialTitle={projectPrefill?.title}
+        initialLeadId={projectPrefill?.leadId}
       />
 
       <AddEmployeeModal

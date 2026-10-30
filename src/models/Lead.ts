@@ -12,6 +12,8 @@ export interface ILead {
   source?: string;
   assignedTo?: any;
   notes?: string;
+  projectId?: string;
+  projectTitle?: string;
   createdAt?: Date | string;
   updatedAt?: Date | string;
 }

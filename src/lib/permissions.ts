@@ -139,10 +139,18 @@ export function canManageProjects(user: AuthUser | null): boolean {
 
 /**
  * Permission checker for creating and delegating tasks
- * - Strictly admin_manager
+ * - admin_manager & team_lead
  */
 export function canManageTasks(user: AuthUser | null): boolean {
-  return user?.role === 'admin_manager';
+  return user?.role === 'admin_manager' || user?.role === 'team_lead';
+}
+
+/**
+ * Permission checker for managing Invoices & Client Receivables
+ * - Strictly admin_manager & accounts
+ */
+export function canManageInvoices(user: AuthUser | null): boolean {
+  return user?.role === 'admin_manager' || user?.role === 'accounts';
 }
 
 /**

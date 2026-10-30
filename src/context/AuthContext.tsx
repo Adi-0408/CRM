@@ -36,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // If the stored role is one of the old roles, reset or migrate to new 8-roles
           const validRoles: UserRole[] = [
             'admin_manager',
+            'team_lead',
             'hr',
             'accounts',
             'sales',
