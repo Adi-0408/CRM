@@ -7,6 +7,7 @@ export interface IAttendanceSession {
   checkOut?: Date | string | null;
   durationMinutes?: number;
   notes?: string;
+  isAutoClockOut?: boolean;
 }
 
 export interface IAttendance {
@@ -22,6 +23,8 @@ export interface IAttendance {
   isLate?: boolean;
   lateByMinutes?: number;
   status: 'full_day' | 'half_day' | 'working' | 'present' | 'absent' | 'late';
+  isAutoClockOut?: boolean;
+  autoClockOutReason?: string;
   overriddenBy?: any;
   overrideReason?: string;
   notes?: string;

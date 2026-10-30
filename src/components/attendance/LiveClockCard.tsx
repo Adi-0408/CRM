@@ -298,10 +298,13 @@ export default function LiveClockCard({
             )}
 
             {/* Half Day / Full Day / In Progress Badge */}
-            {evaluation.effectiveWorkedMinutes >= 480 ? (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-50/70 border border-emerald-200 text-emerald-700 shadow-2xs">
+            {evaluation.status === 'full_day' || evaluation.effectiveWorkedMinutes >= 480 ? (
+              <div
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-50/70 border border-emerald-200 text-emerald-700 shadow-2xs"
+                title={evaluation.autoClockOutReason}
+              >
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Full Day (8h+ Met)</span>
+                <span>Full Day {evaluation.isAutoClockOut ? '(Auto 12:01 AM)' : '(8h+ Met)'}</span>
               </div>
             ) : isClockedIn ? (
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-teal-50/70 border border-teal-200 text-teal-700 shadow-2xs">
@@ -309,9 +312,12 @@ export default function LiveClockCard({
                 <span>In Progress ({evaluation.formattedWorked} / 8h)</span>
               </div>
             ) : (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50/70 border border-amber-200 text-amber-700 shadow-2xs">
+              <div
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50/70 border border-amber-200 text-amber-700 shadow-2xs"
+                title={evaluation.autoClockOutReason}
+              >
                 <Info className="w-3.5 h-3.5 text-amber-600" />
-                <span>Half Day ({evaluation.formattedWorked} / 8h Completed)</span>
+                <span>Half Day {evaluation.isAutoClockOut ? '(Auto 12:01 AM)' : `(${evaluation.formattedWorked} / 8h Completed)`}</span>
               </div>
             )}
           </div>

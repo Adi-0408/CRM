@@ -4,12 +4,14 @@ import Payroll from '@/models/Payroll';
 import Employee from '@/models/Employee';
 import { calculateEmployeePayroll, getCurrentMonthStr } from '@/lib/payrollEngine';
 import { getAuthUser, requireRoles, isValidDocId } from '@/lib/apiAuth';
+import { triggerAutoClockOutIfDue } from '@/lib/autoClockOutService';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
     await connectToDatabase();
+    await triggerAutoClockOutIfDue();
     const authUser = await getAuthUser(req);
     const { searchParams } = new URL(req.url);
     const month = searchParams.get('month') || getCurrentMonthStr();

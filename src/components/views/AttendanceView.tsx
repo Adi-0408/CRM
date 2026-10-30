@@ -164,9 +164,10 @@ export default function AttendanceView({
     // Filter by status dropdown
     if (statusFilter !== 'all') {
       return rows.filter((r) => {
-        if (statusFilter === 'full_day') return r.evaluation.totalWorkedMinutes >= 480 || r.dayStatusCode === 'full_day';
-        if (statusFilter === 'half_day') return (r.evaluation.totalWorkedMinutes < 480 && r.sessions.length > 0) || r.dayStatusCode === 'half_day';
-        if (statusFilter === 'working') return r.evaluation.isCurrentlyWorking;
+        const isAuto = Boolean(r.record?.isAutoClockOut || r.evaluation?.isAutoClockOut);
+        if (statusFilter === 'full_day') return r.dayStatusCode === 'full_day' || (!isAuto && r.evaluation.totalWorkedMinutes >= 480);
+        if (statusFilter === 'half_day') return r.dayStatusCode === 'half_day' || (!isAuto && r.evaluation.totalWorkedMinutes < 480 && r.sessions.length > 0 && !r.evaluation.isCurrentlyWorking);
+        if (statusFilter === 'working') return !isAuto && r.evaluation.isCurrentlyWorking;
         if (statusFilter === 'absent') return r.sessions.length === 0 || r.dayStatusCode === 'absent';
         return true;
       });
@@ -289,10 +290,12 @@ export default function AttendanceView({
 
                   // 1. First In / Last Out format: e.g. "09:10 am -> 06:00 pm"
                   const hasSessions = sessions.length > 0;
+                  const isAutoClockOut = Boolean(record?.isAutoClockOut || evaluation?.isAutoClockOut);
                   const firstTime = hasSessions ? formatTimeAmPm(sessions[0].checkIn).toLowerCase() : '--';
+                  const lastSessionObj = hasSessions ? sessions[sessions.length - 1] : null;
                   const lastTime = hasSessions
-                    ? sessions[sessions.length - 1].checkOut
-                      ? formatTimeAmPm(sessions[sessions.length - 1].checkOut).toLowerCase()
+                    ? lastSessionObj?.checkOut
+                      ? `${formatTimeAmPm(lastSessionObj.checkOut).toLowerCase()}${isAutoClockOut || lastSessionObj.isAutoClockOut ? ' (auto)' : ''}`
                       : 'active'
                     : '--';
                   const firstInLastOut = hasSessions ? `${firstTime} -> ${lastTime}` : '--';
@@ -307,9 +310,9 @@ export default function AttendanceView({
                   const lateMinutes = evaluation.lateByMinutes;
 
                   // 4. Day Status
-                  const isFullDay = totalMins >= 480 || dayStatusCode === 'full_day';
-                  const isHalfDay = (totalMins < 480 && hasSessions && !evaluation.isCurrentlyWorking) || dayStatusCode === 'half_day';
-                  const isWorking = evaluation.isCurrentlyWorking || dayStatusCode === 'working';
+                  const isFullDay = dayStatusCode === 'full_day' || (!isAutoClockOut && totalMins >= 480);
+                  const isHalfDay = dayStatusCode === 'half_day' || (!isFullDay && hasSessions && !evaluation.isCurrentlyWorking);
+                  const isWorking = !isAutoClockOut && (evaluation.isCurrentlyWorking || dayStatusCode === 'working');
                   const isAbsent = (!hasSessions && !isFullDay && !isHalfDay) || dayStatusCode === 'absent';
 
                   const isExpanded = expandedSessionEmpId === empId;
@@ -419,14 +422,20 @@ export default function AttendanceView({
                         {/* 6. DAY STATUS */}
                         <td className="py-4 px-4 whitespace-nowrap">
                           {isFullDay ? (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                            <span
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs"
+                              title={record?.autoClockOutReason || evaluation?.autoClockOutReason}
+                            >
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>Full Day (8h+)</span>
+                              <span>Full Day {isAutoClockOut ? '(Auto 12:01 AM)' : '(8h+)'}</span>
                             </span>
                           ) : isHalfDay ? (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
+                            <span
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs"
+                              title={record?.autoClockOutReason || evaluation?.autoClockOutReason}
+                            >
                               <Info className="w-3.5 h-3.5 text-amber-600" />
-                              <span>Half Day</span>
+                              <span>Half Day {isAutoClockOut ? '(Auto 12:01 AM)' : ''}</span>
                             </span>
                           ) : isWorking ? (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
@@ -473,7 +482,9 @@ export default function AttendanceView({
                                   <span className="font-mono">{formatTimeAmPm(s.checkIn)}</span>
                                   <span className="text-slate-400">&rarr;</span>
                                   <span className="font-mono">
-                                    {s.checkOut ? formatTimeAmPm(s.checkOut) : 'Active'}
+                                    {s.checkOut
+                                      ? `${formatTimeAmPm(s.checkOut)}${s.isAutoClockOut ? ' (Auto 12:01 AM)' : ''}`
+                                      : 'Active'}
                                   </span>
                                   {s.notes && (
                                     <span className="text-[10px] text-slate-400 italic">({s.notes})</span>

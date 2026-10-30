@@ -19,6 +19,7 @@ export interface AttendanceSession {
   checkOut?: string | Date | null;
   durationMinutes?: number;
   notes?: string;
+  isAutoClockOut?: boolean;
 }
 
 export interface AttendanceConfig {
@@ -54,8 +55,10 @@ export interface EvaluatedDailyAttendance {
   isLate: boolean;
   lateByMinutes: number;
   isOvertimeCompensated: boolean;
+  isAutoClockOut: boolean;
+  autoClockOutReason?: string;
   status: 'present' | 'late' | 'half_day' | 'absent' | 'working' | 'full_day';
-  statusDisplay: 'Present' | 'Late' | 'Half Day' | 'Absent';
+  statusDisplay: 'Present' | 'Late' | 'Half Day' | 'Absent' | 'Full Day';
   punctualityStatus: 'on_time' | 'late' | 'not_marked';
   progressPercent: number; // 0 - 100
   remainingMinutes: number; // Remaining to achieve Present (480 min)
@@ -164,7 +167,7 @@ export function getLocalTodayStr(d: Date = new Date()): string {
 /**
  * Construct a Date object for a specific hour and minute on a given date (YYYY-MM-DD)
  */
-function createDateAt(dateStr: string, hour: number, minute: number): Date {
+export function createDateAt(dateStr: string, hour: number, minute: number): Date {
   const parts = dateStr.split('-');
   if (parts.length === 3) {
     const year = parseInt(parts[0], 10);
@@ -175,6 +178,31 @@ function createDateAt(dateStr: string, hour: number, minute: number): Date {
   const d = new Date(dateStr);
   d.setHours(hour, minute, 0, 0);
   return d;
+}
+
+/**
+ * Calculates the exact 12:01 AM timestamp on the calendar day immediately following the workday.
+ * For example: for '2026-10-29', 12:01 AM is '2026-10-30 00:01:00' local time.
+ */
+export function getAutoClockOutTime(dateStr: string): Date {
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    return new Date(year, month, day + 1, 0, 1, 0, 0);
+  }
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + 1);
+  d.setHours(0, 1, 0, 0);
+  return d;
+}
+
+/**
+ * Checks whether the current moment has passed 12:01 AM following the workday.
+ */
+export function isAfterAutoClockOutTime(dateStr: string, now: Date = new Date()): boolean {
+  return now.getTime() >= getAutoClockOutTime(dateStr).getTime();
 }
 
 /**
@@ -251,6 +279,7 @@ export function evaluateDailyAttendance(
       isLate: false,
       lateByMinutes: 0,
       isOvertimeCompensated: false,
+      isAutoClockOut: false,
       status: 'absent',
       statusDisplay: 'Absent',
       punctualityStatus: 'not_marked',
@@ -267,11 +296,6 @@ export function evaluateDailyAttendance(
   const firstSession = sessions[0];
   const firstCheckIn = firstSession._parsedCheckIn!;
 
-  // Latest session
-  const lastSession = sessions[sessions.length - 1];
-  const isCurrentlyWorking = lastSession._parsedCheckOut === null || lastSession._parsedCheckOut === undefined;
-  const lastCheckOut = lastSession._parsedCheckOut || null;
-
   // 1. Punctuality Check: 09:15:00 AM Cutoff
   const cutoffTime = createDateAt(dateStr, config.lateCutoffHour, config.lateCutoffMinute);
   const isLate = firstCheckIn.getTime() > cutoffTime.getTime();
@@ -280,7 +304,36 @@ export function evaluateDailyAttendance(
     : 0;
   const punctualityStatus: 'on_time' | 'late' = isLate ? 'late' : 'on_time';
 
-  // 2. Sum up Total Worked Minutes across all daily sessions
+  // 2. Auto Clock-Out Check (Triggered automatically at 12:01 AM next day if employee forgot to clock out)
+  const autoClockOutTime = getAutoClockOutTime(dateStr);
+  const isPastAutoClockOutTime = now.getTime() >= autoClockOutTime.getTime();
+
+  let hasAutoClockOutSession = false;
+
+  for (let i = 0; i < sessions.length; i++) {
+    const s = sessions[i];
+    const isExplicitAuto = Boolean(s.isAutoClockOut);
+    const isUnclosedPast1201 = (s._parsedCheckOut === null || s._parsedCheckOut === undefined) && isPastAutoClockOutTime;
+
+    if (isExplicitAuto || isUnclosedPast1201) {
+      hasAutoClockOutSession = true;
+      s.isAutoClockOut = true;
+      if (s._parsedCheckOut === null || s._parsedCheckOut === undefined) {
+        s._parsedCheckOut = autoClockOutTime;
+      }
+      if (!s.notes || !s.notes.includes('Auto Clock-out')) {
+        s.notes = (s.notes ? `${s.notes} • ` : '') + 'Auto Clock-out at 12:01 AM (Forgot to clock out)';
+      }
+    }
+  }
+
+  // Latest session & working state
+  const lastSession = sessions[sessions.length - 1];
+  const isCurrentlyWorking = !hasAutoClockOutSession && (lastSession._parsedCheckOut === null || lastSession._parsedCheckOut === undefined);
+  const lastCheckOut = lastSession._parsedCheckOut || null;
+  const isAutoClockOut = hasAutoClockOutSession;
+
+  // 3. Sum up Total Worked Minutes across all daily sessions
   // Overtime worked past evening hours is fully counted so late employees can cover missed morning time
   let totalRawMinutes = 0;
   const isToday = dateStr === getLocalTodayStr(now);
@@ -288,7 +341,9 @@ export function evaluateDailyAttendance(
     const cIn = s._parsedCheckIn!.getTime();
     let cOut: number;
     if (s._parsedCheckOut) {
-      cOut = isToday ? Math.min(s._parsedCheckOut.getTime(), now.getTime()) : s._parsedCheckOut.getTime();
+      cOut = (isToday && !s.isAutoClockOut)
+        ? Math.min(s._parsedCheckOut.getTime(), now.getTime())
+        : s._parsedCheckOut.getTime();
     } else {
       cOut = now.getTime();
     }
@@ -297,20 +352,37 @@ export function evaluateDailyAttendance(
     }
   }
 
-  const effectiveMinutes = totalRawMinutes;
-  const is8HoursCompleted = effectiveMinutes >= REQUIRED_MINUTES;
+  const is8HoursCompleted = totalRawMinutes >= REQUIRED_MINUTES;
   const isOvertimeCompensated = isLate && is8HoursCompleted;
 
-  // 3. Strict Status Rules:
-  // - Completed >= 480 mins (8 hours) -> 'present' (Overtime compensated if late)
-  // - < 480 mins:
-  //    - If currently working and late -> 'late' (while shift is incomplete after 9:15 AM)
-  //    - If currently working and on-time -> 'working'
-  //    - If completed shift (all sessions checked out) without reaching 480 mins -> 'half_day'
+  // 4. Strict Status Rules:
+  // - If employee forgot to clock out and was auto clocked out at 12:01 AM:
+  //    * If first clock-in is on or before 9:15 AM -> Consider FULL DAY (credited 480 min)
+  //    * If first clock-in is after 9:15 AM -> Consider HALF DAY (credited 240 min)
+  // - Otherwise:
+  //    * Completed >= 480 mins (8 hours) -> 'present' (Overtime compensated if late)
+  //    * If currently working and late -> 'late'
+  //    * If currently working and on-time -> 'working'
+  //    * Completed shift < 480 mins -> 'half_day'
   let status: 'present' | 'late' | 'half_day' | 'absent' | 'working' | 'full_day';
-  let statusDisplay: 'Present' | 'Late' | 'Half Day' | 'Absent';
+  let statusDisplay: 'Present' | 'Late' | 'Half Day' | 'Absent' | 'Full Day';
+  let autoClockOutReason: string | undefined = undefined;
 
-  if (is8HoursCompleted) {
+  let effectiveMinutes = totalRawMinutes;
+
+  if (isAutoClockOut) {
+    if (!isLate) {
+      status = 'full_day';
+      statusDisplay = 'Full Day';
+      effectiveMinutes = Math.max(REQUIRED_MINUTES, totalRawMinutes);
+      autoClockOutReason = 'Auto clocked out at 12:01 AM: Clock-in on or before 9:15 AM -> Considered Full Day';
+    } else {
+      status = 'half_day';
+      statusDisplay = 'Half Day';
+      effectiveMinutes = 240; // Credited 4h Half Day
+      autoClockOutReason = 'Auto clocked out at 12:01 AM: Clock-in after 9:15 AM -> Considered Half Day';
+    }
+  } else if (is8HoursCompleted) {
     status = 'present';
     statusDisplay = 'Present';
   } else if (isCurrentlyWorking) {
@@ -332,7 +404,12 @@ export function evaluateDailyAttendance(
 
   const formattedWorked = formatMinutes(effectiveMinutes);
   let formattedRemaining = `${formatMinutes(remainingMinutes)} remaining to reach Present`;
-  if (is8HoursCompleted) {
+
+  if (isAutoClockOut) {
+    formattedRemaining = status === 'full_day'
+      ? 'Full Day (Auto Clock-out at 12:01 AM • Punctual Arrival)'
+      : 'Half Day (Auto Clock-out at 12:01 AM • Late Arrival)';
+  } else if (is8HoursCompleted) {
     formattedRemaining = isOvertimeCompensated
       ? 'Present (Late Covered via Overtime)'
       : 'Present (8h Completed)';
@@ -342,7 +419,7 @@ export function evaluateDailyAttendance(
   const lastPunchOutFormatted = isCurrentlyWorking
     ? 'Active'
     : lastCheckOut
-    ? formatTimeAmPm(lastCheckOut)
+    ? (isAutoClockOut ? `${formatTimeAmPm(lastCheckOut)} (Auto)` : formatTimeAmPm(lastCheckOut))
     : '--';
 
   return {
@@ -352,6 +429,7 @@ export function evaluateDailyAttendance(
       checkOut: s._parsedCheckOut || (s.checkOut ?? null),
       notes: s.notes || '',
       durationMinutes: s.durationMinutes,
+      isAutoClockOut: Boolean(s.isAutoClockOut),
     })),
     firstCheckIn,
     lastCheckOut,
@@ -361,6 +439,8 @@ export function evaluateDailyAttendance(
     isLate,
     lateByMinutes,
     isOvertimeCompensated,
+    isAutoClockOut,
+    autoClockOutReason,
     status,
     statusDisplay,
     punctualityStatus,

@@ -8,12 +8,16 @@ import {
   getLocalTodayStr,
   AttendanceSession,
 } from '@/lib/attendanceEngine';
+import { triggerAutoClockOutIfDue, initAutoClockOutJob } from '@/lib/autoClockOutService';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
     await connectToDatabase();
+    initAutoClockOutJob();
+    await triggerAutoClockOutIfDue();
+
     const authUser = await getAuthUser(req);
     const { searchParams } = new URL(req.url);
     const dateParam = searchParams.get('date');
@@ -50,21 +54,27 @@ export async function GET(req: NextRequest) {
             checkIn: record.checkIn,
             checkOut: record.checkOut || null,
             notes: record.notes || '',
+            isAutoClockOut: record.isAutoClockOut,
           },
         ];
       }
 
       const evaluation = evaluateDailyAttendance(sessions, record.date, now);
 
+      const isAuto = Boolean(record.isAutoClockOut || evaluation.isAutoClockOut);
+      const finalStatus = record.status || evaluation.status;
+
       return {
         ...record.toObject(),
         sessions: evaluation.sessions,
         evaluation,
-        totalMinutes: evaluation.totalWorkedMinutes,
-        effectiveMinutes: evaluation.effectiveWorkedMinutes,
-        isLate: evaluation.isLate,
+        totalMinutes: isAuto ? (record.totalMinutes || evaluation.totalWorkedMinutes) : evaluation.totalWorkedMinutes,
+        effectiveMinutes: isAuto ? (record.effectiveMinutes || evaluation.effectiveWorkedMinutes) : evaluation.effectiveWorkedMinutes,
+        isLate: isAuto ? Boolean(record.isLate) : evaluation.isLate,
         lateByMinutes: evaluation.lateByMinutes,
-        status: evaluation.status,
+        status: finalStatus,
+        isAutoClockOut: isAuto,
+        autoClockOutReason: record.autoClockOutReason || evaluation.autoClockOutReason,
       };
     });
 
@@ -77,6 +87,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await connectToDatabase();
+    initAutoClockOutJob();
+    await triggerAutoClockOutIfDue();
+
     const authUser = await getAuthUser(req);
     const body = await req.json();
     const {

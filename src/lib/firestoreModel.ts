@@ -153,6 +153,12 @@ export function matchesFilter(docData: any, filter?: any): boolean {
       continue;
     }
 
+    // Handle $ne: val
+    if (filterVal && typeof filterVal === 'object' && filterVal.$ne !== undefined) {
+      if (docVal === filterVal.$ne) return false;
+      continue;
+    }
+
     // Handle $in: [...]
     if (filterVal && typeof filterVal === 'object' && Array.isArray(filterVal.$in)) {
       if (!filterVal.$in.includes(docVal)) return false;
