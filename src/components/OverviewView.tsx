@@ -28,6 +28,7 @@ import { useAuth } from '@/context/AuthContext';
 import HRDashboardView from '@/components/dashboards/HRDashboardView';
 import ManagerDashboardView from '@/components/dashboards/ManagerDashboardView';
 import EmployeeDashboardView from '@/components/dashboards/EmployeeDashboardView';
+import AttendanceAnalyticsChart from '@/components/attendance/AttendanceAnalyticsChart';
 
 interface OverviewViewProps {
   data: {
@@ -73,6 +74,7 @@ interface OverviewViewProps {
       createdAt: string;
     }>;
   };
+  employees?: any[];
   onNavigate: (tab: string) => void;
   onOpenCreateTask?: () => void;
   onOpenAddLead?: () => void;
@@ -82,6 +84,7 @@ interface OverviewViewProps {
 
 export default function OverviewView({
   data,
+  employees = [],
   onNavigate,
   onOpenCreateTask,
   onOpenAddLead,
@@ -261,7 +264,14 @@ export default function OverviewView({
         </div>
       </div>
 
-      {/* 2. Middle Row: Top Tasks Performers & Upcoming Deadlines */}
+      {/* 2. Executive Attendance Telemetry & Department Data Analysis */}
+      <AttendanceAnalyticsChart
+        employees={employees}
+        title="Organization Attendance & Department Telemetry"
+        subtitle="Real-time multi-department attendance distribution, employee hours logged & punctuality analytics"
+      />
+
+      {/* 3. Middle Row: Top Tasks Performers & Upcoming Deadlines */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Top Tasks Performers */}
         <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-5 sm:p-6 shadow-[0_12px_32px_-4px_rgba(15,23,42,0.09),0_4px_12px_-2px_rgba(15,23,42,0.05)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.14)] transition-all duration-300">

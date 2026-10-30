@@ -208,6 +208,7 @@ export default function CRMApp() {
               {(activeTab === 'overview' || activeTab === 'dashboard') && (
                 <OverviewView
                   data={dashboardData}
+                  employees={employees}
                   onNavigate={(tab) => setActiveTab(tab)}
                   onOpenCreateTask={() => setShowCreateTask(true)}
                   onOpenAddLead={() => setShowAddLead(true)}

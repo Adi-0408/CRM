@@ -18,6 +18,7 @@ import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
 import LiveClockCard from '@/components/attendance/LiveClockCard';
 import RegularizeAttendanceModal from '@/components/modals/RegularizeAttendanceModal';
+import AttendanceAnalyticsChart from '@/components/attendance/AttendanceAnalyticsChart';
 import {
   evaluateDailyAttendance,
   getLocalTodayStr,
@@ -193,7 +194,19 @@ export default function AttendanceView({
         }}
       />
 
-      {/* 2. Scalable Attendance Table matching Image 2 */}
+      {/* 2. Admin / HR Executive Attendance & Department Analytics Chart */}
+      {isAdminOrHr && (
+        <AttendanceAnalyticsChart
+          employees={employees}
+          records={records}
+          selectedDate={selectedDate}
+          onDateChange={(d) => setSelectedDate(d)}
+          title="Department & Employee Attendance Analysis"
+          subtitle="Interactive telemetry charts: department distribution, individual employee shift compliance & hours logged"
+        />
+      )}
+
+      {/* 3. Scalable Attendance Table matching Image 2 */}
       <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] overflow-hidden">
         {/* Top Search & Filter Bar (Matching Image 2) */}
         <div className="p-4 sm:p-5 border-b border-slate-100/80 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white/70 backdrop-blur-md">
