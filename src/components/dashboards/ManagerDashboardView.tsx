@@ -12,8 +12,11 @@ import {
   TrendingUp,
   Clock,
   HelpCircle,
+  IndianRupee,
 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import { useAuth } from '@/context/AuthContext';
+import { canManageTasks, canManageProjects, canManageLeads } from '@/lib/permissions';
 
 interface ManagerDashboardViewProps {
   data: any;
@@ -30,6 +33,11 @@ export default function ManagerDashboardView({
   onOpenAddLead,
   onOpenCreateProject,
 }: ManagerDashboardViewProps) {
+  const { user, role } = useAuth();
+  const canCreateTask = canManageTasks(user);
+  const canCreateProject = canManageProjects(user);
+  const canAddLead = canManageLeads(user);
+
   const { stats, topPerformers, upcomingDeadlines, recentTickets, leadPipeline } = data || {};
 
   const formatDate = (dateStr: string) => {
@@ -55,64 +63,144 @@ export default function ManagerDashboardView({
       <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
           <h3 className="text-sm font-bold tracking-tight text-slate-900">
-            Project &amp; Sales Management Workspace
+            {role === 'sales'
+              ? 'Sales & Client Pipeline Workspace'
+              : role === 'accounts'
+              ? 'Financial & Accounts Workspace'
+              : 'Project & Sales Management Workspace'}
           </h3>
           <p className="text-xs text-slate-400 font-medium">
-            Monitor deliverables, sales conversion, and client milestone delivery
+            {role === 'sales'
+              ? 'Monitor lead conversions, client proposals, and deal milestones'
+              : role === 'accounts'
+              ? 'Monitor compensation, salary disbursals, and attendance logs'
+              : 'Monitor deliverables, sales conversion, and client milestone delivery'}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full">
-          <button
-            onClick={onOpenCreateTask}
-            className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 shadow-xs active:scale-95 transition-all"
-          >
-            <Plus className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-            <span>Create Task</span>
-          </button>
-          <button
-            onClick={onOpenAddLead}
-            className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm active:scale-95 transition-all"
-          >
-            <Plus className="w-3.5 h-3.5 shrink-0" />
-            <span>Add Leads</span>
-          </button>
-          <button
-            onClick={onOpenCreateProject}
-            className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm active:scale-95 transition-all"
-          >
-            <Plus className="w-3.5 h-3.5 shrink-0" />
-            <span>New Project</span>
-          </button>
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {canCreateTask && onOpenCreateTask && (
+            <button
+              onClick={onOpenCreateTask}
+              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 shadow-xs active:scale-95 transition-all"
+            >
+              <Plus className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+              <span>Create Task</span>
+            </button>
+          )}
+          {canAddLead && onOpenAddLead && (
+            <button
+              onClick={onOpenAddLead}
+              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm active:scale-95 transition-all"
+            >
+              <Plus className="w-3.5 h-3.5 shrink-0" />
+              <span>Add Leads</span>
+            </button>
+          )}
+          {canCreateProject && onOpenCreateProject && (
+            <button
+              onClick={onOpenCreateProject}
+              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm active:scale-95 transition-all"
+            >
+              <Plus className="w-3.5 h-3.5 shrink-0" />
+              <span>New Project</span>
+            </button>
+          )}
+          {role === 'accounts' && (
+            <>
+              <button
+                onClick={() => onNavigate('payroll')}
+                className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm active:scale-95 transition-all"
+              >
+                <span>Process Payroll</span>
+              </button>
+              <button
+                onClick={() => onNavigate('attendance')}
+                className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 shadow-xs active:scale-95 transition-all"
+              >
+                <span>Attendance Log</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {/* 2. 4 Manager KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Active Projects -> Redirects to Projects */}
-        <div
-          onClick={() => onNavigate('projects')}
-          role="button"
-          tabIndex={0}
-          className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98] transition-all cursor-pointer select-none"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-                Active Projects
-              </p>
-              <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight mt-1.5">
-                {stats?.activeProjects ?? 0}
-              </h3>
-              <p className="text-[11px] text-emerald-600 font-semibold mt-1">
-                In design &amp; execution
-              </p>
-            </div>
-            <div className="w-11 h-11 rounded-2xl bg-[#E6F7F0] text-[#10B981] flex items-center justify-center flex-shrink-0">
-              <FolderKanban className="w-5 h-5" />
+        {/* Active Projects / Leads / Payroll -> Context-aware Redirect */}
+        {role === 'sales' ? (
+          <div
+            onClick={() => onNavigate('leads')}
+            role="button"
+            tabIndex={0}
+            className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98] transition-all cursor-pointer select-none"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  Active Prospects
+                </p>
+                <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight mt-1.5">
+                  {stats?.totalLeads ?? 0}
+                </h3>
+                <p className="text-[11px] text-emerald-600 font-semibold mt-1">
+                  In qualification pipeline
+                </p>
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-[#E6F7F0] text-[#10B981] flex items-center justify-center flex-shrink-0">
+                <Target className="w-5 h-5" />
+              </div>
             </div>
           </div>
-        </div>
+        ) : role === 'accounts' ? (
+          <div
+            onClick={() => onNavigate('payroll')}
+            role="button"
+            tabIndex={0}
+            className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98] transition-all cursor-pointer select-none"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  Payroll Processing
+                </p>
+                <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight mt-1.5">
+                  Active
+                </h3>
+                <p className="text-[11px] text-indigo-600 font-semibold mt-1">
+                  Monthly payroll cycle
+                </p>
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-[#EEF2FF] text-[#635BFF] flex items-center justify-center flex-shrink-0">
+                <IndianRupee className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div
+            onClick={() => onNavigate('projects')}
+            role="button"
+            tabIndex={0}
+            className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98] transition-all cursor-pointer select-none"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  Active Projects
+                </p>
+                <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight mt-1.5">
+                  {stats?.activeProjects ?? 0}
+                </h3>
+                <p className="text-[11px] text-emerald-600 font-semibold mt-1">
+                  In design &amp; execution
+                </p>
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-[#E6F7F0] text-[#10B981] flex items-center justify-center flex-shrink-0">
+                <FolderKanban className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Open Leads & Pipeline Value -> Redirects to Leads */}
         <div
@@ -164,30 +252,80 @@ export default function ManagerDashboardView({
           </div>
         </div>
 
-        {/* Upcoming Deadlines -> Redirects to Projects */}
-        <div
-          onClick={() => onNavigate('projects')}
-          role="button"
-          tabIndex={0}
-          className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98] transition-all cursor-pointer select-none"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-                Upcoming Deadlines
-              </p>
-              <h3 className="text-2xl font-extrabold text-rose-600 tracking-tight mt-1.5">
-                {upcomingDeadlines?.length ?? 0}
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Milestones due soon
-              </p>
-            </div>
-            <div className="w-11 h-11 rounded-2xl bg-[#FFF0ED] text-[#F97316] flex items-center justify-center flex-shrink-0">
-              <AlertTriangle className="w-5 h-5" />
+        {/* Upcoming Deadlines / Won Deals / Attendance -> Redirects contextually */}
+        {role === 'sales' ? (
+          <div
+            onClick={() => onNavigate('leads')}
+            role="button"
+            tabIndex={0}
+            className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98] transition-all cursor-pointer select-none"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  Won Deals
+                </p>
+                <h3 className="text-2xl font-extrabold text-emerald-600 tracking-tight mt-1.5">
+                  {pipelineData.find((p: any) => p.stage?.toLowerCase() === 'won')?.count ?? 0}
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Successfully converted
+                </p>
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-[#E6F7F0] text-[#10B981] flex items-center justify-center flex-shrink-0">
+                <TrendingUp className="w-5 h-5" />
+              </div>
             </div>
           </div>
-        </div>
+        ) : role === 'accounts' ? (
+          <div
+            onClick={() => onNavigate('attendance')}
+            role="button"
+            tabIndex={0}
+            className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98] transition-all cursor-pointer select-none"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  Attendance Logs
+                </p>
+                <h3 className="text-2xl font-extrabold text-blue-600 tracking-tight mt-1.5">
+                  Verified
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Ready for salary payout
+                </p>
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-[#EEF2FF] text-[#3B82F6] flex items-center justify-center flex-shrink-0">
+                <Clock className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div
+            onClick={() => onNavigate('projects')}
+            role="button"
+            tabIndex={0}
+            className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98] transition-all cursor-pointer select-none"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  Upcoming Deadlines
+                </p>
+                <h3 className="text-2xl font-extrabold text-rose-600 tracking-tight mt-1.5">
+                  {upcomingDeadlines?.length ?? 0}
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Milestones due soon
+                </p>
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-[#FFF0ED] text-[#F97316] flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 3. Middle Panels: Top Performers & Upcoming Deadlines */}
@@ -255,15 +393,17 @@ export default function ManagerDashboardView({
         <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)]">
           <div className="flex items-center justify-between mb-5">
             <h4 className="text-base font-bold tracking-tight text-slate-900">
-              Upcoming Project Deadlines
+              {canCreateProject ? 'Upcoming Project Deadlines' : 'Project Deadlines Overview'}
             </h4>
-            <button
-              onClick={() => onNavigate('projects')}
-              className="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center space-x-1"
-            >
-              <span>Manage Projects</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
+            {canCreateProject && (
+              <button
+                onClick={() => onNavigate('projects')}
+                className="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center space-x-1"
+              >
+                <span>Manage Projects</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
           <div className="space-y-3">

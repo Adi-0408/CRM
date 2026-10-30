@@ -34,8 +34,26 @@ export async function processAutoClockOuts(now: Date = new Date()): Promise<{
   try {
     await connectToDatabase();
 
-    // Find all attendance records
-    const allRecords = await Attendance.find({});
+    // Auto clock-out only applies to unclosed shifts ('working') or shifts from the past 3 days.
+    // Targeted querying prevents downloading entire historical attendance collections every 60s.
+    const yesterdayStr = new Date(now.getTime() - 86400000).toISOString().split('T')[0];
+    const dayBeforeYesterdayStr = new Date(now.getTime() - 172800000).toISOString().split('T')[0];
+    const todayStr = now.toISOString().split('T')[0];
+
+    const [workingRecords, recentRecords] = await Promise.all([
+      Attendance.find({ status: 'working' }),
+      Attendance.find({ date: { $in: [dayBeforeYesterdayStr, yesterdayStr, todayStr] } }),
+    ]);
+
+    const seenIds = new Set<string>();
+    const allRecords: any[] = [];
+    for (const r of [...workingRecords, ...recentRecords]) {
+      const rId = String(r._id || r.id);
+      if (!seenIds.has(rId)) {
+        seenIds.add(rId);
+        allRecords.push(r);
+      }
+    }
     let updatedCount = 0;
 
     for (const record of allRecords) {

@@ -19,7 +19,11 @@ export function getCurrentMonthStr(): string {
 export async function calculateEmployeePayroll(
   emp: any,
   month: string,
-  existingPayroll?: any
+  existingPayroll?: any,
+  preloaded?: {
+    attendance?: any[];
+    leaves?: any[];
+  }
 ) {
   const baseSalary =
     existingPayroll?.baseSalary !== undefined
@@ -29,11 +33,20 @@ export async function calculateEmployeePayroll(
   const dailyRate = baseSalary / 30;
   const halfDayRate = dailyRate * 0.5;
 
-  // 1. Query Attendance for the month
-  const attendanceRecords = await Attendance.find({
-    employee: emp._id,
-    date: { $regex: `^${month}` },
-  });
+  // 1. Query Attendance for the month (use preloaded data if provided)
+  let attendanceRecords: any[];
+  if (preloaded?.attendance) {
+    const empIdStr = String(emp._id || emp.id);
+    attendanceRecords = preloaded.attendance.filter((att: any) => {
+      const aEmp = typeof att.employee === 'string' ? att.employee : (att.employee?._id || att.employee?.id);
+      return String(aEmp) === empIdStr;
+    });
+  } else {
+    attendanceRecords = await Attendance.find({
+      employee: emp._id,
+      date: { $regex: `^${month}` },
+    });
+  }
 
   let rawHalfDays = 0;
   let rawAbsentAttendance = 0;
@@ -52,18 +65,32 @@ export async function calculateEmployeePayroll(
     }
   }
 
-  // 2. Query Leaves overlapping with the month
+  // 2. Query Leaves overlapping with the month (use preloaded data if provided)
   const [yearStr, monthNumStr] = month.split('-');
   const year = parseInt(yearStr, 10);
   const monthIndex = parseInt(monthNumStr, 10) - 1;
   const startOfMonth = new Date(year, monthIndex, 1);
   const endOfMonth = new Date(year, monthIndex + 1, 0, 23, 59, 59, 999);
 
-  const leaveRecords = await Leave.find({
-    employee: emp._id,
-    startDate: { $lte: endOfMonth },
-    endDate: { $gte: startOfMonth },
-  });
+  let leaveRecords: any[];
+  if (preloaded?.leaves) {
+    const empIdStr = String(emp._id || emp.id);
+    leaveRecords = preloaded.leaves.filter((leave: any) => {
+      const lEmp = typeof leave.employee === 'string' ? leave.employee : (leave.employee?._id || leave.employee?.id);
+      if (String(lEmp) !== empIdStr) return false;
+      const sDate = leave.startDate ? new Date(leave.startDate) : null;
+      const eDate = leave.endDate ? new Date(leave.endDate) : null;
+      if (sDate && sDate > endOfMonth) return false;
+      if (eDate && eDate < startOfMonth) return false;
+      return true;
+    });
+  } else {
+    leaveRecords = await Leave.find({
+      employee: emp._id,
+      startDate: { $lte: endOfMonth },
+      endDate: { $gte: startOfMonth },
+    });
+  }
 
   let approvedLeaves = 0;
   let unapprovedLeaveDays = 0;

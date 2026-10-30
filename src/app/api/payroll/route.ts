@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Payroll from '@/models/Payroll';
 import Employee from '@/models/Employee';
+import Attendance from '@/models/Attendance';
+import Leave from '@/models/Leave';
 import { calculateEmployeePayroll, getCurrentMonthStr } from '@/lib/payrollEngine';
 import { getAuthUser, requireRoles, isValidDocId } from '@/lib/apiAuth';
 import { triggerAutoClockOutIfDue } from '@/lib/autoClockOutService';
@@ -47,8 +49,18 @@ export async function GET(req: NextRequest) {
 
     const employees = await Employee.find(empQuery).sort({ name: 1 });
 
-    // Fetch existing Payroll docs for this month
-    const existingPayrolls = await Payroll.find({ month });
+    // Fetch existing Payroll docs, Month Attendance, and Leaves in parallel
+    const [existingPayrolls, monthAttendance, monthLeaves] = await Promise.all([
+      Payroll.find({ month }),
+      Attendance.find({ date: { $regex: `^${month}` } }),
+      Leave.find({ status: 'approved' }),
+    ]);
+
+    const preloaded = {
+      attendance: monthAttendance,
+      leaves: monthLeaves,
+    };
+
     const payrollMap = new Map<string, any>();
     for (const p of existingPayrolls) {
       const empIdStr = (p.employeeId || p.employee)?.toString();
@@ -57,47 +69,48 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Calculate & Auto-Upsert Payroll for each employee
-    const results = [];
-    for (const emp of employees) {
-      const existing = payrollMap.get(emp._id.toString());
-      const calculated = await calculateEmployeePayroll(emp, month, existing);
+    // Calculate & Auto-Upsert Payroll for each employee in parallel
+    const results = await Promise.all(
+      employees.map(async (emp: any) => {
+        const existing = payrollMap.get(emp._id.toString());
+        const calculated = await calculateEmployeePayroll(emp, month, existing, preloaded);
 
-      // Auto-upsert into MongoDB so records are permanently synced
-      const upsertDoc: any = {
-        employeeId: emp._id,
-        employee: emp._id,
-        month,
-        baseSalary: calculated.baseSalary,
-        approvedLeaves: calculated.approvedLeaves,
-        unapprovedLeaves: calculated.unapprovedLeaves,
-        halfDays: calculated.halfDays,
-        totalDeductions: calculated.totalDeductions,
-        netSalary: calculated.netSalary,
-        status: calculated.status,
-      };
+        // Auto-upsert into Firestore so records are permanently synced
+        const upsertDoc: any = {
+          employeeId: emp._id,
+          employee: emp._id,
+          month,
+          baseSalary: calculated.baseSalary,
+          approvedLeaves: calculated.approvedLeaves,
+          unapprovedLeaves: calculated.unapprovedLeaves,
+          halfDays: calculated.halfDays,
+          totalDeductions: calculated.totalDeductions,
+          netSalary: calculated.netSalary,
+          status: calculated.status,
+        };
 
-      if (calculated.paidAt) {
-        upsertDoc.paidAt = calculated.paidAt;
-      }
-      if (calculated.unapprovedLeavesOverride !== undefined) {
-        upsertDoc.unapprovedLeavesOverride = calculated.unapprovedLeavesOverride;
-      }
-      if (calculated.halfDaysOverride !== undefined) {
-        upsertDoc.halfDaysOverride = calculated.halfDaysOverride;
-      }
+        if (calculated.paidAt) {
+          upsertDoc.paidAt = calculated.paidAt;
+        }
+        if (calculated.unapprovedLeavesOverride !== undefined) {
+          upsertDoc.unapprovedLeavesOverride = calculated.unapprovedLeavesOverride;
+        }
+        if (calculated.halfDaysOverride !== undefined) {
+          upsertDoc.halfDaysOverride = calculated.halfDaysOverride;
+        }
 
-      const saved = await Payroll.findOneAndUpdate(
-        { employeeId: emp._id, month },
-        { $set: upsertDoc },
-        { upsert: true, new: true }
-      );
+        const saved = await Payroll.findOneAndUpdate(
+          { employeeId: emp._id, month },
+          { $set: upsertDoc },
+          { upsert: true, new: true }
+        );
 
-      results.push({
-        ...calculated,
-        _id: saved._id,
-      });
-    }
+        return {
+          ...calculated,
+          _id: saved?._id || saved?.id,
+        };
+      })
+    );
 
     return NextResponse.json(results);
   } catch (error: any) {

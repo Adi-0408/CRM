@@ -25,6 +25,7 @@ import {
   Legend,
 } from 'recharts';
 import { useAuth } from '@/context/AuthContext';
+import { canManageTasks, canManageLeads, canManageCredentials } from '@/lib/permissions';
 import HRDashboardView from '@/components/dashboards/HRDashboardView';
 import ManagerDashboardView from '@/components/dashboards/ManagerDashboardView';
 import EmployeeDashboardView from '@/components/dashboards/EmployeeDashboardView';
@@ -91,7 +92,10 @@ export default function OverviewView({
   onOpenCreateProject,
   onOpenAddEmployee,
 }: OverviewViewProps) {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
+  const canCreateTask = canManageTasks(user);
+  const canAddLead = canManageLeads(user);
+  const canAddEmployee = canManageCredentials(user) || role === 'admin_manager' || role === 'hr';
 
   // 1. Delegate to Role-Specific Dashboard Views
   if (role === 'hr') {
@@ -159,7 +163,7 @@ export default function OverviewView({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          {onOpenCreateTask && (
+          {onOpenCreateTask && canCreateTask && (
             <button
               onClick={onOpenCreateTask}
               className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-bold text-slate-700 bg-white/90 hover:bg-white border border-slate-200/90 shadow-[0_4px_14px_-2px_rgba(15,23,42,0.10)] hover:shadow-[0_8px_18px_-2px_rgba(15,23,42,0.15)] active:scale-95 transition-all duration-200 hover:-translate-y-0.5"
@@ -168,7 +172,7 @@ export default function OverviewView({
               <span>Create Task</span>
             </button>
           )}
-          {onOpenAddLead && (
+          {onOpenAddLead && canAddLead && (
             <button
               onClick={onOpenAddLead}
               className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-bold text-white bg-gradient-to-r from-[#635BFF] via-[#7067FF] to-[#7B73FF] hover:brightness-105 shadow-[0_6px_20px_-2px_rgba(99,91,255,0.40)] hover:shadow-[0_10px_25px_-2px_rgba(99,91,255,0.50)] border-t border-white/30 active:scale-95 transition-all duration-200 hover:-translate-y-0.5"
@@ -177,7 +181,7 @@ export default function OverviewView({
               <span>Add Leads</span>
             </button>
           )}
-          {onOpenAddEmployee && (
+          {onOpenAddEmployee && canAddEmployee && (
             <button
               onClick={onOpenAddEmployee}
               className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-bold text-white bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:brightness-105 shadow-[0_6px_20px_-2px_rgba(16,185,129,0.40)] hover:shadow-[0_10px_25px_-2px_rgba(16,185,129,0.50)] border-t border-white/30 active:scale-95 transition-all duration-200 hover:-translate-y-0.5"

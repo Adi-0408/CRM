@@ -14,31 +14,52 @@ export async function GET() {
   try {
     await connectToDatabase();
 
-    const totalEmployees = await Employee.countDocuments();
-    const activeProjects = await Project.countDocuments({ status: { $ne: 'completed' } });
-
-    // Attendance rate for today
     const todayStr = new Date().toISOString().split('T')[0];
-    const presentToday = await Attendance.countDocuments({
-      date: todayStr,
-      status: 'present',
-    });
+    const now = new Date();
+
+    // Execute independent queries in parallel via Promise.all
+    const [
+      totalEmployees,
+      presentToday,
+      topPerformers,
+      allProjects,
+      recentTickets,
+      allLeads,
+      totalTasks,
+      completedTasks,
+      inProgressTasks,
+      todoTasks,
+    ] = await Promise.all([
+      Employee.countDocuments(),
+      Attendance.countDocuments({ date: todayStr, status: 'present' }),
+      Employee.find({ completedTasksCount: { $gt: 0 } })
+        .sort({ completedTasksCount: -1, createdAt: 1 })
+        .limit(5)
+        .select('name role department avatar completedTasksCount'),
+      Project.find(),
+      Ticket.find()
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate('assignedTo', 'name avatar'),
+      Lead.find(),
+      Task.countDocuments(),
+      Task.countDocuments({ status: 'completed' }),
+      Task.countDocuments({ status: 'in_progress' }),
+      Task.countDocuments({ status: 'todo' }),
+    ]);
+
     const attendanceRate = totalEmployees > 0 ? Math.round((presentToday / totalEmployees) * 100) : 0;
 
-    // Top Task Performers (only employees with completed tasks)
-    const topPerformers = await Employee.find({ completedTasksCount: { $gt: 0 } })
-      .sort({ completedTasksCount: -1, createdAt: 1 })
-      .limit(5)
-      .select('name role department avatar completedTasksCount');
+    // Derived from allProjects (avoids redundant roundtrips)
+    const activeProjects = allProjects.filter((p: any) => p.status !== 'completed').length;
 
     // Upcoming Deadlines (Projects)
-    const projects = await Project.find()
-      .sort({ deadline: 1 })
-      .limit(6)
-      .select('title client deadline status priority progress');
-
-    const now = new Date();
-    const upcomingDeadlines = projects.map((p: any) => {
+    const sortedProjects = [...allProjects].sort((a: any, b: any) => {
+      const tA = new Date(a.deadline || 0).getTime();
+      const tB = new Date(b.deadline || 0).getTime();
+      return tA - tB;
+    });
+    const upcomingDeadlines = sortedProjects.slice(0, 6).map((p: any) => {
       const deadlineDate = new Date(p.deadline);
       const diffTime = deadlineDate.getTime() - now.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -55,7 +76,6 @@ export async function GET() {
     });
 
     // Project Status Distribution
-    const allProjects = await Project.find();
     const statusMap: Record<string, number> = {
       planning: 0,
       in_progress: 0,
@@ -78,15 +98,8 @@ export async function GET() {
       { name: 'On Hold', value: statusMap.on_hold, color: '#ef4444' },
     ];
 
-    // Recent Tickets
-    const recentTickets = await Ticket.find()
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .populate('assignedTo', 'name avatar');
-
-    // Leads Summary
-    const totalLeads = await Lead.countDocuments();
-    const allLeads = await Lead.find();
+    // Leads Summary derived from allLeads
+    const totalLeads = allLeads.length;
     let totalPipelineValue = 0;
     const leadStageMap: Record<string, number> = {
       new: 0,
@@ -110,12 +123,6 @@ export async function GET() {
       { stage: 'Proposal', count: leadStageMap.proposal, fill: '#F59E0B' },
       { stage: 'Won', count: leadStageMap.won, fill: '#059669' },
     ];
-
-    // Tasks summary
-    const totalTasks = await Task.countDocuments();
-    const completedTasks = await Task.countDocuments({ status: 'completed' });
-    const inProgressTasks = await Task.countDocuments({ status: 'in_progress' });
-    const todoTasks = await Task.countDocuments({ status: 'todo' });
 
     return NextResponse.json({
       stats: {

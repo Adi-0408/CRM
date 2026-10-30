@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   Sparkles,
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { canManageTasks, canManageLeads } from '@/lib/permissions';
 
 interface NavbarProps {
   onOpenCreateTask?: () => void;
@@ -25,6 +27,9 @@ export default function Navbar({
   onSeedData,
   seeding,
 }: NavbarProps) {
+  const { user } = useAuth();
+  const canCreateTask = canManageTasks(user);
+  const canAddLead = canManageLeads(user);
   const [showNotifications, setShowNotifications] = useState(false);
 
   return (
@@ -59,22 +64,26 @@ export default function Navbar({
         )}
 
         {/* Create Task Button */}
-        <button
-          onClick={onOpenCreateTask}
-          className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Create Task</span>
-        </button>
+        {canCreateTask && onOpenCreateTask && (
+          <button
+            onClick={onOpenCreateTask}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create Task</span>
+          </button>
+        )}
 
         {/* Add Leads Button */}
-        <button
-          onClick={onOpenAddLead}
-          className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold shadow-sm transition"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Leads</span>
-        </button>
+        {canAddLead && onOpenAddLead && (
+          <button
+            onClick={onOpenAddLead}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold shadow-sm transition"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Leads</span>
+          </button>
+        )}
 
         {/* Notification Bell */}
         <div className="relative">

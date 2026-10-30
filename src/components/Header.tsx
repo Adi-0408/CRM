@@ -234,31 +234,10 @@ export default function Header({
             )}
           </div>
 
-          {/* Active User Badge */}
-          <div className="flex items-center space-x-2 py-1 px-2.5 rounded-xl border border-slate-200/80 bg-white shadow-2xs select-none">
-            <div className="w-6 h-6 rounded-full overflow-hidden bg-[#F0EEFF] text-[#635BFF] flex items-center justify-center font-bold text-xs shrink-0">
-              {user?.avatar ? (
-                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-              ) : (
-                <span>{(user?.name || 'U').charAt(0).toUpperCase()}</span>
-              )}
-            </div>
-            <div className="text-left hidden md:block">
-              <p className="text-xs font-semibold text-slate-800 leading-tight truncate max-w-[110px]">
-                {user?.name || 'User'}
-              </p>
-              <span
-                className={`text-[9px] font-medium px-1.5 py-0.2 rounded-full inline-block border ${roleConfig.badgeBg} ${roleConfig.badgeText} ${roleConfig.badgeBorder}`}
-              >
-                {roleConfig.label}
-              </span>
-            </div>
-          </div>
-
           {/* Direct Logout Button */}
           <button
             onClick={logout}
-            className="w-9 h-9 rounded-xl bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors border border-slate-200/80 shadow-2xs flex items-center justify-center"
+            className="w-9 h-9 rounded-xl bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors border border-slate-200/80 shadow-2xs flex items-center justify-center shrink-0"
             title="Log Out"
           >
             <LogOut className="w-4 h-4" />

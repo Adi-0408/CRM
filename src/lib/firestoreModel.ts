@@ -7,7 +7,14 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  query,
+  where,
+  orderBy,
+  limit as firestoreLimit,
+  getCountFromServer,
+  documentId,
   Firestore,
+  QueryConstraint,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -111,17 +118,9 @@ export async function getUniqueReadableDocId(data: any, collectionName: string):
       ) {
         return candidate;
       }
-      let suffix = 2;
-      while (true) {
-        const testId = `${base}-${suffix}`;
-        const s = await getDoc(doc(db, collectionName, testId));
-        if (!s.exists()) {
-          candidate = testId;
-          break;
-        }
-        suffix++;
-        if (suffix > 50) break;
-      }
+      // Candidate slug exists for a different record; append unique timestamp/random token
+      const randToken = Math.random().toString(36).substring(2, 6);
+      return `${base}-${Date.now().toString(36)}-${randToken}`;
     }
   } catch {
     // ignore lookup error
@@ -264,7 +263,76 @@ export function createDocumentWrapper(data: any, collectionName: string): any {
   return wrapper;
 }
 
-// Populate reference fields on documents
+// Helper to convert Mongoose-style filter objects into native Firestore QueryConstraints
+export function buildQueryConstraints(filter?: any): QueryConstraint[] {
+  if (!filter || typeof filter !== 'object') return [];
+  const constraints: QueryConstraint[] = [];
+  let hasInequalityField: string | null = null;
+
+  for (const key of Object.keys(filter)) {
+    if (key.startsWith('$')) continue; // Skip root operators like $or for memory filtering
+    const val = filter[key];
+
+    // Primitive values: string, number, boolean, null
+    if (val === null || typeof val !== 'object') {
+      if (key === '_id' || key === 'id') {
+        constraints.push(where(documentId(), '==', String(val)));
+      } else {
+        constraints.push(where(key, '==', val));
+      }
+      continue;
+    }
+
+    // $in operator: where(key, 'in', val.$in)
+    if (Array.isArray(val.$in) && val.$in.length > 0 && val.$in.length <= 30) {
+      if (key === '_id' || key === 'id') {
+        constraints.push(where(documentId(), 'in', val.$in.map(String)));
+      } else {
+        constraints.push(where(key, 'in', val.$in));
+      }
+      continue;
+    }
+
+    // $ne operator: where(key, '!=', val.$ne)
+    if (val.$ne !== undefined) {
+      if (!hasInequalityField || hasInequalityField === key) {
+        hasInequalityField = key;
+        constraints.push(where(key, '!=', val.$ne));
+      }
+      continue;
+    }
+
+    // Comparison operators ($gt, $gte, $lt, $lte)
+    const hasComp = val.$gt !== undefined || val.$gte !== undefined || val.$lt !== undefined || val.$lte !== undefined;
+    if (hasComp) {
+      if (!hasInequalityField || hasInequalityField === key) {
+        hasInequalityField = key;
+        const norm = (v: any) => (v instanceof Date ? v.toISOString() : v);
+        if (val.$gte !== undefined) constraints.push(where(key, '>=', norm(val.$gte)));
+        if (val.$gt !== undefined) constraints.push(where(key, '>', norm(val.$gt)));
+        if (val.$lte !== undefined) constraints.push(where(key, '<=', norm(val.$lte)));
+        if (val.$lt !== undefined) constraints.push(where(key, '<', norm(val.$lt)));
+      }
+      continue;
+    }
+
+    // Prefix regex match for date or string (e.g. { date: { $regex: '^2026-10' } })
+    if (typeof val.$regex === 'string' && val.$regex.startsWith('^')) {
+      const rawPrefix = val.$regex.slice(1);
+      if (/^[a-zA-Z0-9_\-]+$/.test(rawPrefix)) {
+        if (!hasInequalityField || hasInequalityField === key) {
+          hasInequalityField = key;
+          constraints.push(where(key, '>=', rawPrefix));
+          constraints.push(where(key, '<=', rawPrefix + '\uf8ff'));
+        }
+      }
+    }
+  }
+
+  return constraints;
+}
+
+// Populate reference fields on documents using batched where(documentId(), 'in', chunk) queries
 async function populateDocs(docs: any[], populates: { path: string; select?: string }[]) {
   if (!docs || docs.length === 0 || !populates || populates.length === 0) return docs;
 
@@ -290,26 +358,54 @@ async function populateDocs(docs: any[], populates: { path: string; select?: str
 
     if (idsToFetch.size === 0) continue;
 
-    // Fetch related docs from target collection
     const fetchedMap = new Map<string, any>();
+    const allIds = Array.from(idsToFetch);
+
+    // Chunk IDs into batches of up to 30 for Firestore `in` query
+    const BATCH_SIZE = 30;
+    const chunks: string[][] = [];
+    for (let i = 0; i < allIds.length; i += BATCH_SIZE) {
+      chunks.push(allIds.slice(i, i + BATCH_SIZE));
+    }
+
     await Promise.all(
-      Array.from(idsToFetch).map(async (refId) => {
+      chunks.map(async (chunk) => {
         try {
-          const snap = await getDoc(doc(db, targetCollection, refId));
-          if (snap.exists()) {
-            const raw = snap.data();
-            let populatedVal: any = { _id: snap.id, id: snap.id };
+          const q = query(collection(db, targetCollection), where(documentId(), 'in', chunk));
+          const snap = await getDocs(q);
+          snap.forEach((s) => {
+            const raw = s.data();
+            let populatedVal: any = { _id: s.id, id: s.id };
             if (selectFields && selectFields.length > 0) {
               for (const f of selectFields) {
                 if (raw[f] !== undefined) populatedVal[f] = raw[f];
               }
             } else {
-              populatedVal = { ...raw, _id: snap.id, id: snap.id };
+              populatedVal = { ...raw, _id: s.id, id: s.id };
             }
-            fetchedMap.set(refId, populatedVal);
-          }
-        } catch (e) {
-          // ignore individual fetch errors
+            fetchedMap.set(s.id, populatedVal);
+          });
+        } catch {
+          // Fallback to individual getDoc if batch query encounters an issue
+          await Promise.all(
+            chunk.map(async (refId) => {
+              try {
+                const snap = await getDoc(doc(db, targetCollection, refId));
+                if (snap.exists()) {
+                  const raw = snap.data();
+                  let populatedVal: any = { _id: snap.id, id: snap.id };
+                  if (selectFields && selectFields.length > 0) {
+                    for (const f of selectFields) {
+                      if (raw[f] !== undefined) populatedVal[f] = raw[f];
+                    }
+                  } else {
+                    populatedVal = { ...raw, _id: snap.id, id: snap.id };
+                  }
+                  fetchedMap.set(refId, populatedVal);
+                }
+              } catch (_) {}
+            })
+          );
         }
       })
     );
@@ -383,12 +479,29 @@ export class FirestoreQuery<T = any> implements PromiseLike<T> {
       }
     }
 
-    // 2. Collection Query
+    // 2. Collection Query with Native Firestore Constraint Optimization
     const colRef = collection(db, this.collectionName);
-    const snap = await getDocs(colRef);
-    let results: any[] = [];
+    let snap: any;
 
-    snap.forEach((d) => {
+    try {
+      const constraints = buildQueryConstraints(this.filter);
+      if (constraints.length > 0) {
+        // Native Firestore query pushes filters to the database engine
+        const q = query(colRef, ...constraints);
+        snap = await getDocs(q);
+      } else if (this.options.limit && (!this.filter || Object.keys(this.filter).length === 0)) {
+        const q = query(colRef, firestoreLimit(this.options.limit));
+        snap = await getDocs(q);
+      } else {
+        snap = await getDocs(colRef);
+      }
+    } catch (err: any) {
+      // Graceful fallback to collection scan if an index or composite constraint is unconfigured
+      snap = await getDocs(colRef);
+    }
+
+    let results: any[] = [];
+    snap.forEach((d: any) => {
       const data = d.data();
       const wrapped = createDocumentWrapper({ ...data, _id: d.id, id: d.id }, this.collectionName);
       if (matchesFilter(wrapped, this.filter)) {
@@ -555,8 +668,7 @@ export function createFirestoreModel<T = any>(collectionName: string) {
       const payload: any = sanitizeForFirestore(rawPayload);
 
       await setDoc(docRef, payload, { merge: true });
-      const updatedSnap = await getDoc(docRef);
-      return snapshotToDoc(updatedSnap, collectionName);
+      return createDocumentWrapper({ ...current, ...payload, _id: String(id), id: String(id) }, collectionName);
     }
 
     static async findOneAndUpdate(filter: any, update: any, options: any = {}): Promise<any> {
@@ -610,14 +722,21 @@ export function createFirestoreModel<T = any>(collectionName: string) {
 
     static async countDocuments(filter: any = {}): Promise<number> {
       const colRef = collection(db, collectionName);
-      const snap = await getDocs(colRef);
-      let count = 0;
-      snap.forEach((d) => {
-        if (matchesFilter({ ...d.data(), _id: d.id, id: d.id }, filter)) {
-          count++;
-        }
-      });
-      return count;
+      try {
+        const constraints = buildQueryConstraints(filter);
+        const q = constraints.length > 0 ? query(colRef, ...constraints) : colRef;
+        const snap = await getCountFromServer(q);
+        return snap.data().count;
+      } catch {
+        const snap = await getDocs(colRef);
+        let count = 0;
+        snap.forEach((d) => {
+          if (matchesFilter({ ...d.data(), _id: d.id, id: d.id }, filter)) {
+            count++;
+          }
+        });
+        return count;
+      }
     }
 
     static async aggregate(_pipeline: any[] = []): Promise<any[]> {
