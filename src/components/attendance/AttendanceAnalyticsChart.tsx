@@ -44,6 +44,7 @@ interface AttendanceAnalyticsChartProps {
   records?: any[];
   selectedDate?: string;
   onDateChange?: (date: string) => void;
+  onNavigate?: (tab: string) => void;
   title?: string;
   subtitle?: string;
   defaultMode?: 'combined' | 'department' | 'individual' | 'distribution';
@@ -63,6 +64,7 @@ export default function AttendanceAnalyticsChart({
   records: initialRecords,
   selectedDate: initialSelectedDate,
   onDateChange,
+  onNavigate,
   title = 'Attendance Telemetry & Data Analysis',
   subtitle = 'Cross-departmental attendance distribution and individual employee performance metrics',
   defaultMode = 'combined',
@@ -576,7 +578,12 @@ export default function AttendanceAnalyticsChart({
       {/* 2. Top Executive Telemetry Metric Badges */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {/* Attendance Rate */}
-        <div className="bg-slate-50/70 rounded-2xl p-3 border border-slate-100 flex flex-col justify-between shadow-2xs hover:bg-white hover:shadow-xs transition-all">
+        <div
+          onClick={() => onNavigate?.('attendance')}
+          className={`bg-slate-50/70 rounded-2xl p-3 border border-slate-100 flex flex-col justify-between shadow-2xs hover:bg-white hover:shadow-xs transition-all ${
+            onNavigate ? 'cursor-pointer hover:-translate-y-0.5 active:scale-[0.98]' : ''
+          }`}
+        >
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
             Attendance Rate
           </span>
@@ -591,7 +598,12 @@ export default function AttendanceAnalyticsChart({
         </div>
 
         {/* Total Staff */}
-        <div className="bg-slate-50/70 rounded-2xl p-3 border border-slate-100 flex flex-col justify-between shadow-2xs hover:bg-white hover:shadow-xs transition-all">
+        <div
+          onClick={() => onNavigate?.('employees')}
+          className={`bg-slate-50/70 rounded-2xl p-3 border border-slate-100 flex flex-col justify-between shadow-2xs hover:bg-white hover:shadow-xs transition-all ${
+            onNavigate ? 'cursor-pointer hover:-translate-y-0.5 active:scale-[0.98]' : ''
+          }`}
+        >
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
             Total Headcount
           </span>
@@ -606,7 +618,12 @@ export default function AttendanceAnalyticsChart({
         </div>
 
         {/* Full Day Completed */}
-        <div className="bg-slate-50/70 rounded-2xl p-3 border border-slate-100 flex flex-col justify-between shadow-2xs hover:bg-white hover:shadow-xs transition-all">
+        <div
+          onClick={() => onNavigate?.('attendance')}
+          className={`bg-slate-50/70 rounded-2xl p-3 border border-slate-100 flex flex-col justify-between shadow-2xs hover:bg-white hover:shadow-xs transition-all ${
+            onNavigate ? 'cursor-pointer hover:-translate-y-0.5 active:scale-[0.98]' : ''
+          }`}
+        >
           <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider flex items-center space-x-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             <span>Full Day (8h+)</span>
@@ -625,7 +642,12 @@ export default function AttendanceAnalyticsChart({
         </div>
 
         {/* Half Day */}
-        <div className="bg-slate-50/70 rounded-2xl p-3 border border-slate-100 flex flex-col justify-between shadow-2xs hover:bg-white hover:shadow-xs transition-all">
+        <div
+          onClick={() => onNavigate?.('attendance')}
+          className={`bg-slate-50/70 rounded-2xl p-3 border border-slate-100 flex flex-col justify-between shadow-2xs hover:bg-white hover:shadow-xs transition-all ${
+            onNavigate ? 'cursor-pointer hover:-translate-y-0.5 active:scale-[0.98]' : ''
+          }`}
+        >
           <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider flex items-center space-x-1">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
             <span>Half Day (&lt;8h)</span>
@@ -641,7 +663,12 @@ export default function AttendanceAnalyticsChart({
         </div>
 
         {/* Absent */}
-        <div className="bg-slate-50/70 rounded-2xl p-3 border border-slate-100 flex flex-col justify-between shadow-2xs hover:bg-white hover:shadow-xs transition-all">
+        <div
+          onClick={() => onNavigate?.('attendance')}
+          className={`bg-slate-50/70 rounded-2xl p-3 border border-slate-100 flex flex-col justify-between shadow-2xs hover:bg-white hover:shadow-xs transition-all ${
+            onNavigate ? 'cursor-pointer hover:-translate-y-0.5 active:scale-[0.98]' : ''
+          }`}
+        >
           <span className="text-[10px] font-bold text-rose-500 uppercase tracking-wider flex items-center space-x-1">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
             <span>Absent</span>
@@ -655,7 +682,12 @@ export default function AttendanceAnalyticsChart({
         </div>
 
         {/* On-Time Punctuality */}
-        <div className="bg-slate-50/70 rounded-2xl p-3 border border-slate-100 flex flex-col justify-between shadow-2xs hover:bg-white hover:shadow-xs transition-all">
+        <div
+          onClick={() => onNavigate?.('attendance')}
+          className={`bg-slate-50/70 rounded-2xl p-3 border border-slate-100 flex flex-col justify-between shadow-2xs hover:bg-white hover:shadow-xs transition-all ${
+            onNavigate ? 'cursor-pointer hover:-translate-y-0.5 active:scale-[0.98]' : ''
+          }`}
+        >
           <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider flex items-center space-x-1">
             <Clock className="w-3 h-3 text-indigo-500" />
             <span>Punctuality</span>

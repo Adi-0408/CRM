@@ -138,8 +138,13 @@ export default function EmployeeDashboardView({
 
       {/* 2. 4 Employee KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Pending Tasks */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.05)] transition-all">
+        {/* Pending Tasks -> Redirects to Tasks */}
+        <div
+          onClick={() => onNavigate('tasks')}
+          role="button"
+          tabIndex={0}
+          className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98] transition-all cursor-pointer select-none"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
@@ -158,8 +163,13 @@ export default function EmployeeDashboardView({
           </div>
         </div>
 
-        {/* Assigned Projects */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.05)] transition-all">
+        {/* Assigned Projects -> Redirects to Projects */}
+        <div
+          onClick={() => onNavigate('projects')}
+          role="button"
+          tabIndex={0}
+          className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98] transition-all cursor-pointer select-none"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
@@ -178,8 +188,13 @@ export default function EmployeeDashboardView({
           </div>
         </div>
 
-        {/* Monthly Attendance */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.05)] transition-all">
+        {/* Monthly Attendance -> Redirects to Attendance */}
+        <div
+          onClick={() => onNavigate('attendance')}
+          role="button"
+          tabIndex={0}
+          className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98] transition-all cursor-pointer select-none"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
@@ -200,8 +215,13 @@ export default function EmployeeDashboardView({
           </div>
         </div>
 
-        {/* Leave Balance */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.05)] transition-all">
+        {/* Leave Balance -> Redirects to Leave */}
+        <div
+          onClick={() => onNavigate('leave')}
+          role="button"
+          tabIndex={0}
+          className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98] transition-all cursor-pointer select-none"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">

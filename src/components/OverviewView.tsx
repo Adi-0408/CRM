@@ -191,8 +191,13 @@ export default function OverviewView({
 
       {/* 1. Stat KPI Cards (Adaptive 1 col mobile, 2 tablet, 4 desktop) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
-        {/* Total Employees */}
-        <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-4 sm:p-5 lg:p-6 flex items-center justify-between shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.05)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.16),0_8px_18px_-4px_rgba(99,91,255,0.16)] hover:-translate-y-1.5 transition-all duration-300 cursor-pointer group">
+        {/* Total Employees -> Redirects to Employees */}
+        <div
+          onClick={() => onNavigate('employees')}
+          role="button"
+          tabIndex={0}
+          className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-4 sm:p-5 lg:p-6 flex items-center justify-between shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.05)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.16),0_8px_18px_-4px_rgba(99,91,255,0.16)] hover:-translate-y-1.5 active:scale-[0.98] transition-all duration-300 cursor-pointer group select-none"
+        >
           <div>
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
               Total Employees
@@ -209,8 +214,13 @@ export default function OverviewView({
           </div>
         </div>
 
-        {/* Active Projects */}
-        <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-4 sm:p-5 lg:p-6 flex items-center justify-between shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.05)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.16),0_8px_18px_-4px_rgba(16,185,129,0.16)] hover:-translate-y-1.5 transition-all duration-300 cursor-pointer group">
+        {/* Active Projects -> Redirects to Projects */}
+        <div
+          onClick={() => onNavigate('projects')}
+          role="button"
+          tabIndex={0}
+          className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-4 sm:p-5 lg:p-6 flex items-center justify-between shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.05)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.16),0_8px_18px_-4px_rgba(16,185,129,0.16)] hover:-translate-y-1.5 active:scale-[0.98] transition-all duration-300 cursor-pointer group select-none"
+        >
           <div>
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
               Active Projects
@@ -227,8 +237,13 @@ export default function OverviewView({
           </div>
         </div>
 
-        {/* Attendance Rate */}
-        <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-4 sm:p-5 lg:p-6 flex items-center justify-between shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.05)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.16),0_8px_18px_-4px_rgba(249,115,22,0.16)] hover:-translate-y-1.5 transition-all duration-300 cursor-pointer group">
+        {/* Attendance Rate -> Redirects to Attendance */}
+        <div
+          onClick={() => onNavigate('attendance')}
+          role="button"
+          tabIndex={0}
+          className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-4 sm:p-5 lg:p-6 flex items-center justify-between shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.05)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.16),0_8px_18px_-4px_rgba(249,115,22,0.16)] hover:-translate-y-1.5 active:scale-[0.98] transition-all duration-300 cursor-pointer group select-none"
+        >
           <div>
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
               Attendance Rate
@@ -245,8 +260,13 @@ export default function OverviewView({
           </div>
         </div>
 
-        {/* Pipeline Value */}
-        <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-4 sm:p-5 lg:p-6 flex items-center justify-between shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.05)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.16),0_8px_18px_-4px_rgba(59,130,246,0.16)] hover:-translate-y-1.5 transition-all duration-300 cursor-pointer group">
+        {/* Pipeline Value -> Redirects to Leads */}
+        <div
+          onClick={() => onNavigate('leads')}
+          role="button"
+          tabIndex={0}
+          className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-4 sm:p-5 lg:p-6 flex items-center justify-between shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_4px_10px_-2px_rgba(15,23,42,0.05)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.16),0_8px_18px_-4px_rgba(59,130,246,0.16)] hover:-translate-y-1.5 active:scale-[0.98] transition-all duration-300 cursor-pointer group select-none"
+        >
           <div>
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
               Pipeline Value
@@ -267,6 +287,7 @@ export default function OverviewView({
       {/* 2. Executive Attendance Telemetry & Department Data Analysis */}
       <AttendanceAnalyticsChart
         employees={employees}
+        onNavigate={onNavigate}
         title="Organization Attendance & Department Telemetry"
         subtitle="Real-time multi-department attendance distribution, employee hours logged & punctuality analytics"
       />

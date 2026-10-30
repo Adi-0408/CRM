@@ -137,8 +137,13 @@ export default function HRDashboardView({ onNavigate, onOpenAddEmployee }: HRDas
 
       {/* 2. 4 HR KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Present Today */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.05)] transition-all">
+        {/* Present Today -> Redirects to Attendance */}
+        <div
+          onClick={() => onNavigate('attendance')}
+          role="button"
+          tabIndex={0}
+          className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98] transition-all cursor-pointer select-none"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
@@ -157,8 +162,13 @@ export default function HRDashboardView({ onNavigate, onOpenAddEmployee }: HRDas
           </div>
         </div>
 
-        {/* Pending Leaves */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.05)] transition-all">
+        {/* Pending Leaves -> Redirects to Leaves */}
+        <div
+          onClick={() => onNavigate('leave')}
+          role="button"
+          tabIndex={0}
+          className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98] transition-all cursor-pointer select-none"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
@@ -177,8 +187,13 @@ export default function HRDashboardView({ onNavigate, onOpenAddEmployee }: HRDas
           </div>
         </div>
 
-        {/* Total Employees */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.05)] transition-all">
+        {/* Total Employees -> Redirects to Employees */}
+        <div
+          onClick={() => onNavigate('employees')}
+          role="button"
+          tabIndex={0}
+          className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98] transition-all cursor-pointer select-none"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
@@ -197,8 +212,13 @@ export default function HRDashboardView({ onNavigate, onOpenAddEmployee }: HRDas
           </div>
         </div>
 
-        {/* Monthly Payroll */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.05)] transition-all">
+        {/* Monthly Payroll -> Redirects to Payroll */}
+        <div
+          onClick={() => onNavigate('payroll')}
+          role="button"
+          tabIndex={0}
+          className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.08)] hover:-translate-y-1 active:scale-[0.98] transition-all cursor-pointer select-none"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
