@@ -105,12 +105,12 @@ export default function LiveClockCard({
 
   const isClockedIn = evaluation.isCurrentlyWorking;
 
-  // Work shift parameters (09:00 AM to 07:00 PM = 10h = 600m)
+  // Work shift parameters (09:00 AM to 06:00 PM = 9h = 540m)
   // Calculates accurate shift timeline fill starting from employee check-in time
   const shiftMetrics = useMemo(() => {
     const shiftStartMinutes = 9 * 60; // 09:00 AM = 540 min
-    const shiftEndMinutes = 19 * 60; // 07:00 PM = 1140 min
-    const totalShiftMinutes = shiftEndMinutes - shiftStartMinutes; // 600 min
+    const shiftEndMinutes = 18 * 60; // 06:00 PM = 1080 min
+    const totalShiftMinutes = shiftEndMinutes - shiftStartMinutes; // 540 min (9 hours)
 
     const firstCheckInDate = evaluation.firstCheckIn ? parseDateInput(evaluation.firstCheckIn) : null;
 
@@ -230,7 +230,7 @@ export default function LiveClockCard({
                 )}
               </div>
               <p className="text-xs text-slate-400 font-medium mt-0.5">
-                {formattedDate} • Work Window: 09:00 AM – 07:00 PM
+                {formattedDate} • Work Window: 09:00 AM – 06:00 PM
               </p>
             </div>
           </div>
@@ -323,12 +323,12 @@ export default function LiveClockCard({
           </div>
         )}
 
-        {/* 1. Shift Timeline Track (09:00 AM - 07:00 PM) - Starts filling from Employee Check-In Time */}
+        {/* 1. Shift Timeline Track (09:00 AM - 06:00 PM) - Starts filling from Employee Check-In Time */}
         <div className="space-y-2 pt-2 border-t border-slate-100/80">
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center space-x-1.5">
               <span className="font-bold text-slate-800">
-                Shift Timeline (09:00 AM – 07:00 PM)
+                Shift Timeline (09:00 AM – 06:00 PM)
               </span>
               {shiftMetrics.hasCheckIn && (
                 <span className="text-[11px] text-slate-500 font-medium">
@@ -399,7 +399,7 @@ export default function LiveClockCard({
             ) : (
               <span>09:15 AM (Cutoff)</span>
             )}
-            <span>07:00 PM (Shift End)</span>
+            <span>06:00 PM (Shift End)</span>
           </div>
         </div>
 

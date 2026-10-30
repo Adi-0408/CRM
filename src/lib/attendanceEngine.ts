@@ -2,7 +2,7 @@
  * Multi-Session Attendance Engine & Business Rules
  *
  * Rules:
- * 1. Company Work Window: 09:00 AM to 07:00 PM (10-hour window).
+ * 1. Company Work Window: 09:00 AM to 06:00 PM (9-hour window).
  * 2. 9:15 AM Punctuality Rule:
  *    - First check-in <= 09:15:00 AM => On Time
  *    - First check-in > 09:15:00 AM => Late (calculate lateByMinutes)
@@ -25,7 +25,7 @@ export interface AttendanceSession {
 export interface AttendanceConfig {
   workStartHour: number; // default 9
   workStartMinute: number; // default 0
-  workEndHour: number; // default 19 (7 PM)
+  workEndHour: number; // default 18 (6 PM)
   workEndMinute: number; // default 0
   lateCutoffHour: number; // default 9
   lateCutoffMinute: number; // default 15
@@ -36,7 +36,7 @@ export interface AttendanceConfig {
 export const DEFAULT_ATTENDANCE_CONFIG: AttendanceConfig = {
   workStartHour: 9,
   workStartMinute: 0,
-  workEndHour: 19,
+  workEndHour: 18,
   workEndMinute: 0,
   lateCutoffHour: 9,
   lateCutoffMinute: 15,
@@ -223,7 +223,7 @@ export function calculateSessionEffectiveMinutes(
     ? (isToday ? new Date(Math.min(rawCheckOut.getTime(), now.getTime())) : rawCheckOut)
     : now;
 
-  // Company work window for that date: 09:00 AM to 07:00 PM
+  // Company work window for that date: 09:00 AM to 06:00 PM
   const windowStart = createDateAt(dateStr, config.workStartHour, config.workStartMinute);
   const windowEnd = createDateAt(dateStr, config.workEndHour, config.workEndMinute);
 
