@@ -5,7 +5,6 @@ import {
   Menu,
   Plus,
   Bell,
-  AlertCircle,
   Clock,
   LogOut,
   CalendarCheck,
@@ -37,42 +36,32 @@ export default function Header({
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications] = useState<any[]>([]);
 
-  const renderRoleActionButtons = (isMobile = false) => {
-    const btnBaseClass =
-      'whitespace-nowrap shrink-0 px-4 py-2 text-xs rounded-full inline-flex items-center justify-center gap-1.5 font-bold active:scale-95 transition-all duration-200 cursor-pointer hover:-translate-y-0.5 glossy-btn';
+  const renderRoleActionButtons = () => {
+    const primaryBtnClass =
+      'whitespace-nowrap shrink-0 px-3.5 py-1.5 text-xs rounded-xl inline-flex items-center justify-center gap-1.5 font-semibold bg-[#635BFF] hover:bg-[#5249EC] text-white shadow-2xs transition-all duration-150 active:scale-95 cursor-pointer';
+    const secondaryBtnClass =
+      'whitespace-nowrap shrink-0 px-3.5 py-1.5 text-xs rounded-xl inline-flex items-center justify-center gap-1.5 font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 shadow-2xs transition-all duration-150 active:scale-95 cursor-pointer';
 
     if (role === 'admin_manager') {
       return (
         <>
-          <button
-            onClick={onOpenCreateTask}
-            className={`${btnBaseClass} text-slate-700 bg-white/90 hover:bg-white border border-slate-200/90 hover:border-slate-300 shadow-[0_4px_14px_-2px_rgba(15,23,42,0.12)] hover:shadow-[0_8px_20px_-3px_rgba(15,23,42,0.18)]`}
-          >
+          <button onClick={onOpenCreateTask} className={secondaryBtnClass}>
             <Plus className="w-3.5 h-3.5 text-slate-500 shrink-0" />
             <span>Create Task</span>
           </button>
-          <button
-            onClick={onOpenAddLead}
-            className={`${btnBaseClass} text-white bg-gradient-to-r from-[#635BFF] via-[#7067FF] to-[#7B73FF] hover:brightness-105 shadow-[0_6px_20px_-2px_rgba(99,91,255,0.40)] hover:shadow-[0_10px_25px_-2px_rgba(99,91,255,0.50)] border-t border-white/30`}
-          >
+          <button onClick={onOpenAddLead} className={primaryBtnClass}>
             <Plus className="w-3.5 h-3.5 text-white/90 shrink-0" />
-            <span>Add Leads</span>
+            <span>Add Lead</span>
           </button>
           {onOpenCreateProject && (
-            <button
-              onClick={onOpenCreateProject}
-              className={`${btnBaseClass} text-white bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 hover:brightness-105 shadow-[0_6px_20px_-2px_rgba(37,99,235,0.40)] hover:shadow-[0_10px_25px_-2px_rgba(37,99,235,0.50)] border-t border-white/30`}
-            >
-              <Plus className="w-3.5 h-3.5 text-white/90 shrink-0" />
+            <button onClick={onOpenCreateProject} className={secondaryBtnClass}>
+              <Plus className="w-3.5 h-3.5 text-slate-500 shrink-0" />
               <span>New Project</span>
             </button>
           )}
           {onOpenAddEmployee && (
-            <button
-              onClick={onOpenAddEmployee}
-              className={`${btnBaseClass} text-white bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:brightness-105 shadow-[0_6px_20px_-2px_rgba(16,185,129,0.40)] hover:shadow-[0_10px_25px_-2px_rgba(16,185,129,0.50)] border-t border-white/30`}
-            >
-              <Plus className="w-3.5 h-3.5 text-white/90 shrink-0" />
+            <button onClick={onOpenAddEmployee} className={secondaryBtnClass}>
+              <Plus className="w-3.5 h-3.5 text-slate-500 shrink-0" />
               <span>Add Member</span>
             </button>
           )}
@@ -84,26 +73,23 @@ export default function Header({
       return (
         <>
           {onOpenAddEmployee && (
-            <button
-              onClick={onOpenAddEmployee}
-              className={`${btnBaseClass} text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm`}
-            >
+            <button onClick={onOpenAddEmployee} className={primaryBtnClass}>
               <Plus className="w-3.5 h-3.5 text-white/90 shrink-0" />
-              <span>+ Add Employee</span>
+              <span>Add Employee</span>
             </button>
           )}
           <button
             onClick={() => onNavigateTab && onNavigateTab('attendance')}
-            className={`${btnBaseClass} text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 shadow-xs`}
+            className={secondaryBtnClass}
           >
             <CalendarCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span>Staff Attendance</span>
           </button>
           <button
             onClick={() => onNavigateTab && onNavigateTab('leave')}
-            className={`${btnBaseClass} text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm`}
+            className={secondaryBtnClass}
           >
-            <Luggage className="w-3.5 h-3.5 shrink-0" />
+            <Luggage className="w-3.5 h-3.5 text-slate-500 shrink-0" />
             <span>Leave Requests</span>
           </button>
         </>
@@ -115,14 +101,14 @@ export default function Header({
         <>
           <button
             onClick={() => onNavigateTab && onNavigateTab('payroll')}
-            className={`${btnBaseClass} text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm`}
+            className={primaryBtnClass}
           >
             <CreditCard className="w-3.5 h-3.5 shrink-0" />
             <span>Process Payroll</span>
           </button>
           <button
             onClick={() => onNavigateTab && onNavigateTab('attendance')}
-            className={`${btnBaseClass} text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 shadow-xs`}
+            className={secondaryBtnClass}
           >
             <CalendarCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
             <span>Attendance Log</span>
@@ -134,16 +120,13 @@ export default function Header({
     if (role === 'sales') {
       return (
         <>
-          <button
-            onClick={onOpenAddLead}
-            className={`${btnBaseClass} text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm`}
-          >
+          <button onClick={onOpenAddLead} className={primaryBtnClass}>
             <Plus className="w-3.5 h-3.5 text-white/90 shrink-0" />
-            <span>+ Add Lead</span>
+            <span>Add Lead</span>
           </button>
           <button
             onClick={() => onNavigateTab && onNavigateTab('attendance')}
-            className={`${btnBaseClass} text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 shadow-xs`}
+            className={secondaryBtnClass}
           >
             <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
             <span>Clock In / Out</span>
@@ -152,19 +135,19 @@ export default function Header({
       );
     }
 
-    // Default self-service roles: web_developer, android_developer, tech_support, intern
+    // Default staff roles
     return (
       <>
         <button
           onClick={() => onNavigateTab && onNavigateTab('attendance')}
-          className={`${btnBaseClass} text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 shadow-xs`}
+          className={secondaryBtnClass}
         >
           <Clock className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
           <span>Clock In / Out</span>
         </button>
         <button
           onClick={() => onNavigateTab && onNavigateTab('leave')}
-          className={`${btnBaseClass} text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm`}
+          className={primaryBtnClass}
         >
           <Luggage className="w-3.5 h-3.5 shrink-0" />
           <span>Request Leave</span>
@@ -174,27 +157,27 @@ export default function Header({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-xl border-b border-white/70 shadow-[0_8px_30px_-4px_rgba(15,23,42,0.10),0_2px_8px_-1px_rgba(15,23,42,0.05)] px-4 sm:px-6 py-3 transition-all">
-      <div className="flex items-center justify-between gap-3">
+    <header className="sticky top-0 z-20 h-16 bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 flex items-center justify-between transition-all select-none">
+      <div className="flex items-center justify-between w-full gap-3">
         {/* Left: Mobile Hamburger + Title + Active Role Context */}
         <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
           <button
             type="button"
             onClick={onToggleMobileMenu}
-            className="p-2 rounded-xl border border-slate-200 bg-white shadow-xs text-slate-700 hover:text-slate-900 transition-colors lg:hidden flex items-center justify-center shrink-0 active:scale-95"
+            className="p-2 rounded-xl border border-slate-200 bg-white shadow-2xs text-slate-700 hover:text-slate-900 transition-colors lg:hidden flex items-center justify-center shrink-0 active:scale-95"
             title="Open navigation menu"
           >
             <Menu className="w-5 h-5 text-slate-700" />
           </button>
 
           <div className="truncate">
-            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 capitalize truncate">
+            <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 capitalize truncate">
               {title}
             </h1>
           </div>
 
           <span
-            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border hidden sm:inline-flex items-center space-x-1 flex-shrink-0 ${roleConfig.badgeBg} ${roleConfig.badgeText} ${roleConfig.badgeBorder}`}
+            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border hidden sm:inline-flex items-center flex-shrink-0 ${roleConfig.badgeBg} ${roleConfig.badgeText} ${roleConfig.badgeBorder}`}
           >
             <span>{roleConfig.label}</span>
           </span>
@@ -202,16 +185,16 @@ export default function Header({
 
         {/* Right Actions */}
         <div className="flex items-center space-x-2 sm:space-x-2.5 flex-shrink-0">
-          {/* Header Role-Specific Action Buttons (hidden on small mobile screens, visible from sm: up) */}
+          {/* Header Role-Specific Action Buttons */}
           <div className="hidden sm:flex items-center gap-2">
-            {renderRoleActionButtons(false)}
+            {renderRoleActionButtons()}
           </div>
 
           {/* Notification Bell */}
           <div className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="p-2 min-h-[44px] min-w-[44px] rounded-full bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors relative border border-slate-100 flex items-center justify-center"
+              className="w-9 h-9 rounded-xl bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors relative border border-slate-200/80 shadow-2xs flex items-center justify-center"
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
@@ -221,7 +204,7 @@ export default function Header({
             </button>
 
             {showNotifications && (
-              <div className="absolute right-0 mt-3 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-100 p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-100 p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <span className="font-semibold text-xs text-slate-800">Notifications</span>
                   {notifications.length > 0 && (
@@ -251,22 +234,21 @@ export default function Header({
             )}
           </div>
 
-          {/* Active User Badge (Static, no unauthorized role switcher) */}
-          <div className="flex items-center space-x-2 p-1.5 sm:px-3 min-h-[44px] rounded-full border border-slate-200/70 bg-white shadow-xs select-none">
-            {/* User Avatar */}
-            <div className="w-7 h-7 rounded-full overflow-hidden bg-[#F0EEFF] text-[#635BFF] flex items-center justify-center font-bold text-xs flex-shrink-0">
+          {/* Active User Badge */}
+          <div className="flex items-center space-x-2 py-1 px-2.5 rounded-xl border border-slate-200/80 bg-white shadow-2xs select-none">
+            <div className="w-6 h-6 rounded-full overflow-hidden bg-[#F0EEFF] text-[#635BFF] flex items-center justify-center font-bold text-xs shrink-0">
               {user?.avatar ? (
                 <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
               ) : (
-                <span>{(user?.name || 'U').charAt(0)}</span>
+                <span>{(user?.name || 'U').charAt(0).toUpperCase()}</span>
               )}
             </div>
             <div className="text-left hidden md:block">
-              <p className="text-xs font-bold text-slate-800 leading-none truncate max-w-[120px]">
+              <p className="text-xs font-semibold text-slate-800 leading-tight truncate max-w-[110px]">
                 {user?.name || 'User'}
               </p>
               <span
-                className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full inline-block mt-0.5 border ${roleConfig.badgeBg} ${roleConfig.badgeText} ${roleConfig.badgeBorder}`}
+                className={`text-[9px] font-medium px-1.5 py-0.2 rounded-full inline-block border ${roleConfig.badgeBg} ${roleConfig.badgeText} ${roleConfig.badgeBorder}`}
               >
                 {roleConfig.label}
               </span>
@@ -276,8 +258,8 @@ export default function Header({
           {/* Direct Logout Button */}
           <button
             onClick={logout}
-            className="p-2 min-h-[44px] min-w-[44px] rounded-full bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors border border-slate-100 flex items-center justify-center"
-            title="Log Out to Login Page"
+            className="w-9 h-9 rounded-xl bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors border border-slate-200/80 shadow-2xs flex items-center justify-center"
+            title="Log Out"
           >
             <LogOut className="w-4 h-4" />
           </button>

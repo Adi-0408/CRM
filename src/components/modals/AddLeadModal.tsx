@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { X, Users2, DollarSign, Building, Mail, Phone, Tag } from 'lucide-react';
+import CustomSelect from '@/components/common/CustomSelect';
 
 interface AddLeadModalProps {
   isOpen: boolean;
@@ -82,7 +83,7 @@ export default function AddLeadModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-white/95 backdrop-blur-2xl rounded-3xl shadow-[0_25px_70px_-10px_rgba(15,23,42,0.25),0_10px_24px_-4px_rgba(15,23,42,0.10)] border border-white/90 p-6 md:p-8 overflow-hidden relative">
+      <div className="w-full max-w-lg bg-white/95 backdrop-blur-2xl rounded-3xl shadow-[0_25px_70px_-10px_rgba(15,23,42,0.25),0_10px_24px_-4px_rgba(15,23,42,0.10)] border border-white/90 p-6 md:p-8 overflow-visible relative">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <div className="flex items-center space-x-3">
@@ -202,17 +203,11 @@ export default function AddLeadModal({
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                 Source
               </label>
-              <select
+              <CustomSelect
                 value={source}
-                onChange={(e) => setSource(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 text-sm text-slate-800 bg-white"
-              >
-                <option value="Website">Website</option>
-                <option value="LinkedIn">LinkedIn</option>
-                <option value="Referral">Referral</option>
-                <option value="Ad Campaign">Ad Campaign</option>
-                <option value="Cold Call">Cold Call</option>
-              </select>
+                onChange={setSource}
+                options={['Website', 'LinkedIn', 'Referral', 'Ad Campaign', 'Cold Call']}
+              />
             </div>
 
             {/* Pipeline Stage */}
@@ -220,18 +215,18 @@ export default function AddLeadModal({
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                 Stage
               </label>
-              <select
+              <CustomSelect
                 value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 text-sm text-slate-800 bg-white"
-              >
-                <option value="new">New</option>
-                <option value="contacted">Contacted</option>
-                <option value="qualified">Qualified</option>
-                <option value="proposal">Proposal</option>
-                <option value="won">Won</option>
-                <option value="lost">Lost</option>
-              </select>
+                onChange={setStatus}
+                options={[
+                  { value: 'new', label: 'New' },
+                  { value: 'contacted', label: 'Contacted' },
+                  { value: 'qualified', label: 'Qualified' },
+                  { value: 'proposal', label: 'Proposal' },
+                  { value: 'won', label: 'Won' },
+                  { value: 'lost', label: 'Lost' },
+                ]}
+              />
             </div>
           </div>
 
@@ -240,18 +235,18 @@ export default function AddLeadModal({
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
               Sales Representative
             </label>
-            <select
+            <CustomSelect
               value={assignedTo}
-              onChange={(e) => setAssignedTo(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 text-sm text-slate-800 bg-white"
-            >
-              <option value="">-- Unassigned --</option>
-              {Array.from(new Map(employees.map((e) => [String(e._id || e.email), e])).values()).map((e) => (
-                <option key={e._id} value={e._id}>
-                  {e.name} ({e.department || e.role || 'Staff'})
-                </option>
-              ))}
-            </select>
+              onChange={setAssignedTo}
+              placeholder="-- Unassigned --"
+              options={[
+                { value: '', label: '-- Unassigned --' },
+                ...Array.from(new Map(employees.map((e) => [String(e._id || e.email), e])).values()).map((e) => ({
+                  value: e._id,
+                  label: `${e.name} (${e.department || e.role || 'Staff'})`,
+                })),
+              ]}
+            />
           </div>
 
           {/* Notes */}

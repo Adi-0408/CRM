@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, FolderKanban, DollarSign, Calendar, Users, Flag } from 'lucide-react';
 import TeamMemberPicker from '@/components/common/TeamMemberPicker';
+import CustomSelect from '@/components/common/CustomSelect';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -169,16 +170,16 @@ export default function CreateProjectModal({
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                 Priority
               </label>
-              <select
+              <CustomSelect
                 value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600 text-sm text-slate-800 bg-white"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
+                onChange={setPriority}
+                options={[
+                  { value: 'low', label: 'Low' },
+                  { value: 'medium', label: 'Medium' },
+                  { value: 'high', label: 'High' },
+                  { value: 'urgent', label: 'Urgent' },
+                ]}
+              />
             </div>
           </div>
 

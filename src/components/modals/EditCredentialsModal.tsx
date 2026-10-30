@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import CustomSelect from '@/components/common/CustomSelect';
 
 interface EditCredentialsModalProps {
   isOpen: boolean;
@@ -234,24 +235,20 @@ export default function EditCredentialsModal({
             <label className="block text-xs font-bold text-slate-700 mb-1">
               System Access Role
             </label>
-            <select
+            <CustomSelect
               value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#635BFF]/15 focus:border-[#635BFF] text-base sm:text-xs text-slate-800 bg-white"
-            >
-              {isAdmin && (
-                <option value="admin_manager">Admin (Manager)</option>
-              )}
-              {isAdmin && (
-                <option value="hr">HR</option>
-              )}
-              <option value="accounts">Accounts</option>
-              <option value="sales">Sales</option>
-              <option value="web_developer">Web Developer</option>
-              <option value="android_developer">Android Developer</option>
-              <option value="tech_support">Tech Support</option>
-              <option value="intern">Intern (Training)</option>
-            </select>
+              onChange={setRole}
+              options={[
+                ...(isAdmin ? [{ value: 'admin_manager', label: 'Admin (Manager)' }] : []),
+                ...(isAdmin ? [{ value: 'hr', label: 'HR' }] : []),
+                { value: 'accounts', label: 'Accounts' },
+                { value: 'sales', label: 'Sales' },
+                { value: 'web_developer', label: 'Web Developer' },
+                { value: 'android_developer', label: 'Android Developer' },
+                { value: 'tech_support', label: 'Tech Support' },
+                { value: 'intern', label: 'Intern (Training)' },
+              ]}
+            />
           </div>
 
           {/* Account Status Toggle: Active vs Suspended */}

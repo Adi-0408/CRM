@@ -37,6 +37,7 @@ import {
   CalendarDays,
 } from 'lucide-react';
 import { authFetch } from '@/lib/apiClient';
+import CustomSelect from '@/components/common/CustomSelect';
 import {
   evaluateDailyAttendance,
   getLocalTodayStr,
@@ -778,18 +779,18 @@ export default function AttendanceAnalyticsChart({
           </div>
 
           {/* Department Filter Dropdown */}
-          <select
+          <CustomSelect
             value={selectedDeptFilter}
-            onChange={(e) => setSelectedDeptFilter(e.target.value)}
-            className="px-3 py-1.5 bg-white border border-slate-200/80 rounded-2xl text-xs font-bold text-slate-700 focus:outline-none focus:border-[#635BFF] shadow-2xs cursor-pointer"
-          >
-            <option value="all">All Departments ({departmentsList.length})</option>
-            {departmentsList.map((dept) => (
-              <option key={dept} value={dept.toLowerCase()}>
-                {dept}
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedDeptFilter}
+            size="sm"
+            options={[
+              { value: 'all', label: `All Departments (${departmentsList.length})` },
+              ...departmentsList.map((dept) => ({
+                value: dept.toLowerCase(),
+                label: dept,
+              })),
+            ]}
+          />
 
           {/* Timeframe Picker: Month Selector OR Day Picker */}
           {period === 'month' ? (

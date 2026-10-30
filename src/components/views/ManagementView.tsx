@@ -17,6 +17,7 @@ import {
   Mail,
   Users,
 } from 'lucide-react';
+import CustomSelect from '@/components/common/CustomSelect';
 
 interface ManagementViewProps {
   onRefresh: () => void;
@@ -407,24 +408,23 @@ export default function ManagementView({ onRefresh }: ManagementViewProps) {
                   <label className="block font-semibold text-slate-700 mb-1">
                     Office Type *
                   </label>
-                  <select
+                  <CustomSelect
                     value={formData.status}
-                    onChange={(e) => {
-                      const status = e.target.value as any;
+                    onChange={(val) => {
                       setFormData({
                         ...formData,
-                        status,
-                        isHeadOffice: status === 'Head Office',
+                        status: val as any,
+                        isHeadOffice: val === 'Head Office',
                       });
                     }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  >
-                    <option value="Head Office">Head Office (HQ)</option>
-                    <option value="Branch Office">Branch Office</option>
-                    <option value="Regional Hub">Regional Hub</option>
-                    <option value="Development Hub">Development Hub</option>
-                    <option value="Sales Hub">Sales Hub</option>
-                  </select>
+                    options={[
+                      { value: 'Head Office', label: 'Head Office (HQ)' },
+                      { value: 'Branch Office', label: 'Branch Office' },
+                      { value: 'Regional Hub', label: 'Regional Hub' },
+                      { value: 'Development Hub', label: 'Development Hub' },
+                      { value: 'Sales Hub', label: 'Sales Hub' },
+                    ]}
+                  />
                 </div>
 
                 <div>

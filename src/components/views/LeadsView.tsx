@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
+import CustomSelect from '@/components/common/CustomSelect';
 
 interface LeadsViewProps {
   leads: any[];
@@ -204,10 +205,11 @@ export default function LeadsView({
                     </td>
                     <td className="py-3.5 px-4">
                       {isAdminOrManager ? (
-                        <select
+                        <CustomSelect
                           value={lead.status}
-                          onChange={(e) => updateLeadStage(lead._id, e.target.value)}
-                          className={`text-xs font-bold uppercase rounded-lg px-2.5 py-1 border focus:outline-none cursor-pointer ${
+                          onChange={(newStatus) => updateLeadStage(lead._id, newStatus)}
+                          size="xs"
+                          buttonClassName={`uppercase font-bold ${
                             lead.status === 'won'
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               : lead.status === 'lost'
@@ -216,13 +218,8 @@ export default function LeadsView({
                               ? 'bg-purple-50 text-purple-700 border-purple-200'
                               : 'bg-blue-50 text-blue-700 border-blue-200'
                           }`}
-                        >
-                          {stages.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
+                          options={stages.map((s) => ({ value: s, label: s.toUpperCase() }))}
+                        />
                       ) : (
                         <span
                           className={`text-xs font-bold uppercase rounded-lg px-2.5 py-1 border inline-block ${

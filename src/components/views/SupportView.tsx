@@ -12,6 +12,7 @@ import {
   Trash2,
   Tag,
 } from 'lucide-react';
+import CustomSelect from '@/components/common/CustomSelect';
 
 interface SupportViewProps {
   tickets: any[];
@@ -172,20 +173,22 @@ export default function SupportView({
               </div>
 
               <div className="flex items-center space-x-3 self-end md:self-center">
-                <select
+                <CustomSelect
                   value={t.status}
-                  onChange={(e) => updateStatus(t._id, e.target.value)}
-                  className={`text-xs font-bold uppercase rounded-lg px-2.5 py-1.5 border focus:outline-none cursor-pointer ${
+                  onChange={(val) => updateStatus(t._id, val)}
+                  size="xs"
+                  buttonClassName={`uppercase font-bold ${
                     t.status === 'resolved' || t.status === 'closed'
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                       : 'bg-indigo-50 text-indigo-700 border-indigo-200'
                   }`}
-                >
-                  <option value="open">Open</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="closed">Closed</option>
-                </select>
+                  options={[
+                    { value: 'open', label: 'OPEN' },
+                    { value: 'in_progress', label: 'IN PROGRESS' },
+                    { value: 'resolved', label: 'RESOLVED' },
+                    { value: 'closed', label: 'CLOSED' },
+                  ]}
+                />
 
                 <button
                   onClick={() => deleteTicket(t._id)}
@@ -255,53 +258,51 @@ export default function SupportView({
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
                     Category
                   </label>
-                  <select
+                  <CustomSelect
                     value={category}
-                    onChange={(e) => setCategory(e.target.value as any)}
-                    className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs bg-white"
-                  >
-                    <option value="Technical">Technical</option>
-                    <option value="Billing">Billing</option>
-                    <option value="Feature Request">Feature Request</option>
-                    <option value="General">General</option>
-                  </select>
+                    onChange={(val) => setCategory(val as any)}
+                    size="sm"
+                    options={['Technical', 'Billing', 'Feature Request', 'General']}
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
                     Priority
                   </label>
-                  <select
+                  <CustomSelect
                     value={priority}
-                    onChange={(e) => setPriority(e.target.value as any)}
-                    className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs bg-white"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
+                    onChange={(val) => setPriority(val as any)}
+                    size="sm"
+                    options={[
+                      { value: 'low', label: 'Low' },
+                      { value: 'medium', label: 'Medium' },
+                      { value: 'high', label: 'High' },
+                      { value: 'urgent', label: 'Urgent' },
+                    ]}
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
                     Assignee
                   </label>
-                  <select
+                  <CustomSelect
                     value={assignedTo}
-                    onChange={(e) => setAssignedTo(e.target.value)}
-                    className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs bg-white"
-                  >
-                    <option value="">-- Unassigned --</option>
-                    {employees.map((e) => (
-                      <option key={e._id} value={e._id}>
-                        {e.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setAssignedTo}
+                    size="sm"
+                    placeholder="-- Unassigned --"
+                    options={[
+                      { value: '', label: '-- Unassigned --' },
+                      ...employees.map((e) => ({
+                        value: e._id,
+                        label: e.name,
+                      })),
+                    ]}
+                  />
                 </div>
               </div>
 

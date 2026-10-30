@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
+import CustomSelect from '@/components/common/CustomSelect';
 
 interface ProjectsViewProps {
   projects: any[];
@@ -200,17 +201,20 @@ export default function ProjectsView({
                   <div className="flex items-center justify-between pt-1">
                     {/* Status updater for Admin/Manager, read-only pill for Employee */}
                     {isAdminOrManager ? (
-                      <select
+                      <CustomSelect
                         value={project.status}
-                        onChange={(e) => updateStatus(project._id, e.target.value)}
-                        className="text-[11px] font-bold uppercase rounded-lg px-2.5 py-1 border border-slate-200 bg-white text-slate-800 focus:outline-none cursor-pointer"
-                      >
-                        <option value="planning">Planning</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="review">Review</option>
-                        <option value="completed">Completed</option>
-                        <option value="on_hold">On Hold</option>
-                      </select>
+                        onChange={(val) => updateStatus(project._id, val)}
+                        size="xs"
+                        position="top"
+                        buttonClassName="uppercase font-bold text-[10px] text-slate-800 bg-white"
+                        options={[
+                          { value: 'planning', label: 'PLANNING' },
+                          { value: 'in_progress', label: 'IN PROGRESS' },
+                          { value: 'review', label: 'REVIEW' },
+                          { value: 'completed', label: 'COMPLETED' },
+                          { value: 'on_hold', label: 'ON HOLD' },
+                        ]}
+                      />
                     ) : (
                       <span className="text-[11px] font-bold uppercase rounded-lg px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200">
                         {project.status?.replace('_', ' ')}

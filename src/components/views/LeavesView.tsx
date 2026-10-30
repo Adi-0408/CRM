@@ -17,6 +17,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { canApproveLeave, canCancelLeave, isRecordOwner, isUserAdminOrHR } from '@/lib/permissions';
 import { authFetch } from '@/lib/apiClient';
+import CustomSelect from '@/components/common/CustomSelect';
 
 interface LeavesViewProps {
   employees: any[];
@@ -421,17 +422,14 @@ export default function LeavesView({ employees, onRefresh }: LeavesViewProps) {
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Employee
                   </label>
-                  <select
+                  <CustomSelect
                     value={employee}
-                    onChange={(e) => setEmployee(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  >
-                    {employees.map((e) => (
-                      <option key={e._id} value={e._id}>
-                        {e.name} ({e.role})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setEmployee}
+                    options={employees.map((e) => ({
+                      value: e._id,
+                      label: `${e.name} (${e.role || 'Staff'})`,
+                    }))}
+                  />
                 </div>
               ) : (
                 <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center space-x-2.5">
@@ -448,16 +446,16 @@ export default function LeavesView({ employees, onRefresh }: LeavesViewProps) {
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Leave Type
                 </label>
-                <select
+                <CustomSelect
                   value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                >
-                  <option value="casual">Casual Leave (Paid if approved)</option>
-                  <option value="sick">Sick Leave (Paid if approved)</option>
-                  <option value="annual">Annual Vacation (Paid if approved)</option>
-                  <option value="unpaid">Unpaid Leave / LOP</option>
-                </select>
+                  onChange={setType}
+                  options={[
+                    { value: 'casual', label: 'Casual Leave (Paid if approved)' },
+                    { value: 'sick', label: 'Sick Leave (Paid if approved)' },
+                    { value: 'annual', label: 'Annual Vacation (Paid if approved)' },
+                    { value: 'unpaid', label: 'Unpaid Leave / LOP' },
+                  ]}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">

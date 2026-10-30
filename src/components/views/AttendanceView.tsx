@@ -19,6 +19,7 @@ import { authFetch } from '@/lib/apiClient';
 import LiveClockCard from '@/components/attendance/LiveClockCard';
 import RegularizeAttendanceModal from '@/components/modals/RegularizeAttendanceModal';
 import AttendanceAnalyticsChart from '@/components/attendance/AttendanceAnalyticsChart';
+import CustomSelect from '@/components/common/CustomSelect';
 import {
   evaluateDailyAttendance,
   getLocalTodayStr,
@@ -225,31 +226,29 @@ export default function AttendanceView({
           {/* Department & Status Filters */}
           <div className="flex flex-wrap items-center gap-2.5">
             {/* All Departments Dropdown */}
-            <select
+            <CustomSelect
               value={departmentFilter}
-              onChange={(e) => setDepartmentFilter(e.target.value)}
-              className="px-3.5 py-2.5 bg-white border border-slate-200/80 rounded-2xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#635BFF] shadow-2xs cursor-pointer"
-            >
-              <option value="all">All Departments</option>
-              {departmentsList.map((dep) => (
-                <option key={dep} value={dep}>
-                  {dep}
-                </option>
-              ))}
-            </select>
+              onChange={setDepartmentFilter}
+              size="sm"
+              options={[
+                { value: 'all', label: 'All Departments' },
+                ...departmentsList.map((dep) => ({ value: dep, label: dep })),
+              ]}
+            />
 
             {/* All Statuses Dropdown */}
-            <select
+            <CustomSelect
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3.5 py-2.5 bg-white border border-slate-200/80 rounded-2xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#635BFF] shadow-2xs cursor-pointer"
-            >
-              <option value="all">All Statuses</option>
-              <option value="full_day">Full Day</option>
-              <option value="half_day">Half Day</option>
-              <option value="working">Working</option>
-              <option value="absent">Absent</option>
-            </select>
+              onChange={setStatusFilter}
+              size="sm"
+              options={[
+                { value: 'all', label: 'All Statuses' },
+                { value: 'full_day', label: 'Full Day' },
+                { value: 'half_day', label: 'Half Day' },
+                { value: 'working', label: 'Working' },
+                { value: 'absent', label: 'Absent' },
+              ]}
+            />
 
             {/* Date Picker */}
             <div className="flex items-center space-x-1.5 bg-slate-50 border border-slate-200/80 rounded-2xl p-1 shadow-2xs">

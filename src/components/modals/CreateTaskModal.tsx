@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, CheckSquare, Calendar, User, FolderKanban, Flag } from 'lucide-react';
 import TeamMemberPicker from '@/components/common/TeamMemberPicker';
+import CustomSelect from '@/components/common/CustomSelect';
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -122,18 +123,15 @@ export default function CreateTaskModal({
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                 Project
               </label>
-              <select
+              <CustomSelect
                 value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-sm text-slate-800 bg-white"
-              >
-                <option value="">-- Select Project --</option>
-                {projects.map((p) => (
-                  <option key={p._id} value={p._id}>
-                    {p.title}
-                  </option>
-                ))}
-              </select>
+                onChange={setProjectId}
+                placeholder="-- Select Project --"
+                options={[
+                  { value: '', label: '-- Select Project --' },
+                  ...projects.map((p) => ({ value: p._id, label: p.title })),
+                ]}
+              />
             </div>
 
             {/* Priority */}
@@ -141,16 +139,16 @@ export default function CreateTaskModal({
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                 Priority
               </label>
-              <select
+              <CustomSelect
                 value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-sm text-slate-800 bg-white"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
+                onChange={setPriority}
+                options={[
+                  { value: 'low', label: 'Low' },
+                  { value: 'medium', label: 'Medium' },
+                  { value: 'high', label: 'High' },
+                  { value: 'urgent', label: 'Urgent' },
+                ]}
+              />
             </div>
 
             {/* Due Date */}

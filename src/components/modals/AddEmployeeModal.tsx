@@ -17,6 +17,7 @@ import {
   Image as ImageIcon,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import CustomSelect from '@/components/common/CustomSelect';
 
 interface AddEmployeeModalProps {
   isOpen: boolean;
@@ -377,22 +378,20 @@ export default function AddEmployeeModal({
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Assign System Role *
                   </label>
-                  <select
+                  <CustomSelect
                     value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#635BFF]/15 focus:border-[#635BFF] text-base sm:text-xs text-slate-800 bg-white"
-                  >
-                    {isAdminManager && (
-                      <option value="admin_manager">Admin (Manager)</option>
-                    )}
-                    <option value="hr">HR</option>
-                    <option value="accounts">Accounts</option>
-                    <option value="sales">Sales</option>
-                    <option value="web_developer">Web Developer</option>
-                    <option value="android_developer">Android Developer</option>
-                    <option value="tech_support">Tech Support</option>
-                    <option value="intern">Intern (Training)</option>
-                  </select>
+                    onChange={setRole}
+                    options={[
+                      ...(isAdminManager ? [{ value: 'admin_manager', label: 'Admin (Manager)' }] : []),
+                      { value: 'hr', label: 'HR' },
+                      { value: 'accounts', label: 'Accounts' },
+                      { value: 'sales', label: 'Sales' },
+                      { value: 'web_developer', label: 'Web Developer' },
+                      { value: 'android_developer', label: 'Android Developer' },
+                      { value: 'tech_support', label: 'Tech Support' },
+                      { value: 'intern', label: 'Intern (Training)' },
+                    ]}
+                  />
                 </div>
 
                 <div>
