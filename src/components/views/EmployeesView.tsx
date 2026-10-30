@@ -422,49 +422,44 @@ export default function EmployeesView({
               return (
                 <div
                   key={emp._id}
-                  className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.05)] flex flex-col items-center text-center relative group transition-all"
+                  className="h-full bg-white/85 backdrop-blur-xl rounded-3xl border border-white/80 p-5 sm:p-6 shadow-[0_10px_28px_-4px_rgba(15,23,42,0.08)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.15)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between relative group"
                 >
-                  {/* Status Badge in corner */}
-                  <div className="absolute top-3 left-3">
-                    {getStatusBadge(emp.status)}
-                  </div>
-
-                  {isAdmin && (
-                    <div className="absolute top-3 right-3">
+                  {/* Top Bar: Status Badge on Left, Delete Action on Right */}
+                  <div className="flex items-center justify-between w-full h-7 mb-3">
+                    <div>{getStatusBadge(emp.status)}</div>
+                    {isAdmin && emp._id !== currentUser?.id && (
                       <button
                         onClick={() => deleteEmployee(emp._id)}
-                        className="text-slate-300 hover:text-rose-500 p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-colors opacity-70 group-hover:opacity-100"
                         title="Remove Member"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
-                  {/* Avatar */}
-                  <div className="relative mb-3 mt-4">
-                    <div className="w-18 h-18 rounded-2xl border-2 border-indigo-100 bg-indigo-50/50 p-1 shadow-sm overflow-hidden flex items-center justify-center">
-                      {isUpdating ? (
-                        <Loader2 className="w-6 h-6 text-indigo-600 animate-spin" />
-                      ) : (
-                        <img
-                          src={
-                            emp.avatar ||
-                            `https://api.dicebear.com/7.x/avataaars/svg?seed=${emp.name}`
-                          }
-                          alt={emp.name}
-                          className="w-full h-full rounded-xl object-cover bg-white"
-                        />
-                      )}
-                    </div>
+                  {/* Avatar Container: Uniform Square Frame with Aspect-Square & Object-Cover */}
+                  <div className="relative w-full aspect-square max-w-[220px] mx-auto rounded-2xl border-2 border-indigo-100/80 bg-slate-100 shadow-sm overflow-hidden flex items-center justify-center shrink-0">
+                    {isUpdating ? (
+                      <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+                    ) : (
+                      <img
+                        src={
+                          emp.avatar ||
+                          `https://api.dicebear.com/7.x/avataaars/svg?seed=${emp.name}`
+                        }
+                        alt={emp.name}
+                        className="w-full h-full object-cover object-center bg-white"
+                      />
+                    )}
                     {canEditAvatar && (
                       <>
                         <label
                           htmlFor={`crd-avatar-${emp._id}`}
-                          className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-md hover:bg-indigo-700 cursor-pointer border-2 border-white transition-transform active:scale-90"
+                          className="absolute bottom-2.5 right-2.5 w-7 h-7 rounded-full bg-[#635BFF] text-white flex items-center justify-center shadow-md hover:bg-[#5249EC] cursor-pointer border-2 border-white transition-transform active:scale-90 z-10"
                           title="Upload photo"
                         >
-                          <Camera className="w-3 h-3" />
+                          <Camera className="w-3.5 h-3.5" />
                         </label>
                         <input
                           id={`crd-avatar-${emp._id}`}
@@ -477,23 +472,29 @@ export default function EmployeesView({
                     )}
                   </div>
 
-                  <h4 className="text-sm font-extrabold text-slate-900">{emp.name}</h4>
-                  <div className="mt-1">{getRoleBadge(emp.role)}</div>
-                  <p className="text-[11px] text-slate-400 font-medium mt-1">
-                    {emp.department || 'General'}
-                  </p>
+                  {/* Member Name, Role Badge, Department */}
+                  <div className="w-full text-center mt-4 space-y-1.5 flex-1 flex flex-col items-center justify-center">
+                    <h4 className="text-base font-extrabold text-slate-900 tracking-tight leading-snug">
+                      {emp.name}
+                    </h4>
+                    <div>{getRoleBadge(emp.role)}</div>
+                    <p className="text-xs text-slate-400 font-medium">
+                      {emp.department || 'General'}
+                    </p>
+                  </div>
 
-                  <div className="w-full mt-4 pt-3 border-t border-slate-100 space-y-2.5 text-xs text-slate-600">
-                    <div className="flex items-center justify-center space-x-1.5 text-[11px] truncate">
-                      <Mail className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                      <span className="truncate font-mono">{emp.email}</span>
+                  {/* Bottom Actions & Details */}
+                  <div className="w-full mt-4 pt-3.5 border-t border-slate-100/90 space-y-2.5 text-xs text-slate-600">
+                    <div className="flex items-center justify-center space-x-1.5 text-xs text-slate-500 truncate">
+                      <Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                      <span className="truncate font-mono font-medium">{emp.email}</span>
                     </div>
 
                     {/* Reset Password / View Credentials Button: visible only for Admin and HR */}
                     {isAdminOrHR && (
                       <button
                         onClick={() => setSelectedEmpForCredentials(emp)}
-                        className="w-full py-2 min-h-[44px] sm:min-h-0 px-2 rounded-xl text-xs font-bold text-[#635BFF] bg-[#F0EEFF] hover:bg-[#E6E2FF] border border-indigo-100 transition-colors flex items-center justify-center space-x-1.5 shadow-xs"
+                        className="w-full py-2.5 min-h-[42px] px-3 rounded-xl text-xs font-bold text-[#635BFF] bg-[#F0EEFF] hover:bg-[#E6E2FF] border border-indigo-100 shadow-2xs hover:shadow-xs transition-all flex items-center justify-center space-x-2 active:scale-98"
                       >
                         <KeyRound className="w-3.5 h-3.5" />
                         <span>Reset Password / View Credentials</span>
