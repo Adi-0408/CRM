@@ -21,11 +21,18 @@ export async function GET(req: NextRequest) {
     const authUser = await getAuthUser(req);
     const { searchParams } = new URL(req.url);
     const dateParam = searchParams.get('date');
+    const monthParam = searchParams.get('month');
     const employeeId = searchParams.get('employeeId');
 
     const query: any = {};
-    if (dateParam && dateParam !== 'all') {
-      query.date = dateParam;
+    if (monthParam && monthParam !== 'all') {
+      query.date = { $regex: `^${monthParam}` };
+    } else if (dateParam && dateParam !== 'all') {
+      if (/^\d{4}-\d{2}$/.test(dateParam)) {
+        query.date = { $regex: `^${dateParam}` };
+      } else {
+        query.date = dateParam;
+      }
     }
 
     // DATA SCOPING: Admin (Manager) and HR can view all logs; others view ONLY their own attendance
