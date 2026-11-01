@@ -20,14 +20,18 @@ import {
   Clock,
   Sparkles,
   ArrowRight,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
 import CustomSelect from '@/components/common/CustomSelect';
+import QuotationsTab from '@/components/quotations/QuotationsTab';
+import CreateQuotationModal from '@/components/quotations/CreateQuotationModal';
 
 interface LeadsViewProps {
   leads: any[];
   projects?: any[];
+  initialSection?: 'leads' | 'quotations';
   onOpenAddLead: () => void;
   onOpenCreateProject?: (prefill?: { client?: string; budget?: number; title?: string; leadId?: string }) => void;
   onNavigateTab?: (tab: string) => void;
@@ -37,6 +41,7 @@ interface LeadsViewProps {
 export default function LeadsView({
   leads,
   projects = [],
+  initialSection = 'leads',
   onOpenAddLead,
   onOpenCreateProject,
   onNavigateTab,
@@ -47,6 +52,15 @@ export default function LeadsView({
 
   const [selectedStage, setSelectedStage] = useState('all');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [salesSection, setSalesSection] = useState<'leads' | 'quotations'>(initialSection);
+  const [selectedLeadForQuote, setSelectedLeadForQuote] = useState<any | null>(null);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+
+  React.useEffect(() => {
+    if (initialSection) {
+      setSalesSection(initialSection);
+    }
+  }, [initialSection]);
 
   const updateLeadStage = async (id: string, newStage: string) => {
     if (!isAdminOrManager) return;
@@ -113,7 +127,42 @@ export default function LeadsView({
 
   return (
     <div className="space-y-6">
-      {/* 1. Pipeline Stats */}
+      {/* 0. Top Sales Switcher: Leads & Pipeline vs Quotations & Proposals */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-2 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="flex items-center space-x-1.5 w-full sm:w-auto">
+          <button
+            onClick={() => setSalesSection('leads')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 flex-1 sm:flex-initial ${
+              salesSection === 'leads'
+                ? 'bg-[#635BFF] text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <Users2 className="w-3.5 h-3.5" />
+            <span>Leads & Sales Pipeline</span>
+          </button>
+          <button
+            onClick={() => setSalesSection('quotations')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 flex-1 sm:flex-initial ${
+              salesSection === 'quotations'
+                ? 'bg-[#635BFF] text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Quotations & Commercial Proposals</span>
+          </button>
+        </div>
+        <span className="text-[11px] font-bold text-slate-400 mr-2 hidden md:inline-block">
+          Sales & Client Engagement Hub
+        </span>
+      </div>
+
+      {salesSection === 'quotations' ? (
+        <QuotationsTab leads={leads} onRefreshParent={onRefresh} />
+      ) : (
+        <>
+          {/* 1. Pipeline Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-6 flex items-center justify-between shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_2px_8px_-1px_rgba(15,23,42,0.04)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.15)] hover:-translate-y-0.5 transition-all duration-300">
           <div>
@@ -121,11 +170,11 @@ export default function LeadsView({
               Total Pipeline Value
             </p>
             <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight mt-1.5">
-              ${totalValue.toLocaleString()}
+              ₹{totalValue.toLocaleString()}
             </h3>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-[#F0EEFF] text-[#635BFF] flex items-center justify-center font-bold flex-shrink-0">
-            $
+            ₹
           </div>
         </div>
 
@@ -149,7 +198,7 @@ export default function LeadsView({
               Won Revenue
             </p>
             <h3 className="text-2xl font-extrabold text-emerald-600 tracking-tight mt-1.5">
-              ${wonValue.toLocaleString()}
+              ₹{wonValue.toLocaleString()}
             </h3>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-[#E6F7F0] text-[#10B981] flex items-center justify-center flex-shrink-0">
@@ -257,11 +306,19 @@ export default function LeadsView({
                           <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span className="truncate">{lead.company}</span>
                         </div>
+                        {lead.quotationNumber && (
+                          <div className="mt-1">
+                            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                              <FileSpreadsheet className="w-3 h-3" />
+                              <span>{lead.quotationNumber}</span>
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="text-right flex-shrink-0">
                         <span className="text-sm font-extrabold text-slate-900 font-mono block">
-                          ${(lead.value || 0).toLocaleString()}
+                          ₹{(lead.value || 0).toLocaleString()}
                         </span>
                         <span className="text-[10px] uppercase font-bold text-slate-400">
                           {lead.source || 'Website'}
@@ -312,7 +369,7 @@ export default function LeadsView({
                                 {linkedProject.title}
                               </h5>
                               <p className="text-[10px] text-slate-500">
-                                Budget: <span className="font-semibold text-slate-700">${(linkedProject.budget || 0).toLocaleString()}</span>
+                                Budget: <span className="font-semibold text-slate-700">₹{(linkedProject.budget || 0).toLocaleString()}</span>
                               </p>
                             </div>
 
@@ -474,13 +531,25 @@ export default function LeadsView({
                     </div>
 
                     {isAdminOrManager && (
-                      <button
-                        onClick={() => deleteLead(lead._id)}
-                        className="p-2 text-slate-400 hover:text-rose-600 transition-colors rounded-xl hover:bg-rose-50"
-                        title="Delete lead"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center space-x-1">
+                        <button
+                          onClick={() => {
+                            setSelectedLeadForQuote(lead);
+                            setShowQuoteModal(true);
+                          }}
+                          className="p-2 text-slate-400 hover:text-amber-600 transition-colors rounded-xl hover:bg-amber-50"
+                          title="Generate Pricing Quotation"
+                        >
+                          <FileSpreadsheet className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => deleteLead(lead._id)}
+                          className="p-2 text-slate-400 hover:text-rose-600 transition-colors rounded-xl hover:bg-rose-50"
+                          title="Delete lead"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -517,7 +586,15 @@ export default function LeadsView({
                     return (
                       <tr key={lead._id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900">{lead.name}</div>
+                          <div className="font-bold text-slate-900 flex items-center space-x-1.5">
+                            <span>{lead.name}</span>
+                            {lead.quotationNumber && (
+                              <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
+                                <FileSpreadsheet className="w-2.5 h-2.5" />
+                                <span>{lead.quotationNumber}</span>
+                              </span>
+                            )}
+                          </div>
                           <div className="text-[11px] text-slate-500 font-medium flex items-center space-x-1 mt-0.5">
                             <Building className="w-3 h-3 text-slate-400" />
                             <span>{lead.company}</span>
@@ -536,7 +613,7 @@ export default function LeadsView({
                           )}
                         </td>
                         <td className="py-3.5 px-4 font-extrabold text-slate-900 font-mono">
-                          ${(lead.value || 0).toLocaleString()}
+                          ₹{(lead.value || 0).toLocaleString()}
                         </td>
                         <td className="py-3.5 px-4">
                           <span className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md text-[11px] font-medium border border-slate-200">
@@ -612,13 +689,25 @@ export default function LeadsView({
                         </td>
                         {isAdminOrManager && (
                           <td className="py-3.5 px-4 text-right">
-                            <button
-                              onClick={() => deleteLead(lead._id)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors rounded-lg hover:bg-rose-50"
-                              title="Delete lead"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center justify-end space-x-1">
+                              <button
+                                onClick={() => {
+                                  setSelectedLeadForQuote(lead);
+                                  setShowQuoteModal(true);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-amber-600 transition-colors rounded-lg hover:bg-amber-50"
+                                title="Generate Pricing Quotation"
+                              >
+                                <FileSpreadsheet className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => deleteLead(lead._id)}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors rounded-lg hover:bg-rose-50"
+                                title="Delete lead"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         )}
                       </tr>
@@ -636,6 +725,20 @@ export default function LeadsView({
           </div>
         </div>
       )}
+        </>
+      )}
+
+      {/* Quotation Creation Modal */}
+      <CreateQuotationModal
+        isOpen={showQuoteModal}
+        onClose={() => {
+          setShowQuoteModal(false);
+          setSelectedLeadForQuote(null);
+        }}
+        onSuccess={onRefresh}
+        leads={leads}
+        initialLead={selectedLeadForQuote}
+      />
     </div>
   );
 }

@@ -58,6 +58,19 @@ export default function CRMApp() {
   const [showAddLead, setShowAddLead] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showAddEmployee, setShowAddEmployee] = useState(false);
+  const [leadsSection, setLeadsSection] = useState<'leads' | 'quotations'>('leads');
+
+  const navigateToTab = (tab: string, section?: 'leads' | 'quotations') => {
+    if (tab === 'quotations') {
+      setLeadsSection('quotations');
+      setActiveTab('leads');
+    } else if (tab === 'leads') {
+      setLeadsSection(section || 'leads');
+      setActiveTab('leads');
+    } else {
+      setActiveTab(tab);
+    }
+  };
   const [projectPrefill, setProjectPrefill] = useState<{
     client?: string;
     budget?: number;
@@ -182,7 +195,7 @@ export default function CRMApp() {
           onOpenAddLead={() => setShowAddLead(true)}
           onOpenCreateProject={() => setShowCreateProject(true)}
           onOpenAddEmployee={() => setShowAddEmployee(true)}
-          onNavigateTab={(tab) => setActiveTab(tab)}
+          onNavigateTab={navigateToTab}
           onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
         />
 
@@ -215,7 +228,7 @@ export default function CRMApp() {
                 <OverviewView
                   data={dashboardData}
                   employees={employees}
-                  onNavigate={(tab) => setActiveTab(tab)}
+                  onNavigate={navigateToTab}
                   onOpenCreateTask={() => setShowCreateTask(true)}
                   onOpenAddLead={() => setShowAddLead(true)}
                   onOpenCreateProject={() => setShowCreateProject(true)}
@@ -237,12 +250,13 @@ export default function CRMApp() {
                 <LeadsView
                   leads={leads}
                   projects={projects}
+                  initialSection={leadsSection}
                   onOpenAddLead={() => setShowAddLead(true)}
                   onOpenCreateProject={(prefill) => {
                     setProjectPrefill(prefill || null);
                     setShowCreateProject(true);
                   }}
-                  onNavigateTab={(tab) => setActiveTab(tab)}
+                  onNavigateTab={navigateToTab}
                   onRefresh={fetchData}
                 />
               )}

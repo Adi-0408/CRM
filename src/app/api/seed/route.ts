@@ -11,6 +11,8 @@ import Attendance from '@/models/Attendance';
 import Leave from '@/models/Leave';
 import Payroll from '@/models/Payroll';
 import Branch from '@/models/Branch';
+import Invoice from '@/models/Invoice';
+import Quotation from '@/models/Quotation';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +47,8 @@ export async function DELETE() {
       Leave.deleteMany({}),
       Payroll.deleteMany({}),
       Branch.deleteMany({}),
+      Invoice.deleteMany({}),
+      Quotation.deleteMany({}),
     ]);
     return NextResponse.json({
       success: true,

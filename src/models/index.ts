@@ -9,3 +9,4 @@ export * from './Ticket';
 export * from './Branch';
 export * from './User';
 export * from './Invoice';
+export * from './Quotation';

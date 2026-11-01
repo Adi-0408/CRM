@@ -11,6 +11,7 @@ import {
   CreditCard,
   Luggage,
   FolderKanban,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -149,6 +150,13 @@ export default function Header({
           <button onClick={onOpenAddLead} className={primaryBtnClass}>
             <Plus className="w-3.5 h-3.5 text-white/90 shrink-0" />
             <span>Add Lead</span>
+          </button>
+          <button
+            onClick={() => onNavigateTab && onNavigateTab('quotations')}
+            className={secondaryBtnClass}
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span>Quotations</span>
           </button>
           <button
             onClick={() => onNavigateTab && onNavigateTab('attendance')}

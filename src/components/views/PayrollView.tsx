@@ -22,6 +22,7 @@ import {
   User,
   ShieldCheck,
   RefreshCw,
+  Wallet,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
@@ -462,7 +463,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
       ) : (
         <>
           {/* 1. Header Toolbar with Month Selector, Role Switcher, and 1-Click Pay All */}
-      <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 p-5 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center space-x-3.5">
           <div className="w-11 h-11 rounded-2xl bg-[#F0EEFF] text-[#635BFF] flex items-center justify-center font-bold text-lg shadow-xs flex-shrink-0">
             ₹
@@ -472,8 +473,9 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
               <h2 className="text-xl font-black text-slate-900 tracking-tight">
                 Automated Payroll Engine
               </h2>
-              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
-                MongoDB Synced
+              <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Live Synced
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -485,7 +487,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
         {/* Month Selector & Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Month Switcher Pill */}
-          <div className="flex items-center bg-slate-50 border border-slate-200/80 rounded-xl p-1 shadow-xs">
+          <div className="flex items-center h-10 bg-slate-50 border border-slate-200/80 rounded-xl px-1 shadow-xs">
             <button
               onClick={handlePrevMonth}
               className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-white transition"
@@ -510,10 +512,10 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
 
           {/* Admin vs Employee Preview Toggle (Only for Admin/HR) */}
           {isAdminOrHR && (
-            <div className="flex items-center bg-slate-100/80 rounded-xl p-1 border border-slate-200/60">
+            <div className="flex items-center h-10 bg-slate-100/80 rounded-xl p-1 border border-slate-200/60">
               <button
                 onClick={() => setViewMode('admin')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                className={`h-full px-3 rounded-lg text-xs font-bold transition flex items-center ${
                   viewMode === 'admin'
                     ? 'bg-white text-slate-900 shadow-xs'
                     : 'text-slate-500 hover:text-slate-800'
@@ -523,7 +525,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
               </button>
               <button
                 onClick={() => setViewMode('employee')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                className={`h-full px-3 rounded-lg text-xs font-bold transition flex items-center ${
                   viewMode === 'employee'
                     ? 'bg-white text-slate-900 shadow-xs'
                     : 'text-slate-500 hover:text-slate-800'
@@ -539,9 +541,9 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
             <button
               onClick={handlePayAll}
               disabled={bulkPaying || kpiStats.pendingCount === 0}
-              className={`flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition shadow-sm ${
+              className={`flex items-center space-x-1.5 h-10 px-4 rounded-xl text-xs font-bold text-white transition shadow-sm ${
                 kpiStats.pendingCount === 0
-                  ? 'bg-emerald-600/60 cursor-not-allowed'
+                  ? 'bg-emerald-600/70 cursor-not-allowed'
                   : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 shadow-emerald-500/20'
               }`}
             >
@@ -561,7 +563,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
           {/* Refresh button */}
           <button
             onClick={() => fetchPayrolls(selectedMonth)}
-            className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition"
+            className="h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition"
             title="Refresh Payroll"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -573,77 +575,92 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
       {isAdminOrHR && viewMode === 'admin' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* KPI 1: Net Disbursable Salary */}
-          <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-5 shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_2px_8px_-1px_rgba(15,23,42,0.04)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.15)] hover:-translate-y-0.5 transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                Total Net Payroll
-              </span>
-              <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-xs">
-                ₹
+          <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-md transition-all flex flex-col justify-between h-full">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Total Net Payroll
+                </span>
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-sm">
+                  ₹
+                </div>
               </div>
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight mt-2">
+                ₹{kpiStats.totalNet.toLocaleString()}
+              </h3>
             </div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight mt-2">
-              ₹{kpiStats.totalNet.toLocaleString()}
-            </h3>
-            <p className="text-[11px] text-slate-400 mt-1 flex items-center space-x-1">
+            <p className="text-[11px] text-slate-400 mt-4 flex items-center space-x-1 pt-2 border-t border-slate-50">
               <span>Base: ₹{kpiStats.totalBase.toLocaleString()}</span>
             </p>
           </div>
 
           {/* KPI 2: Total Base Salary */}
-          <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-5 shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_2px_8px_-1px_rgba(15,23,42,0.04)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.15)] hover:-translate-y-0.5 transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                Gross Base Salary
-              </span>
-              <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">
-                Base
+          <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-md transition-all flex flex-col justify-between h-full">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Gross Base Salary
+                </span>
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <Wallet className="w-4 h-4" />
+                </div>
               </div>
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight mt-2">
+                ₹{kpiStats.totalBase.toLocaleString()}
+              </h3>
             </div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight mt-2">
-              ₹{kpiStats.totalBase.toLocaleString()}
-            </h3>
-            <p className="text-[11px] text-indigo-600 font-semibold mt-1">
+            <p className="text-[11px] text-indigo-600 font-semibold mt-4 pt-2 border-t border-slate-50">
               Standard 30-Day Pay Cycle
             </p>
           </div>
 
           {/* KPI 3: Deductions */}
-          <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-5 shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_2px_8px_-1px_rgba(15,23,42,0.04)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.15)] hover:-translate-y-0.5 transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                Total Deductions
-              </span>
-              <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-xs">
-                <TrendingDown className="w-4 h-4" />
+          <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-md transition-all flex flex-col justify-between h-full">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Total Deductions
+                </span>
+                <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                  <TrendingDown className="w-4 h-4" />
+                </div>
               </div>
+              <h3 className="text-2xl font-black text-rose-500 tracking-tight mt-2">
+                -₹{kpiStats.totalDeductions.toLocaleString()}
+              </h3>
             </div>
-            <h3 className="text-2xl font-black text-rose-500 tracking-tight mt-2">
-              -₹{kpiStats.totalDeductions.toLocaleString()}
-            </h3>
-            <p className="text-[11px] text-slate-400 mt-1">
+            <p className="text-[11px] text-slate-400 mt-4 pt-2 border-t border-slate-50">
               Half-day + Unapproved leaves
             </p>
           </div>
 
           {/* KPI 4: Disbursal Progress */}
-          <div className="bg-white/85 backdrop-blur-xl rounded-2xl border border-white/80 p-5 shadow-[0_10px_28px_-4px_rgba(15,23,42,0.09),0_2px_8px_-1px_rgba(15,23,42,0.04)] hover:shadow-[0_20px_42px_-6px_rgba(15,23,42,0.15)] hover:-translate-y-0.5 transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                Disbursal Progress
-              </span>
-              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
-                {kpiStats.progressPct}%
-              </span>
+          <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-md transition-all flex flex-col justify-between h-full">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Disbursal Progress
+                </span>
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="flex items-baseline justify-between mt-2">
+                <h3 className="text-2xl font-black text-emerald-600 tracking-tight">
+                  {kpiStats.paidCount} / {kpiStats.totalCount} Paid
+                </h3>
+                <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                  {kpiStats.progressPct}%
+                </span>
+              </div>
             </div>
-            <h3 className="text-2xl font-black text-emerald-600 tracking-tight mt-2">
-              {kpiStats.paidCount} / {kpiStats.totalCount} Paid
-            </h3>
-            <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2 overflow-hidden">
-              <div
-                className="bg-emerald-500 h-1.5 rounded-full transition-all duration-300"
-                style={{ width: `${kpiStats.progressPct}%` }}
-              />
+            <div className="mt-4 pt-2 border-t border-slate-50">
+              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${kpiStats.progressPct}%` }}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -652,21 +669,21 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
       {/* 3. Main Views: Admin Management Table vs Employee Payslip View */}
       {viewMode === 'admin' ? (
         /* ADMIN & HR VIEW */
-        <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/40">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] overflow-hidden">
+          <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
             <div>
               <h3 className="text-sm font-bold text-slate-900">
                 Staff Payroll Roster • {formattedMonth}
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-400 mt-0.5">
                 Click any Base Salary to edit inline • Click + / - to adjust deductions
               </p>
             </div>
             <div className="flex items-center space-x-2 text-xs">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
                 Approved Leaves = ₹0 Deducted
               </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/80">
                 Half Day = 50% Daily Rate
               </span>
             </div>
@@ -675,16 +692,16 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50/70 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Employee</th>
-                  <th className="py-3.5 px-4">
-                    Base Salary <span className="text-[10px] font-normal text-indigo-500">(1-Click Edit)</span>
+                <tr className="bg-slate-50/80 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3.5 px-4 font-bold">Employee</th>
+                  <th className="py-3.5 px-4 font-bold">
+                    Base Salary <span className="text-[10px] font-normal text-indigo-500 normal-case">(1-Click Edit)</span>
                   </th>
-                  <th className="py-3.5 px-4">Attendance & Leave Status</th>
-                  <th className="py-3.5 px-4">Deductions</th>
-                  <th className="py-3.5 px-4">Net Salary</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
+                  <th className="py-3.5 px-4 font-bold">Attendance & Leave Status</th>
+                  <th className="py-3.5 px-4 font-bold">Deductions</th>
+                  <th className="py-3.5 px-4 font-bold">Net Salary</th>
+                  <th className="py-3.5 px-4 font-bold">Status</th>
+                  <th className="py-3.5 px-4 font-bold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
@@ -698,12 +715,12 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                     return (
                       <tr
                         key={empId || p._id}
-                        className="hover:bg-slate-50/60 transition-colors group"
+                        className="hover:bg-slate-50/50 transition-colors group"
                       >
                         {/* 1. Employee Info */}
-                        <td className="py-3 px-4">
+                        <td className="py-4 px-4 align-middle">
                           <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 rounded-full overflow-hidden bg-purple-50 text-[#635BFF] flex items-center justify-center font-bold text-xs ring-1 ring-slate-100 flex-shrink-0">
+                            <div className="w-9 h-9 rounded-full overflow-hidden bg-purple-50 text-[#635BFF] flex items-center justify-center font-bold text-xs ring-1 ring-slate-100 flex-shrink-0">
                               {p.employee?.avatar ? (
                                 <img
                                   src={p.employee.avatar}
@@ -726,7 +743,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                         </td>
 
                         {/* 2. Editable Base Salary with 1-Click Pills */}
-                        <td className="py-3 px-4">
+                        <td className="py-4 px-4 align-middle">
                           {isEditingSalary ? (
                             <div className="flex flex-col space-y-1.5 animate-in fade-in duration-150">
                               <div className="flex items-center space-x-1.5">
@@ -800,11 +817,11 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                         </td>
 
                         {/* 3. Attendance & Leave Pills with Micro-adjusters (- / +) */}
-                        <td className="py-3 px-4">
+                        <td className="py-4 px-4 align-middle">
                           <div className="flex flex-wrap items-center gap-1.5">
                             {/* Approved Paid Leaves Pill */}
                             <span
-                              className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80"
                               title="Paid Leave: ₹0 deduction"
                             >
                               Approved: {p.approvedLeaves} (Paid)
@@ -812,7 +829,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
 
                             {/* Half Days Pill with - / + micro-buttons */}
                             <div
-                              className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200"
+                              className="inline-flex items-center space-x-1 px-2 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80"
                               title="Half Days: 50% daily deduction"
                             >
                               <span>Half Days: {p.halfDays}</span>
@@ -821,7 +838,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                                   handleAdjustDeduction(empId, 'halfDays', -1)
                                 }
                                 disabled={p.halfDays <= 0}
-                                className="w-3.5 h-3.5 rounded bg-amber-200/80 hover:bg-amber-300 text-amber-900 flex items-center justify-center font-bold text-[9px] disabled:opacity-30 disabled:pointer-events-none transition"
+                                className="w-4 h-4 rounded bg-amber-200/80 hover:bg-amber-300 text-amber-900 flex items-center justify-center font-bold text-[10px] disabled:opacity-30 disabled:pointer-events-none transition"
                               >
                                 -
                               </button>
@@ -829,7 +846,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                                 onClick={() =>
                                   handleAdjustDeduction(empId, 'halfDays', 1)
                                 }
-                                className="w-3.5 h-3.5 rounded bg-amber-200/80 hover:bg-amber-300 text-amber-900 flex items-center justify-center font-bold text-[9px] transition"
+                                className="w-4 h-4 rounded bg-amber-200/80 hover:bg-amber-300 text-amber-900 flex items-center justify-center font-bold text-[10px] transition"
                               >
                                 +
                               </button>
@@ -837,7 +854,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
 
                             {/* Unapproved Leaves Pill with - / + micro-buttons */}
                             <div
-                              className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200"
+                              className="inline-flex items-center space-x-1 px-2 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200/80"
                               title="Unapproved Leaves: 100% daily deduction"
                             >
                               <span>Unapproved: {p.unapprovedLeaves}</span>
@@ -850,7 +867,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                                   )
                                 }
                                 disabled={p.unapprovedLeaves <= 0}
-                                className="w-3.5 h-3.5 rounded bg-rose-200/80 hover:bg-rose-300 text-rose-900 flex items-center justify-center font-bold text-[9px] disabled:opacity-30 disabled:pointer-events-none transition"
+                                className="w-4 h-4 rounded bg-rose-200/80 hover:bg-rose-300 text-rose-900 flex items-center justify-center font-bold text-[10px] disabled:opacity-30 disabled:pointer-events-none transition"
                               >
                                 -
                               </button>
@@ -862,7 +879,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                                     1
                                   )
                                 }
-                                className="w-3.5 h-3.5 rounded bg-rose-200/80 hover:bg-rose-300 text-rose-900 flex items-center justify-center font-bold text-[9px] transition"
+                                className="w-4 h-4 rounded bg-rose-200/80 hover:bg-rose-300 text-rose-900 flex items-center justify-center font-bold text-[10px] transition"
                               >
                                 +
                               </button>
@@ -871,7 +888,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                         </td>
 
                         {/* 4. Deduction Breakdown */}
-                        <td className="py-3 px-4">
+                        <td className="py-4 px-4 align-middle">
                           <div className="font-mono text-xs">
                             <span
                               className={`font-bold ${
@@ -883,7 +900,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                               -₹{(p.totalDeductions || 0).toLocaleString()}
                             </span>
                           </div>
-                          <div className="text-[10px] text-slate-400">
+                          <div className="text-[10px] text-slate-400 mt-0.5">
                             {p.halfDayDeduction > 0 && `HD: -₹${p.halfDayDeduction}`}
                             {p.halfDayDeduction > 0 && p.unpaidLeaveDeduction > 0 && ' • '}
                             {p.unpaidLeaveDeduction > 0 &&
@@ -893,41 +910,37 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                         </td>
 
                         {/* 5. Net Salary */}
-                        <td className="py-3 px-4">
+                        <td className="py-4 px-4 align-middle">
                           <span className="font-mono font-black text-slate-900 text-sm">
                             ₹{(p.netSalary || 0).toLocaleString()}
                           </span>
                         </td>
 
                         {/* 6. Status Badge */}
-                        <td className="py-3 px-4">
+                        <td className="py-4 px-4 align-middle">
                           <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase border ${
                               isPaid
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                 : 'bg-amber-50 text-amber-700 border-amber-200'
                             }`}
                           >
-                            {isPaid ? 'Paid ✓' : 'Pending'}
+                            {isPaid ? 'PAID ✓' : 'PENDING'}
                           </span>
                         </td>
 
-                        {/* 7. Action: 1-Click Pay Now + Printable Payslip */}
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end space-x-1.5">
-                            {!isPaid ? (
+                        {/* 7. Action: Pay Now / View Payslip */}
+                        <td className="py-4 px-4 align-middle text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            {!isPaid && (
                               <button
                                 onClick={() => handlePayNow(empId)}
                                 disabled={isRowSyncing}
-                                className="px-2.5 py-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 rounded-lg shadow-xs transition"
+                                className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 rounded-xl shadow-xs transition flex items-center space-x-1"
                               >
-                                {isRowSyncing ? 'Saving...' : 'Pay Now'}
-                              </button>
-                            ) : (
-                              <span className="text-xs font-semibold text-emerald-600 inline-flex items-center space-x-1">
                                 <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>Paid</span>
-                              </span>
+                                <span>{isRowSyncing ? 'Saving...' : 'Pay Now'}</span>
+                              </button>
                             )}
 
                             {/* Payslip Modal trigger */}
@@ -936,10 +949,11 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                                 setPayslipRecord(p);
                                 setShowPayslipModal(true);
                               }}
-                              className="p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
+                              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition"
                               title="View & Print Payslip"
                             >
-                              <Printer className="w-3.5 h-3.5" />
+                              <Printer className="w-3.5 h-3.5 text-slate-400" />
+                              <span>Payslip</span>
                             </button>
                           </div>
                         </td>
@@ -948,9 +962,9 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                   })
                 ) : (
                   <tr>
-                    <td colSpan={7} className="text-center py-10 text-slate-400">
+                    <td colSpan={7} className="text-center py-12 text-slate-400">
                       {loading
-                        ? 'Calculating and syncing payroll from MongoDB...'
+                        ? 'Calculating and syncing payroll...'
                         : 'No employees found for this month.'}
                     </td>
                   </tr>
@@ -963,7 +977,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
         /* EMPLOYEE PERSONAL PAYSLIP VIEW */
         <div className="space-y-6">
           {currentEmployeeRecord ? (
-            <div className="bg-white rounded-3xl border border-slate-100 p-6 md:p-8 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)]">
+            <div className="bg-white rounded-2xl border border-slate-100 p-6 md:p-8 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)]">
               {/* Employee Top Profile & Disbursal Status */}
               <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-100 gap-4">
                 <div className="flex items-center space-x-4">
@@ -1122,7 +1136,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
       {/* 4. Printable Payslip Modal */}
       {showPayslipModal && payslipRecord && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 md:p-8 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 md:p-8 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center space-x-2.5">

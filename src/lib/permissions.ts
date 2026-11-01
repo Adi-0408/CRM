@@ -162,6 +162,14 @@ export function canManageLeads(user: AuthUser | null): boolean {
 }
 
 /**
+ * Permission checker for Quotations & Proposals
+ * - Strictly admin_manager & sales
+ */
+export function canManageQuotations(user: AuthUser | null): boolean {
+  return user?.role === 'admin_manager' || user?.role === 'sales';
+}
+
+/**
  * Permission checker for managing Tech Support Tickets
  * - Strictly admin_manager & tech_support
  */

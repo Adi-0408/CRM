@@ -13,6 +13,7 @@ import {
   Clock,
   HelpCircle,
   IndianRupee,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { useAuth } from '@/context/AuthContext';
@@ -95,6 +96,15 @@ export default function ManagerDashboardView({
             >
               <Plus className="w-3.5 h-3.5 shrink-0" />
               <span>Add Leads</span>
+            </button>
+          )}
+          {role === 'sales' && (
+            <button
+              onClick={() => onNavigate('quotations')}
+              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 shadow-xs active:scale-95 transition-all"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>Quotations</span>
             </button>
           )}
           {canCreateProject && onOpenCreateProject && (
