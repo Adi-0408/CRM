@@ -14,6 +14,8 @@ import {
   RotateCcw,
   Crosshair,
   Check,
+  ArrowLeft,
+  Upload,
 } from 'lucide-react';
 import {
   ITPL_OFFICE_LOCATION,
@@ -44,9 +46,11 @@ export default function AttendanceVerificationModal({
   // Camera states
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [isCameraLoading, setIsCameraLoading] = useState(false);
 
   // Geolocation states
   const [locationLoading, setLocationLoading] = useState(false);
@@ -58,6 +62,19 @@ export default function AttendanceVerificationModal({
     longitude: number;
   } | null>(null);
   const [isCalibratedNotice, setIsCalibratedNotice] = useState(false);
+
+  // Keyboard shortcut: Escape to close / go back
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isLoading) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isLoading, onClose]);
 
   // Load calibrated office coords from localStorage if previously set
   useEffect(() => {
@@ -74,9 +91,10 @@ export default function AttendanceVerificationModal({
     }
   }, []);
 
-  // Start Camera Stream
+  // Start Camera Stream with automatic fallback
   const startCamera = useCallback(async () => {
     setCameraError(null);
+    setIsCameraLoading(true);
     try {
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
@@ -86,14 +104,24 @@ export default function AttendanceVerificationModal({
         throw new Error('Camera access is not supported by your browser.');
       }
 
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-        },
-        audio: false,
-      });
+      let mediaStream: MediaStream;
+      try {
+        // Try user facing camera first
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'user',
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+          },
+          audio: false,
+        });
+      } catch (err) {
+        // Fallback for laptop webcams without facingMode constraint support
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+      }
 
       setStream(mediaStream);
       if (videoRef.current) {
@@ -102,17 +130,19 @@ export default function AttendanceVerificationModal({
       }
     } catch (err: any) {
       console.error('Camera initialization error:', err);
-      let msg = 'Unable to access camera. Please allow camera permissions in your browser.';
+      let msg = 'Unable to access camera. Please allow camera permissions or upload a selfie below.';
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        msg = 'Camera permission was denied. Please allow camera access in browser settings.';
+        msg = 'Camera permission was denied. Please allow camera access in browser settings or upload a selfie.';
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        msg = 'No camera device found on this system.';
+        msg = 'No camera found. You can upload a selfie below.';
       }
       setCameraError(msg);
+    } finally {
+      setIsCameraLoading(false);
     }
   }, [stream]);
 
-  // Capture Photo with exact aspect ratio
+  // Capture Photo with natural aspect ratio
   const handleCapturePhoto = () => {
     if (!videoRef.current) return;
     const video = videoRef.current;
@@ -121,20 +151,17 @@ export default function AttendanceVerificationModal({
     const vWidth = video.videoWidth || 640;
     const vHeight = video.videoHeight || 480;
 
-    // Maintain 4:3 standard selfie framing
     canvas.width = 480;
     canvas.height = Math.round((vHeight / vWidth) * 480);
 
     const ctx = canvas.getContext('2d');
     if (ctx) {
-      // Draw image flipped horizontally for selfie mirror effect
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const photoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
       setCapturedPhoto(photoDataUrl);
 
-      // Stop camera preview while photo is frozen
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
         setStream(null);
@@ -146,6 +173,25 @@ export default function AttendanceVerificationModal({
   const handleRetakePhoto = () => {
     setCapturedPhoto(null);
     startCamera();
+  };
+
+  // Fallback: Upload selfie from file or mobile camera
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        setCapturedPhoto(dataUrl);
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+          setStream(null);
+        }
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   // Geolocation Fetching
@@ -164,7 +210,6 @@ export default function AttendanceVerificationModal({
       (position) => {
         const { latitude, longitude } = position.coords;
 
-        // Check if office coords were calibrated
         let savedOffice: { latitude: number; longitude: number } | undefined = undefined;
         try {
           const saved = localStorage.getItem('itpl_calibrated_office_coords');
@@ -292,62 +337,87 @@ export default function AttendanceVerificationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-xl overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Header */}
-        <div className="px-6 py-4.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
-          <div className="flex items-center space-x-3">
-            <div
-              className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-md ${
-                isPunchIn ? 'bg-emerald-600' : 'bg-amber-500'
-              }`}
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-md flex flex-col items-center justify-start sm:justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isLoading) {
+          onClose();
+        }
+      }}
+    >
+      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-2xl overflow-hidden flex flex-col my-auto max-h-[94vh]">
+        {/* Sticky Header with Back Button and Close Button */}
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/90 sticky top-0 z-20 shrink-0">
+          <div className="flex items-center space-x-2.5 sm:space-x-3">
+            {/* Primary Back Button */}
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isLoading}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-200/70 text-slate-700 text-xs font-bold transition-all cursor-pointer shadow-2xs hover:shadow active:scale-95"
+              title="Go Back / Cancel Verification"
             >
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                <span>{actionTitle} Verification</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-slate-200/80 text-slate-700">
-                  REQUIRED
-                </span>
-              </h2>
-              <p className="text-xs text-slate-500 font-medium">
-                Live selfie & office perimeter verification (≤ {ITPL_OFFICE_LOCATION.allowedRadiusMeters}m)
-              </p>
+              <ArrowLeft className="w-4 h-4 text-slate-600" />
+              <span>Back</span>
+            </button>
+
+            <div className="h-5 w-px bg-slate-200 mx-1 hidden sm:block" />
+
+            <div className="flex items-center space-x-2">
+              <div
+                className={`w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-sm ${
+                  isPunchIn ? 'bg-emerald-600' : 'bg-amber-500'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-1.5">
+                  <span>{actionTitle} Verification</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold bg-slate-200 text-slate-700">
+                    REQUIRED
+                  </span>
+                </h2>
+                <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
+                  Live selfie & office perimeter verification (≤ {ITPL_OFFICE_LOCATION.allowedRadiusMeters}m)
+                </p>
+              </div>
             </div>
           </div>
+
           <button
             onClick={onClose}
             disabled={isLoading}
             className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+            title="Close"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1">
-          {/* Section 1: Live Selfie Capture with Perfectly Aligned Camera Container */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-800 flex items-center gap-2 uppercase tracking-wider">
-                <Camera className="w-3.5 h-3.5 text-[#635BFF]" />
-                1. Live Selfie Capture
-              </label>
-              {capturedPhoto ? (
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Photo Captured
-                </span>
-              ) : (
-                <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                  Selfie Required
-                </span>
-              )}
-            </div>
+        {/* Modal Body: 2-Column Responsive Layout */}
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+            {/* Column 1: Live Selfie Capture */}
+            <div className="space-y-3 bg-slate-50/60 p-3.5 rounded-2xl border border-slate-100 flex flex-col items-center">
+              <div className="w-full flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+                  <Camera className="w-3.5 h-3.5 text-[#635BFF]" />
+                  1. Live Selfie
+                </label>
+                {capturedPhoto ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    <CheckCircle2 className="w-3 h-3" /> Captured
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    Snap Required
+                  </span>
+                )}
+              </div>
 
-            {/* Centered, Well-Proportioned 4:3 Camera Viewfinder */}
-            <div className="flex flex-col items-center">
-              <div className="relative w-full max-w-[340px] aspect-[4/3] rounded-3xl overflow-hidden bg-slate-950 border-2 border-slate-200 shadow-lg flex items-center justify-center">
+              {/* Viewfinder Frame */}
+              <div className="relative w-full aspect-[4/3] max-w-[260px] rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-200 shadow-md flex items-center justify-center">
                 {capturedPhoto ? (
                   <div className="relative w-full h-full">
                     <img
@@ -355,23 +425,28 @@ export default function AttendanceVerificationModal({
                       alt="Captured Live Attendance"
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute top-3 left-3 bg-emerald-600/90 text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow backdrop-blur-xs">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Live Selfie Verified
+                    <div className="absolute top-2 left-2 bg-emerald-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow backdrop-blur-xs">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Verified
                     </div>
                   </div>
+                ) : isCameraLoading ? (
+                  <div className="p-4 text-center space-y-2 text-white">
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#635BFF]" />
+                    <p className="text-[11px] text-slate-300 font-medium">Starting camera...</p>
+                  </div>
                 ) : cameraError ? (
-                  <div className="p-4 text-center space-y-3 max-w-xs">
-                    <AlertTriangle className="w-8 h-8 text-rose-400 mx-auto" />
-                    <p className="text-xs text-rose-200 font-medium leading-relaxed">
+                  <div className="p-3 text-center space-y-2">
+                    <AlertTriangle className="w-6 h-6 text-rose-400 mx-auto" />
+                    <p className="text-[10px] text-rose-200 leading-tight">
                       {cameraError}
                     </p>
                     <button
                       type="button"
                       onClick={startCamera}
-                      className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                      className="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white text-[10px] font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" /> Try Again
+                      <RefreshCw className="w-3 h-3" /> Retry
                     </button>
                   </div>
                 ) : (
@@ -383,221 +458,234 @@ export default function AttendanceVerificationModal({
                       muted
                       className="w-full h-full object-cover transform -scale-x-100"
                     />
-
-                    {/* Biometric Oval Face Alignment Guide */}
+                    {/* Face Guide Oval */}
                     <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-                      <div className="w-36 h-48 rounded-[48%] border-2 border-dashed border-white/60 shadow-xs flex items-center justify-center">
-                        <div className="w-3 h-3 border-t-2 border-l-2 border-white/90 absolute top-5 left-8" />
-                        <div className="w-3 h-3 border-t-2 border-r-2 border-white/90 absolute top-5 right-8" />
-                        <div className="w-3 h-3 border-b-2 border-l-2 border-white/90 absolute bottom-5 left-8" />
-                        <div className="w-3 h-3 border-b-2 border-r-2 border-white/90 absolute bottom-5 right-8" />
-                      </div>
-                      <span className="text-[10px] text-white/90 font-medium bg-slate-950/60 px-2.5 py-0.5 rounded-full mt-2 backdrop-blur-xs">
-                        Center face in frame
+                      <div className="w-28 h-36 rounded-[48%] border-2 border-dashed border-white/60 shadow-xs flex items-center justify-center" />
+                      <span className="text-[9px] text-white/90 font-medium bg-slate-950/60 px-2 py-0.5 rounded-full mt-1.5 backdrop-blur-xs">
+                        Center face
                       </span>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Dedicated Camera Action Bar (Outside & Below Video to Avoid Covering Face) */}
-              <div className="mt-3 flex items-center justify-center gap-2">
+              {/* Action Buttons Below Viewfinder */}
+              <div className="w-full flex flex-col items-center gap-2 pt-1">
                 {capturedPhoto ? (
                   <button
                     type="button"
                     onClick={handleRetakePhoto}
                     disabled={isLoading}
-                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                    className="w-full max-w-[260px] py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                   >
-                    <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                    <RotateCcw className="w-3.5 h-3.5 text-slate-600" />
                     Retake Selfie
                   </button>
-                ) : !cameraError ? (
+                ) : (
                   <button
                     type="button"
                     onClick={handleCapturePhoto}
-                    className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#635BFF] to-[#7B73FF] hover:from-[#5249ea] hover:to-[#685ff8] text-white text-xs font-bold flex items-center gap-2 shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer"
+                    disabled={isCameraLoading || Boolean(cameraError)}
+                    className="w-full max-w-[260px] py-2 rounded-xl bg-gradient-to-r from-[#635BFF] to-[#7B73FF] hover:from-[#5249ea] hover:to-[#685ff8] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                   >
                     <Camera className="w-4 h-4" />
                     Take Live Selfie
                   </button>
-                ) : null}
-              </div>
-            </div>
+                )}
 
-            <canvas ref={canvasRef} className="hidden" />
-          </div>
-
-          {/* Section 2: Office Geofence Verification */}
-          <div className="space-y-3 pt-2 border-t border-slate-100">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-800 flex items-center gap-2 uppercase tracking-wider">
-                <MapPin className="w-3.5 h-3.5 text-[#0D9488]" />
-                2. Office Geofence Verification (≤ {ITPL_OFFICE_LOCATION.allowedRadiusMeters}m Perimeter)
-              </label>
-              <button
-                type="button"
-                onClick={fetchLocation}
-                disabled={locationLoading || isLoading}
-                className="text-[11px] font-bold text-[#635BFF] hover:text-[#5249ea] inline-flex items-center gap-1 cursor-pointer transition-colors"
-                title="Refresh current GPS coordinates"
-              >
-                <RefreshCw
-                  className={`w-3 h-3 ${locationLoading ? 'animate-spin' : ''}`}
-                />
-                Refresh GPS
-              </button>
-            </div>
-
-            {/* Office Target Card */}
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                  <Navigation className="w-3.5 h-3.5 text-[#0D9488]" />
-                  {ITPL_OFFICE_LOCATION.name}
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-teal-50 text-teal-700 border border-teal-200">
-                  Perimeter: ≤ {ITPL_OFFICE_LOCATION.allowedRadiusMeters}m
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-600 line-clamp-2 leading-relaxed">
-                {ITPL_OFFICE_LOCATION.address}
-              </p>
-              {calibratedCoords && (
-                <div className="pt-1 flex items-center justify-between text-[10px] text-emerald-700 font-medium">
-                  <span className="flex items-center gap-1">
-                    <Check className="w-3 h-3 text-emerald-600" />
-                    Office Pin Calibrated to your desk position
-                  </span>
+                {/* Upload Fallback for Camera Issues */}
+                <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                  <span>Camera blocked?</span>
                   <button
                     type="button"
-                    onClick={handleResetCalibration}
-                    className="text-slate-400 hover:text-slate-600 underline cursor-pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-[#635BFF] hover:underline font-bold inline-flex items-center gap-1 cursor-pointer"
                   >
-                    Reset
+                    <Upload className="w-3 h-3" />
+                    Upload Photo
                   </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="user"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
                 </div>
-              )}
+              </div>
+              <canvas ref={canvasRef} className="hidden" />
             </div>
 
-            {/* Calibration Notice Banner */}
-            {isCalibratedNotice && (
-              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2 animate-in fade-in">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                <span>Office GPS pin successfully calibrated to your current position!</span>
-              </div>
-            )}
-
-            {/* Live Location Status Indicator */}
-            {locationLoading ? (
-              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 flex items-center justify-center gap-2.5 text-xs text-slate-600">
-                <RefreshCw className="w-4 h-4 animate-spin text-[#635BFF]" />
-                <span>Acquiring high-precision GPS coordinates...</span>
-              </div>
-            ) : locationError ? (
-              <div className="p-3.5 rounded-2xl border border-rose-200 bg-rose-50/80 text-xs text-rose-700 space-y-2">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="font-bold">Location Permission Error</p>
-                    <p className="text-[11px]">{locationError}</p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-end gap-2 pt-1 border-t border-rose-200/60">
-                  <button
-                    type="button"
-                    onClick={handleSimulateOfficeLocation}
-                    className="text-[10px] font-semibold text-rose-800 underline hover:text-rose-950 cursor-pointer"
-                  >
-                    Simulate Office GPS (Testing)
-                  </button>
+            {/* Column 2: Office Geofence Verification */}
+            <div className="space-y-3 bg-slate-50/60 p-3.5 rounded-2xl border border-slate-100 flex flex-col justify-between h-full">
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+                    <MapPin className="w-3.5 h-3.5 text-[#0D9488]" />
+                    2. Office Geofence (≤ {ITPL_OFFICE_LOCATION.allowedRadiusMeters}m)
+                  </label>
                   <button
                     type="button"
                     onClick={fetchLocation}
-                    className="px-2.5 py-1 rounded-lg bg-rose-600 text-white text-[11px] font-bold hover:bg-rose-700 transition-colors cursor-pointer"
+                    disabled={locationLoading || isLoading}
+                    className="text-[10px] font-bold text-[#635BFF] hover:text-[#5249ea] inline-flex items-center gap-1 cursor-pointer transition-colors"
+                    title="Refresh current GPS coordinates"
                   >
-                    Retry GPS
+                    <RefreshCw className={`w-3 h-3 ${locationLoading ? 'animate-spin' : ''}`} />
+                    Refresh GPS
                   </button>
                 </div>
-              </div>
-            ) : geoResult ? (
-              <div
-                className={`p-3.5 rounded-2xl border transition-all ${
-                  isWithinPerimeter
-                    ? 'border-emerald-200 bg-emerald-50/60 text-emerald-900'
-                    : 'border-rose-200 bg-rose-50/80 text-rose-900'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-2.5">
-                    {isWithinPerimeter ? (
-                      <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-600 mt-0.5">
-                        <CheckCircle2 className="w-4 h-4" />
-                      </div>
-                    ) : (
-                      <div className="w-7 h-7 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0 text-rose-600 mt-0.5">
-                        <Lock className="w-4 h-4" />
-                      </div>
-                    )}
-                    <div>
-                      <h4 className="font-bold text-xs">
-                        {isWithinPerimeter
-                          ? 'Passable: Within Office Perimeter'
-                          : 'Blocked: Outside Office Perimeter'}
-                      </h4>
-                      <p className="text-[11px] mt-0.5 font-medium">
-                        Distance from Pearl Enclave:{' '}
-                        <strong className="font-mono text-xs">
-                          {geoResult.distanceMeters}m
-                        </strong>{' '}
-                        (Allowed: ≤ {geoResult.allowedRadiusMeters}m)
-                      </p>
-                      <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                        Detected: {geoResult.userLat.toFixed(5)}, {geoResult.userLng.toFixed(5)}
-                      </p>
-                    </div>
-                  </div>
 
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider uppercase flex-shrink-0 ${
-                      isWithinPerimeter
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'bg-rose-600 text-white shadow-xs'
-                    }`}
-                  >
-                    {isWithinPerimeter ? 'PERMITTED' : 'OUTSIDE'}
-                  </span>
+                {/* Office Target Card */}
+                <div className="p-3 rounded-xl bg-white border border-slate-200/80 text-xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 flex items-center gap-1">
+                      <Navigation className="w-3 h-3 text-[#0D9488]" />
+                      ITPL Sangli Office
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-teal-50 text-teal-700 border border-teal-200">
+                      ≤ {ITPL_OFFICE_LOCATION.allowedRadiusMeters}m Zone
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 leading-snug">
+                    Pearl Enclave, MSEB Rd, near Walchand college, Vishrambag, Sangli
+                  </p>
+                  {calibratedCoords && (
+                    <div className="pt-1 flex items-center justify-between text-[10px] text-emerald-700 font-medium border-t border-slate-100 mt-1">
+                      <span className="flex items-center gap-1">
+                        <Check className="w-3 h-3 text-emerald-600" />
+                        Office Pin Calibrated to your desk
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleResetCalibration}
+                        className="text-slate-400 hover:text-slate-600 underline cursor-pointer text-[9px]"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                {/* Office Calibration Action */}
-                <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
-                  <span className="text-slate-600">
-                    Are you at your office desk?
+                {/* Calibration Notice Banner */}
+                {isCalibratedNotice && (
+                  <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 flex items-center gap-1.5 animate-in fade-in">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Office GPS pin calibrated to your exact location!</span>
+                  </div>
+                )}
+
+                {/* Live Location Status Indicator */}
+                {locationLoading ? (
+                  <div className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-center gap-2 text-xs text-slate-600">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#635BFF]" />
+                    <span>Fetching high-precision GPS...</span>
+                  </div>
+                ) : locationError ? (
+                  <div className="p-3 rounded-xl border border-rose-200 bg-rose-50/80 text-xs text-rose-700 space-y-2">
+                    <div className="flex items-start gap-1.5">
+                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <p className="font-bold text-[11px]">Location Permission Error</p>
+                        <p className="text-[10px]">{locationError}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-2 pt-1 border-t border-rose-200/60">
+                      <button
+                        type="button"
+                        onClick={handleSimulateOfficeLocation}
+                        className="text-[10px] font-semibold text-rose-800 underline hover:text-rose-950 cursor-pointer"
+                      >
+                        Simulate Office GPS (Testing)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={fetchLocation}
+                        className="px-2 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold hover:bg-rose-700 transition-colors cursor-pointer"
+                      >
+                        Retry GPS
+                      </button>
+                    </div>
+                  </div>
+                ) : geoResult ? (
+                  <div
+                    className={`p-3 rounded-xl border transition-all ${
+                      isWithinPerimeter
+                        ? 'border-emerald-200 bg-emerald-50/80 text-emerald-900'
+                        : 'border-rose-200 bg-rose-50/80 text-rose-900'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2">
+                        {isWithinPerimeter ? (
+                          <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 text-emerald-600 mt-0.5">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          </div>
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-rose-100 flex items-center justify-center shrink-0 text-rose-600 mt-0.5">
+                            <Lock className="w-3.5 h-3.5" />
+                          </div>
+                        )}
+                        <div>
+                          <h4 className="font-bold text-xs">
+                            {isWithinPerimeter ? 'Within Office Perimeter' : 'Outside Office Perimeter'}
+                          </h4>
+                          <p className="text-[11px] mt-0.5 font-medium">
+                            Distance:{' '}
+                            <strong className="font-mono">{geoResult.distanceMeters}m</strong>{' '}
+                            (Allowed: ≤ {geoResult.allowedRadiusMeters}m)
+                          </p>
+                          <p className="text-[9px] text-slate-500 font-mono mt-0.5">
+                            GPS: {geoResult.userLat.toFixed(5)}, {geoResult.userLng.toFixed(5)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase shrink-0 ${
+                          isWithinPerimeter
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-rose-600 text-white shadow-xs'
+                        }`}
+                      >
+                        {isWithinPerimeter ? 'PERMITTED' : 'OUTSIDE'}
+                      </span>
+                    </div>
+
+                    {isSimulated && (
+                      <p className="text-[9px] text-amber-700 italic mt-1 font-mono">
+                        * Simulation active for local testing
+                      </p>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Office Desk GPS Calibration Button */}
+              {geoResult && (
+                <div className="pt-2 border-t border-slate-200/60 flex flex-col gap-1.5">
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    Sitting in office? Calibrate pin to your exact desk:
                   </span>
                   <button
                     type="button"
                     onClick={handleCalibrateOfficeToCurrentLocation}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-slate-300 hover:border-indigo-400 text-indigo-700 font-bold hover:bg-indigo-50 transition-colors shadow-2xs cursor-pointer text-[10px]"
-                    title="Calibrate the office center coordinates to your exact current position"
+                    className="w-full py-1.5 px-2.5 rounded-xl bg-white border border-slate-300 hover:border-indigo-400 text-indigo-700 font-bold hover:bg-indigo-50 transition-colors shadow-2xs cursor-pointer text-[10px] flex items-center justify-center gap-1.5"
+                    title="Calibrate office center coordinates to your exact current location"
                   >
                     <Crosshair className="w-3 h-3 text-indigo-600" />
-                    <span>Calibrate Office GPS Pin Here</span>
+                    <span>Calibrate Office GPS Pin Here (0m)</span>
                   </button>
                 </div>
-
-                {isSimulated && (
-                  <p className="text-[10px] text-amber-700 italic mt-1 font-mono">
-                    * Simulation active for local testing
-                  </p>
-                )}
-              </div>
-            ) : null}
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* Summary Checklist */}
+        {/* Sticky Footer Actions with Checklist and Back / Confirm Buttons */}
+        <div className="px-4 sm:px-6 py-3 border-t border-slate-100 bg-slate-50/90 flex flex-col sm:flex-row items-center justify-between gap-3 sticky bottom-0 z-20 shrink-0">
+          {/* Checklist */}
           <div className="flex items-center gap-3 text-xs text-slate-500">
             <span
               className={`inline-flex items-center gap-1 text-[11px] font-semibold ${
@@ -609,7 +697,7 @@ export default function AttendanceVerificationModal({
                   capturedPhoto ? 'text-emerald-500' : 'text-slate-300'
                 }`}
               />
-              Live Selfie
+              Selfie
             </span>
             <span>•</span>
             <span
@@ -626,20 +714,22 @@ export default function AttendanceVerificationModal({
             </span>
           </div>
 
+          {/* Action Buttons: Go Back + Confirm */}
           <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
             <button
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer inline-flex items-center gap-1.5"
             >
-              Cancel
+              <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
+              <span>Back</span>
             </button>
             <button
               type="button"
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className={`px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md disabled:opacity-40 disabled:cursor-not-allowed ${
+              className={`px-5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md disabled:opacity-40 disabled:cursor-not-allowed ${
                 isPunchIn
                   ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30'
                   : 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/30'
@@ -647,7 +737,7 @@ export default function AttendanceVerificationModal({
             >
               {isLoading ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                   <span>Verifying...</span>
                 </>
               ) : (
