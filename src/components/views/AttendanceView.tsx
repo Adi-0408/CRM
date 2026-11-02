@@ -17,12 +17,15 @@ import {
   Info,
   Clock,
   Sparkles,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
 import LiveClockCard from '@/components/attendance/LiveClockCard';
 import RegularizeAttendanceModal from '@/components/modals/RegularizeAttendanceModal';
 import AttendanceAnalyticsChart from '@/components/attendance/AttendanceAnalyticsChart';
+import EmployeeAttendanceCalendar from '@/components/attendance/EmployeeAttendanceCalendar';
 import CustomSelect from '@/components/common/CustomSelect';
 import {
   evaluateDailyAttendance,
@@ -112,8 +115,11 @@ export default function AttendanceView({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [records, setRecords] = useState<any[]>([]);
+  const [leaves, setLeaves] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [expandedEmpId, setExpandedEmpId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'calendar' | 'table'>('calendar');
+  const [selectedCalendarEmp, setSelectedCalendarEmp] = useState<any>(null);
 
   // Modal State for Admin/HR Regularize
   const [selectedEmpForOverride, setSelectedEmpForOverride] = useState<any>(null);
@@ -139,9 +145,43 @@ export default function AttendanceView({
     }
   };
 
+  const fetchLeaves = async () => {
+    try {
+      const res = await authFetch('/api/leaves');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setLeaves(data);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching leaves:', err);
+    }
+  };
+
   useEffect(() => {
     fetchRecords();
+    fetchLeaves();
   }, [selectedMonth]);
+
+  // Sync selectedCalendarEmp
+  useEffect(() => {
+    if (!selectedCalendarEmp && employees.length > 0) {
+      if (isAdminOrHr) {
+        const match = employees.find(
+          (e) => String(e._id || e.id) === String(user?.id)
+        );
+        setSelectedCalendarEmp(match || employees[0]);
+      } else {
+        const match = employees.find(
+          (e) =>
+            String(e._id || e.id) === String(user?.id) ||
+            e.email?.toLowerCase() === user?.email?.toLowerCase()
+        );
+        setSelectedCalendarEmp(match || user);
+      }
+    }
+  }, [employees, user, isAdminOrHr, selectedCalendarEmp]);
 
   const todayStr = getLocalTodayStr();
   const workingDaysInMonth = useMemo(() => getElapsedWorkingDaysInMonth(selectedMonth), [selectedMonth]);
@@ -343,8 +383,91 @@ export default function AttendanceView({
         />
       )}
 
-      {/* 3. Scalable Monthly Employee Attendance Table */}
-      <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] overflow-hidden">
+      {/* 3. View Switcher Header Bar: Calendar View vs Team Table View */}
+      <div className="bg-white rounded-3xl border border-slate-100 p-4 sm:p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center space-x-2">
+            <h3 className="text-base font-bold text-slate-900 tracking-tight">
+              Attendance & Shift Compliance
+            </h3>
+            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+              Live Engine
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 font-medium mt-0.5">
+            {viewMode === 'calendar'
+              ? 'Monthly calendar visualizer with 5-status distribution, punctuality tags & daily shift sessions'
+              : 'Comprehensive team attendance ledger, working duration telemetry & compliance records'}
+          </p>
+        </div>
+
+        <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+          {/* View Toggle */}
+          <div className="flex items-center bg-slate-100/90 p-1 rounded-2xl border border-slate-200/60 shadow-xs">
+            <button
+              type="button"
+              onClick={() => setViewMode('calendar')}
+              className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                viewMode === 'calendar'
+                  ? 'bg-white text-indigo-600 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Calendar View</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                viewMode === 'table'
+                  ? 'bg-white text-indigo-600 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              <span>Table Ledger</span>
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              fetchRecords();
+              fetchLeaves();
+              onRefresh();
+            }}
+            disabled={loading}
+            className="p-2.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-600 border border-slate-200/80 transition-colors shadow-2xs cursor-pointer"
+            title="Refresh logs"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* 4. Main Body: Calendar Visualizer OR Table View */}
+      {viewMode === 'calendar' ? (
+        <EmployeeAttendanceCalendar
+          employee={
+            selectedCalendarEmp ||
+            (employees.length > 0
+              ? employees[0]
+              : user || { name: 'Employee', role: 'Staff' })
+          }
+          employees={employees}
+          records={records}
+          leaves={leaves}
+          selectedMonth={selectedMonth}
+          onMonthChange={(m) => setSelectedMonth(m)}
+          onEmployeeChange={(emp) => setSelectedCalendarEmp(emp)}
+          onRegularize={handleOpenOverride}
+          isAdminOrHr={isAdminOrHr}
+          onBack={isAdminOrHr ? () => setViewMode('table') : undefined}
+        />
+      ) : (
+        /* Scalable Monthly Employee Attendance Table */
+        <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] overflow-hidden">
         {/* Top Search & Filter Bar */}
         <div className="p-4 sm:p-5 border-b border-slate-100/80 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white/70 backdrop-blur-md">
           {/* Search Input */}
@@ -438,7 +561,7 @@ export default function AttendanceView({
                 <th className="py-3.5 px-4">PUNCTUALITY</th>
                 <th className="py-3.5 px-4">MONTH STATUS</th>
                 <th className="py-3.5 px-4 text-center">DAILY SESSIONS</th>
-                {isAdminOrHr && <th className="py-3.5 px-5 text-right">ACTIONS</th>}
+                <th className="py-3.5 px-5 text-right">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs bg-white">
@@ -626,32 +749,47 @@ export default function AttendanceView({
                             )}
                           </td>
 
-                          {/* 7. ACTIONS (Admin/HR Only) */}
-                          {isAdminOrHr && (
-                            <td className="py-4 px-5 text-right whitespace-nowrap">
+                          {/* 7. ACTIONS */}
+                          <td className="py-4 px-5 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end space-x-1.5">
                               <button
                                 type="button"
-                                onClick={() =>
-                                  handleOpenOverride(
-                                    employee,
-                                    latestDayRecord?.record?.date || todayStr,
-                                    latestDayRecord?.record
-                                  )
-                                }
-                                className="px-3 py-1.5 rounded-full border border-slate-200 hover:border-[#635BFF] text-slate-700 hover:text-[#635BFF] hover:bg-[#F0EEFF]/50 text-xs font-semibold inline-flex items-center gap-1.5 transition-all active:scale-95 shadow-2xs cursor-pointer"
+                                onClick={() => {
+                                  setSelectedCalendarEmp(employee);
+                                  setViewMode('calendar');
+                                }}
+                                className="px-2.5 py-1.5 rounded-full border border-slate-200 hover:border-indigo-500 text-slate-700 hover:text-indigo-600 hover:bg-indigo-50 text-xs font-semibold inline-flex items-center gap-1 transition-all shadow-2xs cursor-pointer"
+                                title="Open Monthly Attendance Calendar"
                               >
-                                <Edit3 className="w-3.5 h-3.5" />
-                                <span>Regularize</span>
+                                <LayoutGrid className="w-3.5 h-3.5 text-indigo-500" />
+                                <span className="hidden sm:inline">Calendar</span>
                               </button>
-                            </td>
-                          )}
+
+                              {isAdminOrHr && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleOpenOverride(
+                                      employee,
+                                      latestDayRecord?.record?.date || todayStr,
+                                      latestDayRecord?.record
+                                    )
+                                  }
+                                  className="px-3 py-1.5 rounded-full border border-slate-200 hover:border-[#635BFF] text-slate-700 hover:text-[#635BFF] hover:bg-[#F0EEFF]/50 text-xs font-semibold inline-flex items-center gap-1.5 transition-all active:scale-95 shadow-2xs cursor-pointer"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                  <span>Regularize</span>
+                                </button>
+                              )}
+                            </div>
+                          </td>
                         </tr>
 
                         {/* Expandable Day-by-Day Monthly Log Breakdown */}
                         {isExpanded && (
                           <tr className="bg-slate-50/70">
                             <td
-                              colSpan={isAdminOrHr ? 7 : 6}
+                              colSpan={7}
                               className="px-5 py-4 border-y border-slate-100"
                             >
                               <div className="space-y-3">
@@ -810,7 +948,7 @@ export default function AttendanceView({
               ) : (
                 <tr>
                   <td
-                    colSpan={isAdminOrHr ? 7 : 6}
+                    colSpan={7}
                     className="py-12 text-center text-slate-400 text-xs font-medium"
                   >
                     No attendance records found for {formatMonthDisplay(selectedMonth)}.
@@ -821,6 +959,7 @@ export default function AttendanceView({
           </table>
         </div>
       </div>
+      )}
 
       {/* Admin / HR Regularize Modal */}
       {isOverrideModalOpen && selectedEmpForOverride && (
