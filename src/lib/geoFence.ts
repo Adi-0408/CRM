@@ -20,7 +20,7 @@ export const ITPL_OFFICE_LOCATION: OfficeLocation = {
     'Pearl Enclave, MSEB Rd, near Walchand college, Viya Nagar, Vishrambag, Sangli Miraj Kupwad, Maharashtra 416415',
   latitude: 16.84582,
   longitude: 74.60055,
-  allowedRadiusMeters: 100, // 100m passable perimeter
+  allowedRadiusMeters: 250, // 250m perimeter (accommodates indoor building GPS & WiFi triangulation drift)
 };
 
 /**
@@ -61,8 +61,12 @@ export interface GeofenceResult {
 export function evaluateGeofence(
   userLat: number,
   userLng: number,
-  office: OfficeLocation = ITPL_OFFICE_LOCATION
+  customOffice?: Partial<OfficeLocation>
 ): GeofenceResult {
+  const office: OfficeLocation = {
+    ...ITPL_OFFICE_LOCATION,
+    ...(customOffice || {}),
+  };
   const distanceMeters = calculateDistanceInMeters(
     userLat,
     userLng,

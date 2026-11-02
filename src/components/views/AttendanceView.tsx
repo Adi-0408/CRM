@@ -888,7 +888,7 @@ export default function AttendanceView({
                                                       </span>
                                                     )}
                                                     {s.checkInLocation && (
-                                                      <span title={`Pearl Enclave ≤100m (${s.checkInLocation.distanceMeters || 0}m)`}>
+                                                      <span title={`Pearl Enclave Office Perimeter (${s.checkInLocation.distanceMeters || 0}m)`}>
                                                         <MapPin className="w-2.5 h-2.5 text-teal-600" />
                                                       </span>
                                                     )}

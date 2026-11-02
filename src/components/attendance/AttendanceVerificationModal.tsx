@@ -12,6 +12,8 @@ import {
   Navigation,
   Lock,
   RotateCcw,
+  Crosshair,
+  Check,
 } from 'lucide-react';
 import {
   ITPL_OFFICE_LOCATION,
@@ -51,6 +53,26 @@ export default function AttendanceVerificationModal({
   const [locationError, setLocationError] = useState<string | null>(null);
   const [geoResult, setGeoResult] = useState<GeofenceResult | null>(null);
   const [isSimulated, setIsSimulated] = useState(false);
+  const [calibratedCoords, setCalibratedCoords] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [isCalibratedNotice, setIsCalibratedNotice] = useState(false);
+
+  // Load calibrated office coords from localStorage if previously set
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('itpl_calibrated_office_coords');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.latitude === 'number' && typeof parsed.longitude === 'number') {
+          setCalibratedCoords(parsed);
+        }
+      }
+    } catch {
+      // ignore parse error
+    }
+  }, []);
 
   // Start Camera Stream
   const startCamera = useCallback(async () => {
@@ -90,13 +112,18 @@ export default function AttendanceVerificationModal({
     }
   }, [stream]);
 
-  // Capture Photo
+  // Capture Photo with exact aspect ratio
   const handleCapturePhoto = () => {
     if (!videoRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current || document.createElement('canvas');
+
+    const vWidth = video.videoWidth || 640;
+    const vHeight = video.videoHeight || 480;
+
+    // Maintain 4:3 standard selfie framing
     canvas.width = 480;
-    canvas.height = 360;
+    canvas.height = Math.round((vHeight / vWidth) * 480);
 
     const ctx = canvas.getContext('2d');
     if (ctx) {
@@ -104,7 +131,7 @@ export default function AttendanceVerificationModal({
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const photoDataUrl = canvas.toDataURL('image/jpeg', 0.75);
+      const photoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
       setCapturedPhoto(photoDataUrl);
 
       // Stop camera preview while photo is frozen
@@ -136,7 +163,21 @@ export default function AttendanceVerificationModal({
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        const evaluation = evaluateGeofence(latitude, longitude);
+
+        // Check if office coords were calibrated
+        let savedOffice: { latitude: number; longitude: number } | undefined = undefined;
+        try {
+          const saved = localStorage.getItem('itpl_calibrated_office_coords');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (typeof parsed.latitude === 'number' && typeof parsed.longitude === 'number') {
+              savedOffice = parsed;
+              setCalibratedCoords(parsed);
+            }
+          }
+        } catch {}
+
+        const evaluation = evaluateGeofence(latitude, longitude, savedOffice);
         setGeoResult(evaluation);
         setLocationLoading(false);
       },
@@ -161,14 +202,41 @@ export default function AttendanceVerificationModal({
     );
   }, []);
 
+  // Calibrate Office Coordinates to Current Device Position
+  const handleCalibrateOfficeToCurrentLocation = () => {
+    if (!geoResult) return;
+    const newCoords = {
+      latitude: geoResult.userLat,
+      longitude: geoResult.userLng,
+    };
+    setCalibratedCoords(newCoords);
+    localStorage.setItem('itpl_calibrated_office_coords', JSON.stringify(newCoords));
+    setIsCalibratedNotice(true);
+    setTimeout(() => setIsCalibratedNotice(false), 4000);
+
+    const reEvaluated = evaluateGeofence(geoResult.userLat, geoResult.userLng, newCoords);
+    setGeoResult(reEvaluated);
+  };
+
+  // Reset Calibrated Coordinates to Default
+  const handleResetCalibration = () => {
+    setCalibratedCoords(null);
+    localStorage.removeItem('itpl_calibrated_office_coords');
+    if (geoResult) {
+      const reEvaluated = evaluateGeofence(geoResult.userLat, geoResult.userLng);
+      setGeoResult(reEvaluated);
+    }
+  };
+
   // Development / Admin Testing Simulation Toggle
   const handleSimulateOfficeLocation = () => {
     setIsSimulated(true);
     setLocationError(null);
-    // Simulate being exactly 15 meters inside the office perimeter
-    const simulatedLat = ITPL_OFFICE_LOCATION.latitude + 0.0001;
-    const simulatedLng = ITPL_OFFICE_LOCATION.longitude + 0.0001;
-    const evaluation = evaluateGeofence(simulatedLat, simulatedLng);
+    const targetLat = calibratedCoords?.latitude || ITPL_OFFICE_LOCATION.latitude;
+    const targetLng = calibratedCoords?.longitude || ITPL_OFFICE_LOCATION.longitude;
+    const simulatedLat = targetLat + 0.0001;
+    const simulatedLng = targetLng + 0.0001;
+    const evaluation = evaluateGeofence(simulatedLat, simulatedLng, calibratedCoords || undefined);
     setGeoResult(evaluation);
   };
 
@@ -180,7 +248,6 @@ export default function AttendanceVerificationModal({
       startCamera();
       fetchLocation();
     } else {
-      // Clean up camera stream when modal closes
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
         setStream(null);
@@ -215,6 +282,7 @@ export default function AttendanceVerificationModal({
       distanceMeters: geoResult.distanceMeters,
       address: geoResult.officeAddress,
       isWithinPerimeter: geoResult.isWithinPerimeter,
+      calibratedOffice: calibratedCoords || undefined,
     };
 
     await onVerified({
@@ -244,7 +312,7 @@ export default function AttendanceVerificationModal({
                 </span>
               </h2>
               <p className="text-xs text-slate-500 font-medium">
-                Live selfie & 100m office perimeter verification
+                Live selfie & office perimeter verification (≤ {ITPL_OFFICE_LOCATION.allowedRadiusMeters}m)
               </p>
             </div>
           </div>
@@ -258,96 +326,114 @@ export default function AttendanceVerificationModal({
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1">
-          {/* Section 1: Live Photo Capture */}
-          <div className="space-y-2.5">
+        <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1">
+          {/* Section 1: Live Selfie Capture with Perfectly Aligned Camera Container */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-800 flex items-center gap-2 uppercase tracking-wider">
                 <Camera className="w-3.5 h-3.5 text-[#635BFF]" />
                 1. Live Selfie Capture
               </label>
               {capturedPhoto ? (
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  <CheckCircle2 className="w-3 h-3" /> Captured
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Photo Captured
                 </span>
               ) : (
                 <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                  Snap required
+                  Selfie Required
                 </span>
               )}
             </div>
 
-            <div className="relative w-full h-56 sm:h-64 rounded-2xl overflow-hidden bg-slate-900 border-2 border-dashed border-slate-300 flex items-center justify-center shadow-inner">
-              {capturedPhoto ? (
-                <div className="relative w-full h-full">
-                  <img
-                    src={capturedPhoto}
-                    alt="Captured Live Attendance"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent flex items-end justify-between p-3">
-                    <span className="text-white text-xs font-semibold flex items-center gap-1.5 drop-shadow-sm">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      Live Photo Verified
-                    </span>
+            {/* Centered, Well-Proportioned 4:3 Camera Viewfinder */}
+            <div className="flex flex-col items-center">
+              <div className="relative w-full max-w-[340px] aspect-[4/3] rounded-3xl overflow-hidden bg-slate-950 border-2 border-slate-200 shadow-lg flex items-center justify-center">
+                {capturedPhoto ? (
+                  <div className="relative w-full h-full">
+                    <img
+                      src={capturedPhoto}
+                      alt="Captured Live Attendance"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-3 left-3 bg-emerald-600/90 text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow backdrop-blur-xs">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Live Selfie Verified
+                    </div>
+                  </div>
+                ) : cameraError ? (
+                  <div className="p-4 text-center space-y-3 max-w-xs">
+                    <AlertTriangle className="w-8 h-8 text-rose-400 mx-auto" />
+                    <p className="text-xs text-rose-200 font-medium leading-relaxed">
+                      {cameraError}
+                    </p>
                     <button
                       type="button"
-                      onClick={handleRetakePhoto}
-                      disabled={isLoading}
-                      className="px-3 py-1.5 rounded-xl bg-white/90 hover:bg-white text-slate-800 text-xs font-bold flex items-center gap-1.5 shadow transition-all cursor-pointer"
+                      onClick={startCamera}
+                      className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      <RotateCcw className="w-3.5 h-3.5" /> Retake
+                      <RefreshCw className="w-3.5 h-3.5" /> Try Again
                     </button>
                   </div>
-                </div>
-              ) : cameraError ? (
-                <div className="p-4 text-center space-y-3 max-w-xs">
-                  <AlertTriangle className="w-8 h-8 text-rose-400 mx-auto" />
-                  <p className="text-xs text-rose-200 font-medium">{cameraError}</p>
+                ) : (
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover transform -scale-x-100"
+                    />
+
+                    {/* Biometric Oval Face Alignment Guide */}
+                    <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
+                      <div className="w-36 h-48 rounded-[48%] border-2 border-dashed border-white/60 shadow-xs flex items-center justify-center">
+                        <div className="w-3 h-3 border-t-2 border-l-2 border-white/90 absolute top-5 left-8" />
+                        <div className="w-3 h-3 border-t-2 border-r-2 border-white/90 absolute top-5 right-8" />
+                        <div className="w-3 h-3 border-b-2 border-l-2 border-white/90 absolute bottom-5 left-8" />
+                        <div className="w-3 h-3 border-b-2 border-r-2 border-white/90 absolute bottom-5 right-8" />
+                      </div>
+                      <span className="text-[10px] text-white/90 font-medium bg-slate-950/60 px-2.5 py-0.5 rounded-full mt-2 backdrop-blur-xs">
+                        Center face in frame
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Dedicated Camera Action Bar (Outside & Below Video to Avoid Covering Face) */}
+              <div className="mt-3 flex items-center justify-center gap-2">
+                {capturedPhoto ? (
                   <button
                     type="button"
-                    onClick={startCamera}
-                    className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                    onClick={handleRetakePhoto}
+                    disabled={isLoading}
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                   >
-                    <RefreshCw className="w-3.5 h-3.5" /> Try Again
+                    <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                    Retake Selfie
                   </button>
-                </div>
-              ) : (
-                <div className="relative w-full h-full flex items-center justify-center">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover -scale-x-100"
-                  />
-                  {/* Viewfinder crosshairs overlay */}
-                  <div className="absolute inset-4 sm:inset-6 border border-white/30 rounded-2xl pointer-events-none flex items-center justify-center">
-                    <div className="w-28 h-28 rounded-full border border-dashed border-white/50 animate-pulse pointer-events-none" />
-                  </div>
-                  {/* Capture Button Overlay */}
-                  <div className="absolute bottom-3 left-0 right-0 flex justify-center">
-                    <button
-                      type="button"
-                      onClick={handleCapturePhoto}
-                      className="px-5 py-2 rounded-full bg-white text-slate-900 text-xs font-bold flex items-center gap-2 shadow-lg hover:bg-slate-100 active:scale-95 transition-all cursor-pointer"
-                    >
-                      <Camera className="w-4 h-4 text-[#635BFF]" />
-                      Take Live Photo
-                    </button>
-                  </div>
-                </div>
-              )}
+                ) : !cameraError ? (
+                  <button
+                    type="button"
+                    onClick={handleCapturePhoto}
+                    className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#635BFF] to-[#7B73FF] hover:from-[#5249ea] hover:to-[#685ff8] text-white text-xs font-bold flex items-center gap-2 shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Camera className="w-4 h-4" />
+                    Take Live Selfie
+                  </button>
+                ) : null}
+              </div>
             </div>
+
             <canvas ref={canvasRef} className="hidden" />
           </div>
 
           {/* Section 2: Office Geofence Verification */}
-          <div className="space-y-2.5">
+          <div className="space-y-3 pt-2 border-t border-slate-100">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-800 flex items-center gap-2 uppercase tracking-wider">
                 <MapPin className="w-3.5 h-3.5 text-[#0D9488]" />
-                2. Office Geofence Verification (100m Perimeter)
+                2. Office Geofence Verification (≤ {ITPL_OFFICE_LOCATION.allowedRadiusMeters}m Perimeter)
               </label>
               <button
                 type="button"
@@ -371,13 +457,36 @@ export default function AttendanceVerificationModal({
                   {ITPL_OFFICE_LOCATION.name}
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-teal-50 text-teal-700 border border-teal-200">
-                  Perimeter: ≤ 100m
+                  Perimeter: ≤ {ITPL_OFFICE_LOCATION.allowedRadiusMeters}m
                 </span>
               </div>
               <p className="text-[11px] text-slate-600 line-clamp-2 leading-relaxed">
                 {ITPL_OFFICE_LOCATION.address}
               </p>
+              {calibratedCoords && (
+                <div className="pt-1 flex items-center justify-between text-[10px] text-emerald-700 font-medium">
+                  <span className="flex items-center gap-1">
+                    <Check className="w-3 h-3 text-emerald-600" />
+                    Office Pin Calibrated to your desk position
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleResetCalibration}
+                    className="text-slate-400 hover:text-slate-600 underline cursor-pointer"
+                  >
+                    Reset
+                  </button>
+                </div>
+              )}
             </div>
+
+            {/* Calibration Notice Banner */}
+            {isCalibratedNotice && (
+              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2 animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                <span>Office GPS pin successfully calibrated to your current position!</span>
+              </div>
+            )}
 
             {/* Live Location Status Indicator */}
             {locationLoading ? (
@@ -438,10 +547,13 @@ export default function AttendanceVerificationModal({
                       </h4>
                       <p className="text-[11px] mt-0.5 font-medium">
                         Distance from Pearl Enclave:{' '}
-                        <strong className="font-mono">
+                        <strong className="font-mono text-xs">
                           {geoResult.distanceMeters}m
                         </strong>{' '}
                         (Allowed: ≤ {geoResult.allowedRadiusMeters}m)
+                      </p>
+                      <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                        Detected: {geoResult.userLat.toFixed(5)}, {geoResult.userLng.toFixed(5)}
                       </p>
                     </div>
                   </div>
@@ -457,22 +569,21 @@ export default function AttendanceVerificationModal({
                   </span>
                 </div>
 
-                {!isWithinPerimeter && (
-                  <div className="mt-2.5 pt-2.5 border-t border-rose-200 text-[11px] text-rose-700 space-y-1">
-                    <p>
-                      You are outside the 100m office zone. Employees must be physically at Pearl Enclave, Sangli to {actionTitle.toLowerCase()}.
-                    </p>
-                    <div className="flex justify-end pt-1">
-                      <button
-                        type="button"
-                        onClick={handleSimulateOfficeLocation}
-                        className="text-[10px] text-rose-800 underline hover:text-rose-950 cursor-pointer font-semibold"
-                      >
-                        Simulate Office GPS (Testing)
-                      </button>
-                    </div>
-                  </div>
-                )}
+                {/* Office Calibration Action */}
+                <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-600">
+                    Are you at your office desk?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCalibrateOfficeToCurrentLocation}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-slate-300 hover:border-indigo-400 text-indigo-700 font-bold hover:bg-indigo-50 transition-colors shadow-2xs cursor-pointer text-[10px]"
+                    title="Calibrate the office center coordinates to your exact current position"
+                  >
+                    <Crosshair className="w-3 h-3 text-indigo-600" />
+                    <span>Calibrate Office GPS Pin Here</span>
+                  </button>
+                </div>
 
                 {isSimulated && (
                   <p className="text-[10px] text-amber-700 italic mt-1 font-mono">
@@ -498,7 +609,7 @@ export default function AttendanceVerificationModal({
                   capturedPhoto ? 'text-emerald-500' : 'text-slate-300'
                 }`}
               />
-              Photo
+              Live Selfie
             </span>
             <span>•</span>
             <span
@@ -511,7 +622,7 @@ export default function AttendanceVerificationModal({
                   isWithinPerimeter ? 'text-emerald-500' : 'text-slate-300'
                 }`}
               />
-              Location (≤100m)
+              Location (≤ {ITPL_OFFICE_LOCATION.allowedRadiusMeters}m)
             </span>
           </div>
 

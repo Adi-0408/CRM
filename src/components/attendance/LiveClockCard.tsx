@@ -527,10 +527,10 @@ export default function LiveClockCard({
                       {s.checkInLocation && (
                         <span
                           className="inline-flex items-center gap-1 text-[10px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200"
-                          title={`Verified within 100m of Pearl Enclave (${s.checkInLocation.distanceMeters || 0}m)`}
+                          title={`Verified within office perimeter at Pearl Enclave (${s.checkInLocation.distanceMeters || 0}m)`}
                         >
                           <MapPin className="w-3 h-3 text-teal-600" />
-                          <span>Pearl Enclave (≤100m)</span>
+                          <span>Pearl Enclave (Verified)</span>
                         </span>
                       )}
                     </div>

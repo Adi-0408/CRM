@@ -236,7 +236,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Enforce GPS Location & 100m Office Geofence Perimeter
+      // Enforce GPS Location & Office Geofence Perimeter (≤ 250m)
       if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
         return NextResponse.json(
           { error: 'GPS coordinates are required to verify the office perimeter before clocking out.' },
@@ -244,7 +244,23 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const geoCheck = evaluateGeofence(location.latitude, location.longitude);
+      const customOffice =
+        location.calibratedOffice?.latitude && location.calibratedOffice?.longitude
+          ? {
+              latitude: Number(location.calibratedOffice.latitude),
+              longitude: Number(location.calibratedOffice.longitude),
+            }
+          : undefined;
+
+      let geoCheck = evaluateGeofence(location.latitude, location.longitude, customOffice);
+      if (!geoCheck.isWithinPerimeter && customOffice) {
+        // Fallback check against default office
+        const fallbackCheck = evaluateGeofence(location.latitude, location.longitude);
+        if (fallbackCheck.isWithinPerimeter) {
+          geoCheck = fallbackCheck;
+        }
+      }
+
       if (!geoCheck.isWithinPerimeter) {
         return NextResponse.json(
           {
@@ -310,7 +326,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Enforce GPS Location & 100m Office Geofence Perimeter
+      // Enforce GPS Location & Office Geofence Perimeter (≤ 250m)
       if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
         return NextResponse.json(
           { error: 'GPS coordinates are required to verify the office perimeter before clocking in.' },
@@ -318,7 +334,23 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const geoCheck = evaluateGeofence(location.latitude, location.longitude);
+      const customOffice =
+        location.calibratedOffice?.latitude && location.calibratedOffice?.longitude
+          ? {
+              latitude: Number(location.calibratedOffice.latitude),
+              longitude: Number(location.calibratedOffice.longitude),
+            }
+          : undefined;
+
+      let geoCheck = evaluateGeofence(location.latitude, location.longitude, customOffice);
+      if (!geoCheck.isWithinPerimeter && customOffice) {
+        // Fallback check against default office
+        const fallbackCheck = evaluateGeofence(location.latitude, location.longitude);
+        if (fallbackCheck.isWithinPerimeter) {
+          geoCheck = fallbackCheck;
+        }
+      }
+
       if (!geoCheck.isWithinPerimeter) {
         return NextResponse.json(
           {
