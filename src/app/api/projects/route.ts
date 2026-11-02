@@ -14,7 +14,11 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status');
     const query: any = {};
     if (status && status !== 'all') {
-      query.status = status;
+      if (status === 'new') {
+        query.status = { $in: ['new', 'planning'] };
+      } else {
+        query.status = status;
+      }
     }
 
     // DATA SCOPING: Admin (Manager) sees all projects; developers see projects they are assigned to
@@ -31,7 +35,16 @@ export async function GET(req: NextRequest) {
       .sort({ deadline: 1 })
       .populate('teamMembers', 'name email avatar role');
 
-    return NextResponse.json(projects);
+    const normalizedProjects = projects.map((p: any) => {
+      const obj = p.toObject ? p.toObject() : { ...p };
+      if (obj.status === 'planning') {
+        obj.status = 'new';
+        Project.findByIdAndUpdate(obj._id || obj.id, { status: 'new' }).catch(() => {});
+      }
+      return obj;
+    });
+
+    return NextResponse.json(normalizedProjects);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -51,6 +64,10 @@ export async function POST(req: NextRequest) {
         { error: 'Title, client and deadline are required' },
         { status: 400 }
       );
+    }
+
+    if (!body.status || body.status === 'planning') {
+      body.status = 'new';
     }
 
     // Verify that assigned team members are strictly developers or interns

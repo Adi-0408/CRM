@@ -82,16 +82,17 @@ export default function ProjectsView({
     });
   }, [projects, isAdminOrManager, user]);
 
-  const filteredProjects = scopedProjects.filter(
-    (p) => filter === 'all' || p.status === filter
-  );
+  const filteredProjects = scopedProjects.filter((p) => {
+    const normalized = (p.status === 'planning' ? 'new' : p.status) || 'new';
+    return filter === 'all' || normalized === filter;
+  });
 
   return (
     <div className="space-y-6">
       {/* Top Filter Bar */}
       <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 p-5 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full sm:w-auto p-1 bg-slate-100/80 border border-slate-200/50 rounded-full">
-          {['all', 'in_progress', 'planning', 'review', 'completed'].map((st) => (
+          {['all', 'new', 'in_progress', 'completed'].map((st) => (
             <button
               key={st}
               onClick={() => setFilter(st)}
@@ -202,22 +203,32 @@ export default function ProjectsView({
                     {/* Status updater for Admin/Manager, read-only pill for Employee */}
                     {isAdminOrManager ? (
                       <CustomSelect
-                        value={project.status}
+                        value={project.status === 'planning' ? 'new' : project.status || 'new'}
                         onChange={(val) => updateStatus(project._id, val)}
                         size="xs"
                         position="top"
                         buttonClassName="uppercase font-bold text-[10px] text-slate-800 bg-white"
                         options={[
-                          { value: 'planning', label: 'PLANNING' },
+                          { value: 'new', label: 'NEW' },
                           { value: 'in_progress', label: 'IN PROGRESS' },
-                          { value: 'review', label: 'REVIEW' },
                           { value: 'completed', label: 'COMPLETED' },
-                          { value: 'on_hold', label: 'ON HOLD' },
                         ]}
                       />
                     ) : (
-                      <span className="text-[11px] font-bold uppercase rounded-lg px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200">
-                        {project.status?.replace('_', ' ')}
+                      <span
+                        className={`text-[11px] font-bold uppercase rounded-lg px-2.5 py-1 border ${
+                          project.status === 'completed'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : project.status === 'in_progress'
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}
+                      >
+                        {project.status === 'in_progress'
+                          ? 'In Progress'
+                          : project.status === 'completed'
+                          ? 'Completed'
+                          : 'New'}
                       </span>
                     )}
 

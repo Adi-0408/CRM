@@ -42,14 +42,14 @@ export async function uploadToCloudinary(
   } catch (error) {
     console.warn('⚠️ Cloudinary upload failed or credentials invalid, using fallback asset handler:', error);
     // Provide a resilient fallback so the user experience is smooth even if credentials are being updated
-    const isImage = fileData.startsWith('data:image/');
     const mockId = `fallback_${folder}_${Date.now()}`;
+    const fallbackAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${mockId}`;
     return {
       publicId: mockId,
-      url: isImage ? fileData : `https://api.dicebear.com/7.x/bottts/svg?seed=${mockId}`,
-      secureUrl: isImage ? fileData : `https://api.dicebear.com/7.x/bottts/svg?seed=${mockId}`,
-      format: 'png',
-      bytes: fileData.length,
+      url: fallbackAvatar,
+      secureUrl: fallbackAvatar,
+      format: 'svg',
+      bytes: 256,
     };
   }
 }

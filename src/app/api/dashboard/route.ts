@@ -17,21 +17,18 @@ export async function GET() {
     const todayStr = new Date().toISOString().split('T')[0];
     const now = new Date();
 
-    // Execute independent queries in parallel via Promise.all
+    // Execute consolidated queries in parallel via Promise.all
     const [
       totalEmployees,
-      presentToday,
+      todayAttendance,
       topPerformers,
       allProjects,
       recentTickets,
       allLeads,
-      totalTasks,
-      completedTasks,
-      inProgressTasks,
-      todoTasks,
+      allTasks,
     ] = await Promise.all([
       Employee.countDocuments(),
-      Attendance.countDocuments({ date: todayStr, status: 'present' }),
+      Attendance.find({ date: todayStr }),
       Employee.find({ completedTasksCount: { $gt: 0 } })
         .sort({ completedTasksCount: -1, createdAt: 1 })
         .limit(5)
@@ -42,11 +39,14 @@ export async function GET() {
         .limit(5)
         .populate('assignedTo', 'name avatar'),
       Lead.find(),
-      Task.countDocuments(),
-      Task.countDocuments({ status: 'completed' }),
-      Task.countDocuments({ status: 'in_progress' }),
-      Task.countDocuments({ status: 'todo' }),
+      Task.find().select('status'),
     ]);
+
+    const presentToday = todayAttendance.filter((a: any) => a.status === 'present').length;
+    const totalTasks = allTasks.length;
+    const completedTasks = allTasks.filter((t: any) => t.status === 'completed').length;
+    const inProgressTasks = allTasks.filter((t: any) => t.status === 'in_progress').length;
+    const newTasks = allTasks.filter((t: any) => t.status === 'new' || t.status === 'todo').length;
 
     const attendanceRate = totalEmployees > 0 ? Math.round((presentToday / totalEmployees) * 100) : 0;
 
@@ -77,25 +77,24 @@ export async function GET() {
 
     // Project Status Distribution
     const statusMap: Record<string, number> = {
-      planning: 0,
+      new: 0,
       in_progress: 0,
-      review: 0,
       completed: 0,
-      on_hold: 0,
     };
     allProjects.forEach((p: any) => {
-      const st = String(p.status || 'planning').toLowerCase();
+      let st = String(p.status || 'new').toLowerCase();
+      if (st === 'planning') st = 'new';
       if (statusMap[st] !== undefined) {
         statusMap[st]++;
+      } else {
+        statusMap.new++;
       }
     });
 
     const projectStatusDistribution = [
+      { name: 'New', value: statusMap.new, color: '#38bdf8' },
       { name: 'In Progress', value: statusMap.in_progress, color: '#6366f1' },
-      { name: 'Planning', value: statusMap.planning, color: '#38bdf8' },
-      { name: 'Review', value: statusMap.review, color: '#f59e0b' },
       { name: 'Completed', value: statusMap.completed, color: '#10b981' },
-      { name: 'On Hold', value: statusMap.on_hold, color: '#ef4444' },
     ];
 
     // Leads Summary derived from allLeads
@@ -134,7 +133,8 @@ export async function GET() {
         totalTasks,
         completedTasks,
         inProgressTasks,
-        todoTasks,
+        newTasks,
+        todoTasks: newTasks,
       },
       leadPipeline,
       topPerformers,

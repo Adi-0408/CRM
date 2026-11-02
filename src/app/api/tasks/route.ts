@@ -17,7 +17,13 @@ export async function GET(req: NextRequest) {
     const projectId = searchParams.get('projectId');
 
     const query: any = {};
-    if (status && status !== 'all') query.status = status;
+    if (status && status !== 'all') {
+      if (status === 'new') {
+        query.status = { $in: ['new', 'todo'] };
+      } else {
+        query.status = status;
+      }
+    }
     if (projectId) query.project = projectId;
 
     // DATA SCOPING: Admin (Manager) sees all tasks; others see only tasks assigned to them
@@ -35,7 +41,16 @@ export async function GET(req: NextRequest) {
       .populate('assignedTo', 'name email avatar role')
       .populate('project', 'title client status');
 
-    return NextResponse.json(tasks);
+    const normalizedTasks = tasks.map((t: any) => {
+      const obj = t.toObject ? t.toObject() : { ...t };
+      if (obj.status === 'todo') {
+        obj.status = 'new';
+        Task.findByIdAndUpdate(obj._id || obj.id, { status: 'new' }).catch(() => {});
+      }
+      return obj;
+    });
+
+    return NextResponse.json(normalizedTasks);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -52,6 +67,10 @@ export async function POST(req: NextRequest) {
 
     if (!body.title) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
+    }
+
+    if (!body.status || body.status === 'todo') {
+      body.status = 'new';
     }
 
     if (body.status === 'completed' && !body.completedAt) {

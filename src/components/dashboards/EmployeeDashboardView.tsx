@@ -118,7 +118,7 @@ export default function EmployeeDashboardView({
   }, 0);
 
   const handleToggleTask = async (task: any) => {
-    const nextStatus = task.status === 'completed' ? 'todo' : 'completed';
+    const nextStatus = task.status === 'completed' ? 'new' : 'completed';
     try {
       await fetch(`/api/tasks/${task._id}`, {
         method: 'PUT',
@@ -302,10 +302,18 @@ export default function EmployeeDashboardView({
                       className={`text-[10px] font-semibold uppercase px-2.5 py-0.5 rounded-full flex-shrink-0 ${
                         isCompleted
                           ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                          : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
+                          : t.status === 'in_progress'
+                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                          : 'bg-blue-50 text-blue-700 border border-blue-200'
                       }`}
                     >
-                      {t.status.replace('_', ' ')}
+                      {t.status === 'in_progress'
+                        ? 'In Progress'
+                        : isCompleted
+                        ? 'Completed'
+                        : t.status === 'todo'
+                        ? 'New'
+                        : t.status || 'New'}
                     </span>
                   </div>
                 );

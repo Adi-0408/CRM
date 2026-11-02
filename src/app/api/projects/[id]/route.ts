@@ -16,6 +16,9 @@ export async function PUT(
 
     await connectToDatabase();
     const body = await req.json();
+    if (body.status === 'planning') {
+      body.status = 'new';
+    }
 
     // Verify team members if being updated
     if (Array.isArray(body.teamMembers) && body.teamMembers.length > 0) {

@@ -7,7 +7,7 @@ export interface IProject {
   client: string;
   description?: string;
   budget?: number;
-  status?: 'planning' | 'in_progress' | 'review' | 'completed' | 'on_hold';
+  status?: 'new' | 'in_progress' | 'completed' | 'planning' | 'review' | 'on_hold';
   progress?: number;
   priority?: 'low' | 'medium' | 'high' | 'urgent';
   deadline: Date | string;

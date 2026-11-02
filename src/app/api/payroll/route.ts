@@ -13,7 +13,6 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     await connectToDatabase();
-    await triggerAutoClockOutIfDue();
     const authUser = await getAuthUser(req);
     const { searchParams } = new URL(req.url);
     const month = searchParams.get('month') || getCurrentMonthStr();
@@ -75,39 +74,9 @@ export async function GET(req: NextRequest) {
         const existing = payrollMap.get(emp._id.toString());
         const calculated = await calculateEmployeePayroll(emp, month, existing, preloaded);
 
-        // Auto-upsert into Firestore so records are permanently synced
-        const upsertDoc: any = {
-          employeeId: emp._id,
-          employee: emp._id,
-          month,
-          baseSalary: calculated.baseSalary,
-          approvedLeaves: calculated.approvedLeaves,
-          unapprovedLeaves: calculated.unapprovedLeaves,
-          halfDays: calculated.halfDays,
-          totalDeductions: calculated.totalDeductions,
-          netSalary: calculated.netSalary,
-          status: calculated.status,
-        };
-
-        if (calculated.paidAt) {
-          upsertDoc.paidAt = calculated.paidAt;
-        }
-        if (calculated.unapprovedLeavesOverride !== undefined) {
-          upsertDoc.unapprovedLeavesOverride = calculated.unapprovedLeavesOverride;
-        }
-        if (calculated.halfDaysOverride !== undefined) {
-          upsertDoc.halfDaysOverride = calculated.halfDaysOverride;
-        }
-
-        const saved = await Payroll.findOneAndUpdate(
-          { employeeId: emp._id, month },
-          { $set: upsertDoc },
-          { upsert: true, new: true }
-        );
-
         return {
           ...calculated,
-          _id: saved?._id || saved?.id,
+          _id: existing?._id || existing?.id || `payroll_${emp._id}_${month}`,
         };
       })
     );

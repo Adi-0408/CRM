@@ -81,30 +81,41 @@ export default function CRMApp() {
   const fetchData = async () => {
     try {
       setSyncing(true);
-      const [dashRes, tasksRes, leadsRes, projectsRes, employeesRes, ticketsRes] =
-        await Promise.all([
-          fetch('/api/dashboard'),
-          fetch('/api/tasks'),
-          fetch('/api/leads'),
-          fetch('/api/projects'),
-          fetch('/api/employees'),
-          fetch('/api/tickets'),
-        ]);
+      // Phase 1: Fetch primary dashboard data & employees for immediate render
+      const [dashRes, employeesRes] = await Promise.all([
+        fetch('/api/dashboard'),
+        fetch('/api/employees'),
+      ]);
 
-      const [dash, tks, lds, prjs, emps, tcks] = await Promise.all([
+      const [dash, emps] = await Promise.all([
         dashRes.json(),
-        tasksRes.json(),
-        leadsRes.json(),
-        projectsRes.json(),
         employeesRes.json(),
-        ticketsRes.json(),
       ]);
 
       if (dash && !dash.error) setDashboardData(dash);
+      if (Array.isArray(emps)) setEmployees(emps);
+
+      // Render Dashboard immediately without waiting for secondary tabs
+      setLoading(false);
+
+      // Phase 2: Load secondary tab stores in parallel background streams
+      const [tasksRes, leadsRes, projectsRes, ticketsRes] = await Promise.all([
+        fetch('/api/tasks'),
+        fetch('/api/leads'),
+        fetch('/api/projects'),
+        fetch('/api/tickets'),
+      ]);
+
+      const [tks, lds, prjs, tcks] = await Promise.all([
+        tasksRes.json(),
+        leadsRes.json(),
+        projectsRes.json(),
+        ticketsRes.json(),
+      ]);
+
       if (Array.isArray(tks)) setTasks(tks);
       if (Array.isArray(lds)) setLeads(lds);
       if (Array.isArray(prjs)) setProjects(prjs);
-      if (Array.isArray(emps)) setEmployees(emps);
       if (Array.isArray(tcks)) setTickets(tcks);
     } catch (err) {
       console.error('Error fetching CRM data:', err);

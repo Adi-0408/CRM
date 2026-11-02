@@ -119,9 +119,8 @@ export default function LeadsView({
   };
 
   const projectStages = [
-    { key: 'planning', label: 'Planning' },
+    { key: 'new', label: 'New' },
     { key: 'in_progress', label: 'In Progress' },
-    { key: 'review', label: 'Review' },
     { key: 'completed', label: 'Completed' },
   ];
 
@@ -387,21 +386,27 @@ export default function LeadsView({
                               </div>
                             </div>
 
-                            {/* 2. Current Stage Stepper (Planning ➔ In Progress ➔ Review ➔ Completed) */}
+                            {/* 2. Current Stage Stepper (New ➔ In Progress ➔ Completed) */}
                             <div>
                               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
                                 Stage Progression
                               </span>
-                              <div className="grid grid-cols-4 gap-1 text-[9px] font-bold text-center">
+                              <div className="grid grid-cols-3 gap-1.5 text-[10px] font-bold text-center">
                                 {projectStages.map((ps, idx) => {
-                                  const currentIdx = projectStages.findIndex((s) => s.key === linkedProject.status);
+                                  const normalizedStatus =
+                                    linkedProject.status === 'planning'
+                                      ? 'new'
+                                      : linkedProject.status;
+                                  const currentIdx = projectStages.findIndex(
+                                    (s) => s.key === normalizedStatus
+                                  );
                                   const isPast = idx < currentIdx;
                                   const isCurrent = idx === currentIdx;
 
                                   return (
                                     <div
                                       key={ps.key}
-                                      className={`py-1 px-0.5 rounded-lg border transition-all ${
+                                      className={`py-1 px-1 rounded-lg border transition-all ${
                                         isCurrent
                                           ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs scale-105'
                                           : isPast

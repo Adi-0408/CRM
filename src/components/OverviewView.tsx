@@ -42,6 +42,7 @@ interface OverviewViewProps {
       totalTasks?: number;
       completedTasks?: number;
       inProgressTasks?: number;
+      newTasks?: number;
       todoTasks?: number;
     };
     topPerformers: Array<{

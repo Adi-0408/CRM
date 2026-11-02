@@ -15,6 +15,9 @@ export async function PUT(
     const authUser = await getAuthUser(req);
     await connectToDatabase();
     const body = await req.json();
+    if (body.status === 'todo') {
+      body.status = 'new';
+    }
 
     const oldTask = await Task.findById(params.id);
     if (!oldTask) {

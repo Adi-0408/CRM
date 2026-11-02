@@ -26,6 +26,7 @@ export default function CreateTaskModal({
   const [projectId, setProjectId] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [priority, setPriority] = useState('medium');
+  const [status, setStatus] = useState<'new' | 'in_progress' | 'completed'>('new');
   const [dueDate, setDueDate] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
@@ -53,7 +54,7 @@ export default function CreateTaskModal({
           priority,
           dueDate: dueDate ? new Date(dueDate) : new Date(),
           description,
-          status: 'todo',
+          status: status || 'new',
         }),
       });
 
@@ -117,7 +118,7 @@ export default function CreateTaskModal({
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {/* Project */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -130,6 +131,22 @@ export default function CreateTaskModal({
                 options={[
                   { value: '', label: '-- Select Project --' },
                   ...projects.map((p) => ({ value: p._id, label: p.title })),
+                ]}
+              />
+            </div>
+
+            {/* Status */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Status
+              </label>
+              <CustomSelect
+                value={status}
+                onChange={(val) => setStatus(val as any)}
+                options={[
+                  { value: 'new', label: 'New' },
+                  { value: 'in_progress', label: 'In Progress' },
+                  { value: 'completed', label: 'Completed' },
                 ]}
               />
             </div>

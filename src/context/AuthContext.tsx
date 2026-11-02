@@ -58,11 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error('Error loading session from localStorage:', e);
     } finally {
-      // Transitional loader for initial boot
-      const timer = setTimeout(() => {
-        setLoading(false);
-      }, 700);
-      return () => clearTimeout(timer);
+      setLoading(false);
     }
   }, []);
 
@@ -89,9 +85,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setAuthMessage(`Signing in as ${data.user.name}...`);
-
-      // 800ms transitional display matching user prompt
-      await new Promise((r) => setTimeout(r, 800));
 
       setUser(data.user);
       localStorage.setItem('crm_auth_user', JSON.stringify(data.user));
@@ -144,8 +137,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setIsAuthenticating(true);
     setAuthMessage(`Switching to ${roleLabel} Dashboard...`);
-
-    await new Promise((r) => setTimeout(r, 600));
 
     const switchedUser: AuthUser = {
       id: `user_${demo.role}`,

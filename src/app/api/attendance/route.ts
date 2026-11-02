@@ -16,7 +16,8 @@ export async function GET(req: NextRequest) {
   try {
     await connectToDatabase();
     initAutoClockOutJob();
-    await triggerAutoClockOutIfDue();
+    // Run auto clock-out in the background without blocking the GET response
+    triggerAutoClockOutIfDue().catch(() => {});
 
     const authUser = await getAuthUser(req);
     const { searchParams } = new URL(req.url);
@@ -95,7 +96,8 @@ export async function POST(req: NextRequest) {
   try {
     await connectToDatabase();
     initAutoClockOutJob();
-    await triggerAutoClockOutIfDue();
+    // Run auto clock-out in the background without blocking the GET response
+    triggerAutoClockOutIfDue().catch(() => {});
 
     const authUser = await getAuthUser(req);
     const body = await req.json();

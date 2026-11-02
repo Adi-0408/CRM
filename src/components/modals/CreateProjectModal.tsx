@@ -33,6 +33,7 @@ export default function CreateProjectModal({
   const [budget, setBudget] = useState('35000');
   const [deadline, setDeadline] = useState('');
   const [priority, setPriority] = useState('medium');
+  const [status, setStatus] = useState<'new' | 'in_progress' | 'completed'>('new');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
@@ -89,7 +90,7 @@ export default function CreateProjectModal({
           priority,
           teamMembers: selectedMembers,
           description,
-          status: 'planning',
+          status: status || 'new',
           progress: 0,
           leadId: initialLeadId || undefined,
         }),
@@ -184,10 +185,10 @@ export default function CreateProjectModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Budget ($)
+                Budget (₹)
               </label>
               <input
                 type="text"
@@ -201,14 +202,16 @@ export default function CreateProjectModal({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Deadline *
+                Status
               </label>
-              <input
-                type="date"
-                required
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600 text-sm text-slate-800 bg-white"
+              <CustomSelect
+                value={status}
+                onChange={(val) => setStatus(val as any)}
+                options={[
+                  { value: 'new', label: 'New' },
+                  { value: 'in_progress', label: 'In Progress' },
+                  { value: 'completed', label: 'Completed' },
+                ]}
               />
             </div>
 
@@ -225,6 +228,19 @@ export default function CreateProjectModal({
                   { value: 'high', label: 'High' },
                   { value: 'urgent', label: 'Urgent' },
                 ]}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Deadline *
+              </label>
+              <input
+                type="date"
+                required
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600 text-sm text-slate-800 bg-white"
               />
             </div>
           </div>

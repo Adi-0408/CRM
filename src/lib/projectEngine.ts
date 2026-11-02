@@ -25,7 +25,7 @@ export async function recalculateProjectProgress(projectId: string): Promise<any
         nextStatus = 'completed';
       }
     } else if (progress > 0) {
-      if (currentProject.status === 'planning') {
+      if (currentProject.status === 'planning' || currentProject.status === 'new') {
         nextStatus = 'in_progress';
       }
     }

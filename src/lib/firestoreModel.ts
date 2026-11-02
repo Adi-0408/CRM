@@ -248,6 +248,7 @@ export function createDocumentWrapper(data: any, collectionName: string): any {
 
       if (id) {
         await setDoc(doc(db, collectionName, String(id)), payload, { merge: true });
+        invalidatePopulateCache(collectionName, String(id));
       } else {
         const created = await addDoc(colRef, {
           ...payload,
@@ -255,6 +256,7 @@ export function createDocumentWrapper(data: any, collectionName: string): any {
         });
         this._id = created.id;
         this.id = created.id;
+        invalidatePopulateCache(collectionName, created.id);
       }
       return this;
     },
@@ -332,6 +334,25 @@ export function buildQueryConstraints(filter?: any): QueryConstraint[] {
   return constraints;
 }
 
+const POPULATE_CACHE = new Map<string, { data: any; exp: number }>();
+const CACHE_TTL_MS = 60000; // 60-second in-memory relation cache
+
+export function invalidatePopulateCache(collectionName?: string, id?: string) {
+  if (!collectionName) {
+    POPULATE_CACHE.clear();
+    return;
+  }
+  if (id) {
+    POPULATE_CACHE.delete(`${collectionName}:${id}`);
+  } else {
+    for (const key of Array.from(POPULATE_CACHE.keys())) {
+      if (key.startsWith(`${collectionName}:`)) {
+        POPULATE_CACHE.delete(key);
+      }
+    }
+  }
+}
+
 // Populate reference fields on documents using batched where(documentId(), 'in', chunk) queries
 async function populateDocs(docs: any[], populates: { path: string; select?: string }[]) {
   if (!docs || docs.length === 0 || !populates || populates.length === 0) return docs;
@@ -359,56 +380,78 @@ async function populateDocs(docs: any[], populates: { path: string; select?: str
     if (idsToFetch.size === 0) continue;
 
     const fetchedMap = new Map<string, any>();
-    const allIds = Array.from(idsToFetch);
+    const now = Date.now();
+    const idsToQuery: string[] = [];
 
-    // Chunk IDs into batches of up to 30 for Firestore `in` query
-    const BATCH_SIZE = 30;
-    const chunks: string[][] = [];
-    for (let i = 0; i < allIds.length; i += BATCH_SIZE) {
-      chunks.push(allIds.slice(i, i + BATCH_SIZE));
+    // Check in-memory cache first
+    for (const refId of Array.from(idsToFetch)) {
+      const cached = POPULATE_CACHE.get(`${targetCollection}:${refId}`);
+      if (cached && now < cached.exp) {
+        let populatedVal: any = { _id: refId, id: refId };
+        if (selectFields && selectFields.length > 0) {
+          for (const f of selectFields) {
+            if (cached.data[f] !== undefined) populatedVal[f] = cached.data[f];
+          }
+        } else {
+          populatedVal = { ...cached.data, _id: refId, id: refId };
+        }
+        fetchedMap.set(refId, populatedVal);
+      } else {
+        idsToQuery.push(refId);
+      }
     }
 
-    await Promise.all(
-      chunks.map(async (chunk) => {
-        try {
-          const q = query(collection(db, targetCollection), where(documentId(), 'in', chunk));
-          const snap = await getDocs(q);
-          snap.forEach((s) => {
-            const raw = s.data();
-            let populatedVal: any = { _id: s.id, id: s.id };
-            if (selectFields && selectFields.length > 0) {
-              for (const f of selectFields) {
-                if (raw[f] !== undefined) populatedVal[f] = raw[f];
-              }
-            } else {
-              populatedVal = { ...raw, _id: s.id, id: s.id };
-            }
-            fetchedMap.set(s.id, populatedVal);
-          });
-        } catch {
-          // Fallback to individual getDoc if batch query encounters an issue
-          await Promise.all(
-            chunk.map(async (refId) => {
-              try {
-                const snap = await getDoc(doc(db, targetCollection, refId));
-                if (snap.exists()) {
-                  const raw = snap.data();
-                  let populatedVal: any = { _id: snap.id, id: snap.id };
-                  if (selectFields && selectFields.length > 0) {
-                    for (const f of selectFields) {
-                      if (raw[f] !== undefined) populatedVal[f] = raw[f];
-                    }
-                  } else {
-                    populatedVal = { ...raw, _id: snap.id, id: snap.id };
-                  }
-                  fetchedMap.set(refId, populatedVal);
+    if (idsToQuery.length > 0) {
+      const BATCH_SIZE = 30;
+      const chunks: string[][] = [];
+      for (let i = 0; i < idsToQuery.length; i += BATCH_SIZE) {
+        chunks.push(idsToQuery.slice(i, i + BATCH_SIZE));
+      }
+
+      await Promise.all(
+        chunks.map(async (chunk) => {
+          try {
+            const q = query(collection(db, targetCollection), where(documentId(), 'in', chunk));
+            const snap = await getDocs(q);
+            snap.forEach((s) => {
+              const raw = s.data();
+              POPULATE_CACHE.set(`${targetCollection}:${s.id}`, { data: raw, exp: Date.now() + CACHE_TTL_MS });
+              let populatedVal: any = { _id: s.id, id: s.id };
+              if (selectFields && selectFields.length > 0) {
+                for (const f of selectFields) {
+                  if (raw[f] !== undefined) populatedVal[f] = raw[f];
                 }
-              } catch (_) {}
-            })
-          );
-        }
-      })
-    );
+              } else {
+                populatedVal = { ...raw, _id: s.id, id: s.id };
+              }
+              fetchedMap.set(s.id, populatedVal);
+            });
+          } catch {
+            // Fallback to individual getDoc if batch query encounters an issue
+            await Promise.all(
+              chunk.map(async (refId) => {
+                try {
+                  const snap = await getDoc(doc(db, targetCollection, refId));
+                  if (snap.exists()) {
+                    const raw = snap.data();
+                    POPULATE_CACHE.set(`${targetCollection}:${refId}`, { data: raw, exp: Date.now() + CACHE_TTL_MS });
+                    let populatedVal: any = { _id: snap.id, id: snap.id };
+                    if (selectFields && selectFields.length > 0) {
+                      for (const f of selectFields) {
+                        if (raw[f] !== undefined) populatedVal[f] = raw[f];
+                      }
+                    } else {
+                      populatedVal = { ...raw, _id: snap.id, id: snap.id };
+                    }
+                    fetchedMap.set(refId, populatedVal);
+                  }
+                } catch (_) {}
+              })
+            );
+          }
+        })
+      );
+    }
 
     // Apply populated values
     for (const d of docs) {
@@ -595,6 +638,7 @@ export function createFirestoreModel<T = any>(collectionName: string) {
       await setDoc(doc(db, collectionName, String(currentId)), payload, { merge: true });
       this._id = currentId;
       this.id = currentId;
+      invalidatePopulateCache(collectionName, String(currentId));
 
       return createDocumentWrapper({ ...payload, _id: currentId, id: currentId }, collectionName);
     }
@@ -636,6 +680,7 @@ export function createFirestoreModel<T = any>(collectionName: string) {
       }
 
       await setDoc(doc(db, collectionName, String(docId)), payload, { merge: true });
+      invalidatePopulateCache(collectionName, String(docId));
       return createDocumentWrapper({ ...payload, _id: docId, id: docId }, collectionName);
     }
 
@@ -668,6 +713,7 @@ export function createFirestoreModel<T = any>(collectionName: string) {
       const payload: any = sanitizeForFirestore(rawPayload);
 
       await setDoc(docRef, payload, { merge: true });
+      invalidatePopulateCache(collectionName, String(id));
       return createDocumentWrapper({ ...current, ...payload, _id: String(id), id: String(id) }, collectionName);
     }
 
@@ -699,6 +745,7 @@ export function createFirestoreModel<T = any>(collectionName: string) {
       if (!snap.exists()) return null;
       const deletedDoc = snapshotToDoc(snap, collectionName);
       await deleteDoc(docRef);
+      invalidatePopulateCache(collectionName, String(id));
       return deletedDoc;
     }
 
@@ -716,7 +763,7 @@ export function createFirestoreModel<T = any>(collectionName: string) {
           }
         })
       );
-
+      invalidatePopulateCache(collectionName);
       return { deletedCount: count };
     }
 

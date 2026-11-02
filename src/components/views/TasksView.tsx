@@ -32,7 +32,7 @@ export default function TasksView({
   const [search, setSearch] = useState('');
 
   const toggleTaskStatus = async (task: any) => {
-    const nextStatus = task.status === 'completed' ? 'todo' : 'completed';
+    const nextStatus = task.status === 'completed' ? 'new' : 'completed';
     try {
       await authFetch(`/api/tasks/${task._id}`, {
         method: 'PUT',
@@ -42,6 +42,19 @@ export default function TasksView({
       onRefresh();
     } catch (err) {
       console.error('Error toggling task:', err);
+    }
+  };
+
+  const updateTaskStatus = async (task: any, newStatus: string) => {
+    try {
+      await authFetch(`/api/tasks/${task._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      onRefresh();
+    } catch (err) {
+      console.error('Error updating task status:', err);
     }
   };
 
@@ -78,7 +91,8 @@ export default function TasksView({
   }, [tasks, role, user]);
 
   const filteredTasks = scopedTasks.filter((t) => {
-    const matchesFilter = filter === 'all' || t.status === filter;
+    const normalizedStatus = (t.status === 'todo' ? 'new' : t.status) || 'new';
+    const matchesFilter = filter === 'all' || normalizedStatus === filter;
     const matchesSearch =
       t.title.toLowerCase().includes(search.toLowerCase()) ||
       t.project?.title?.toLowerCase().includes(search.toLowerCase()) ||
@@ -103,7 +117,7 @@ export default function TasksView({
           </div>
 
           <div className="flex items-center space-x-1 bg-slate-100/80 border border-slate-200/50 p-1 rounded-full">
-            {['all', 'todo', 'in_progress', 'completed'].map((st) => (
+            {['all', 'new', 'in_progress', 'completed'].map((st) => (
               <button
                 key={st}
                 onClick={() => setFilter(st)}
@@ -189,6 +203,24 @@ export default function TasksView({
                       >
                         {task.priority}
                       </span>
+
+                      {/* Status Selector Pill */}
+                      <select
+                        value={task.status === 'todo' ? 'new' : task.status || 'new'}
+                        onChange={(e) => updateTaskStatus(task, e.target.value)}
+                        className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full border transition-all cursor-pointer focus:outline-none ${
+                          task.status === 'completed'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : task.status === 'in_progress'
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}
+                        title="Update Task Status (New ➔ In Progress ➔ Completed)"
+                      >
+                        <option value="new">New</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                      </select>
                     </div>
                   </div>
                 </div>
