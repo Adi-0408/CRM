@@ -1,5 +1,13 @@
 import { createFirestoreModel } from '@/lib/firestoreModel';
 
+export interface IAttendanceLocation {
+  latitude: number;
+  longitude: number;
+  distanceMeters: number;
+  address?: string;
+  isWithinPerimeter?: boolean;
+}
+
 export interface IAttendanceSession {
   _id?: string;
   id?: string;
@@ -8,6 +16,10 @@ export interface IAttendanceSession {
   durationMinutes?: number;
   notes?: string;
   isAutoClockOut?: boolean;
+  checkInPhoto?: string;
+  checkOutPhoto?: string;
+  checkInLocation?: IAttendanceLocation;
+  checkOutLocation?: IAttendanceLocation;
 }
 
 export interface IAttendance {

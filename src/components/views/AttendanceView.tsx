@@ -19,6 +19,8 @@ import {
   Sparkles,
   LayoutGrid,
   List,
+  Camera,
+  MapPin,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
@@ -871,12 +873,25 @@ export default function AttendanceView({
                                                 {sessions.map((s, sIdx) => (
                                                   <span
                                                     key={sIdx}
-                                                    className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-mono border border-slate-200"
+                                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-mono border border-slate-200"
+                                                    title={`${formatTimeAmPm(s.checkIn)} - ${s.checkOut ? formatTimeAmPm(s.checkOut) : 'Active'}${s.checkInLocation ? ' (Office Geofence Verified)' : ''}`}
                                                   >
-                                                    {formatTimeAmPm(s.checkIn)} -{' '}
-                                                    {s.checkOut
-                                                      ? formatTimeAmPm(s.checkOut)
-                                                      : 'Active'}
+                                                    <span>
+                                                      {formatTimeAmPm(s.checkIn)} -{' '}
+                                                      {s.checkOut
+                                                        ? formatTimeAmPm(s.checkOut)
+                                                        : 'Active'}
+                                                    </span>
+                                                    {s.checkInPhoto && (
+                                                      <span title="Live Selfie Verified">
+                                                        <Camera className="w-2.5 h-2.5 text-emerald-600" />
+                                                      </span>
+                                                    )}
+                                                    {s.checkInLocation && (
+                                                      <span title={`Pearl Enclave ≤100m (${s.checkInLocation.distanceMeters || 0}m)`}>
+                                                        <MapPin className="w-2.5 h-2.5 text-teal-600" />
+                                                      </span>
+                                                    )}
                                                   </span>
                                                 ))}
                                               </div>

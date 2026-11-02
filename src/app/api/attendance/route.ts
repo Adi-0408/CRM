@@ -9,6 +9,7 @@ import {
   AttendanceSession,
 } from '@/lib/attendanceEngine';
 import { triggerAutoClockOutIfDue, initAutoClockOutJob } from '@/lib/autoClockOutService';
+import { evaluateGeofence, ITPL_OFFICE_LOCATION } from '@/lib/geoFence';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,6 +111,8 @@ export async function POST(req: NextRequest) {
       overrideReason,
       overriddenById,
       notes,
+      photo,
+      location,
     } = body;
 
     if (!employeeId) {
@@ -225,8 +228,44 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Close the active session
+      // Enforce Live Selfie Photo Verification
+      if (!photo || typeof photo !== 'string' || !photo.startsWith('data:image/')) {
+        return NextResponse.json(
+          { error: 'Live photo verification is required. Please capture a live selfie to clock out.' },
+          { status: 400 }
+        );
+      }
+
+      // Enforce GPS Location & 100m Office Geofence Perimeter
+      if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
+        return NextResponse.json(
+          { error: 'GPS coordinates are required to verify the office perimeter before clocking out.' },
+          { status: 400 }
+        );
+      }
+
+      const geoCheck = evaluateGeofence(location.latitude, location.longitude);
+      if (!geoCheck.isWithinPerimeter) {
+        return NextResponse.json(
+          {
+            error: `Location verification failed: You are ${geoCheck.distanceMeters}m away from the office. You must be within ${geoCheck.allowedRadiusMeters}m of Pearl Enclave, Sangli to clock out.`,
+            distanceMeters: geoCheck.distanceMeters,
+            allowedRadiusMeters: geoCheck.allowedRadiusMeters,
+          },
+          { status: 403 }
+        );
+      }
+
+      // Close the active session with verified photo and location
       lastSession.checkOut = now;
+      lastSession.checkOutPhoto = photo;
+      lastSession.checkOutLocation = {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        distanceMeters: geoCheck.distanceMeters,
+        address: geoCheck.officeAddress,
+        isWithinPerimeter: true,
+      };
       if (notes) lastSession.notes = notes;
       record.checkOut = now;
 
@@ -263,6 +302,34 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // Enforce Live Selfie Photo Verification
+      if (!photo || typeof photo !== 'string' || !photo.startsWith('data:image/')) {
+        return NextResponse.json(
+          { error: 'Live photo verification is required. Please capture a live selfie to clock in.' },
+          { status: 400 }
+        );
+      }
+
+      // Enforce GPS Location & 100m Office Geofence Perimeter
+      if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
+        return NextResponse.json(
+          { error: 'GPS coordinates are required to verify the office perimeter before clocking in.' },
+          { status: 400 }
+        );
+      }
+
+      const geoCheck = evaluateGeofence(location.latitude, location.longitude);
+      if (!geoCheck.isWithinPerimeter) {
+        return NextResponse.json(
+          {
+            error: `Location verification failed: You are ${geoCheck.distanceMeters}m away from the office. You must be within ${geoCheck.allowedRadiusMeters}m of Pearl Enclave, Sangli to clock in.`,
+            distanceMeters: geoCheck.distanceMeters,
+            allowedRadiusMeters: geoCheck.allowedRadiusMeters,
+          },
+          { status: 403 }
+        );
+      }
+
       if (!record) {
         record = new Attendance({
           employee: targetEmployeeId,
@@ -271,11 +338,19 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Push new active session
+      // Push new active session with verified photo and location
       record.sessions.push({
         checkIn: now,
         checkOut: null,
         notes: notes || '',
+        checkInPhoto: photo,
+        checkInLocation: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          distanceMeters: geoCheck.distanceMeters,
+          address: geoCheck.officeAddress,
+          isWithinPerimeter: true,
+        },
       } as any);
 
       if (!record.checkIn) {

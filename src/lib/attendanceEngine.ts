@@ -20,6 +20,10 @@ export interface AttendanceSession {
   durationMinutes?: number;
   notes?: string;
   isAutoClockOut?: boolean;
+  checkInPhoto?: string;
+  checkOutPhoto?: string;
+  checkInLocation?: any;
+  checkOutLocation?: any;
 }
 
 export interface AttendanceConfig {

@@ -11,9 +11,14 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
+  Camera,
+  MapPin,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
+import AttendanceVerificationModal from './AttendanceVerificationModal';
+import { IAttendanceLocation } from '@/models/Attendance';
 import {
   AttendanceSession,
   EvaluatedDailyAttendance,
@@ -42,6 +47,7 @@ export default function LiveClockCard({
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
   const [loading, setLoading] = useState(false);
   const [showSessionsDropdown, setShowSessionsDropdown] = useState(false);
+  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -146,7 +152,19 @@ export default function LiveClockCard({
     };
   }, [evaluation, sessions]);
 
-  const handleToggleClock = async () => {
+  const handleToggleClock = () => {
+    setErrorMsg('');
+    setSuccessMsg('');
+    setIsVerificationModalOpen(true);
+  };
+
+  const handlePerformPunch = async ({
+    photo,
+    location,
+  }: {
+    photo: string;
+    location: IAttendanceLocation;
+  }) => {
     if (!user?.id) return;
     try {
       setLoading(true);
@@ -160,6 +178,8 @@ export default function LiveClockCard({
         body: JSON.stringify({
           employeeId: user.id,
           action,
+          photo,
+          location,
         }),
       });
 
@@ -176,15 +196,18 @@ export default function LiveClockCard({
 
       setSuccessMsg(
         isClockedIn
-          ? 'Punched out successfully. Session ended!'
-          : 'Punched in successfully! Have a productive session.'
+          ? 'Punched out successfully with photo & location verified! Session ended.'
+          : 'Punched in successfully with photo & location verified! Have a productive session.'
       );
+
+      setIsVerificationModalOpen(false);
 
       if (onPunchSuccess) {
         onPunchSuccess();
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Error recording punch');
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -478,18 +501,43 @@ export default function LiveClockCard({
                 sessions.map((s, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between text-xs py-1.5 px-3 bg-white rounded-xl border border-slate-100 shadow-2xs"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs py-2 px-3 bg-white rounded-xl border border-slate-100 shadow-2xs"
                   >
-                    <div className="flex items-center space-x-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="w-4 h-4 rounded-full bg-[#F0EEFF] text-[#635BFF] flex items-center justify-center font-bold text-[9px]">
                         #{idx + 1}
                       </span>
                       <span className="font-mono font-medium text-slate-700">
-                        {formatTimeAmPm(s.checkIn)} &rarr; {s.checkOut ? formatTimeAmPm(s.checkOut) : 'Active'}
+                        {formatTimeAmPm(s.checkIn)} &rarr;{' '}
+                        {s.checkOut ? formatTimeAmPm(s.checkOut) : 'Active'}
                       </span>
+
+                      {/* Photo verification badge */}
+                      {s.checkInPhoto && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200"
+                          title="Live selfie verified on punch in"
+                        >
+                          <Camera className="w-3 h-3 text-emerald-600" />
+                          <span>Selfie Verified</span>
+                        </span>
+                      )}
+
+                      {/* Office Geofence verification badge */}
+                      {s.checkInLocation && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200"
+                          title={`Verified within 100m of Pearl Enclave (${s.checkInLocation.distanceMeters || 0}m)`}
+                        >
+                          <MapPin className="w-3 h-3 text-teal-600" />
+                          <span>Pearl Enclave (≤100m)</span>
+                        </span>
+                      )}
                     </div>
                     {s.notes && (
-                      <span className="text-[10px] text-slate-400 italic">{s.notes}</span>
+                      <span className="text-[10px] text-slate-400 italic">
+                        {s.notes}
+                      </span>
                     )}
                   </div>
                 ))
@@ -502,6 +550,15 @@ export default function LiveClockCard({
           )}
         </div>
       </div>
+
+      {/* Live Selfie & Geofence Verification Modal */}
+      <AttendanceVerificationModal
+        isOpen={isVerificationModalOpen}
+        onClose={() => setIsVerificationModalOpen(false)}
+        action={isClockedIn ? 'punch_out' : 'punch_in'}
+        onVerified={handlePerformPunch}
+        isLoading={loading}
+      />
     </div>
   );
 }
