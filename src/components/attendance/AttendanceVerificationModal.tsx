@@ -55,6 +55,30 @@ export default function AttendanceVerificationModal({
   const [geoResult, setGeoResult] = useState<GeofenceResult | null>(null);
   const [isSimulated, setIsSimulated] = useState(false);
 
+  // Handle mobile hardware/gesture Back button (popstate)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Push a state so pressing phone back button pops this state instead of exiting the site
+    const stateId = `modal_verification_${Date.now()}`;
+    window.history.pushState({ modalOpen: true, stateId }, '');
+
+    const handlePopState = () => {
+      // User pressed phone back button: close the modal and remain in the app
+      onClose();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      // If modal was closed programmatically (via Back/Cancel/Close button), pop the history entry
+      if (window.history.state?.stateId === stateId) {
+        window.history.back();
+      }
+    };
+  }, [isOpen, onClose]);
+
   // Keyboard shortcut: Escape to close / go back
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -320,86 +344,88 @@ export default function AttendanceVerificationModal({
 
         {/* Modal Body: 2-Column Responsive Layout */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 items-stretch">
             {/* Column 1: Live Selfie Capture */}
-            <div className="space-y-3 bg-slate-50/60 p-3.5 rounded-2xl border border-slate-100 flex flex-col items-center">
-              <div className="w-full flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
-                  <Camera className="w-3.5 h-3.5 text-[#635BFF]" />
-                  1. Live Selfie
-                </label>
-                {capturedPhoto ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    <CheckCircle2 className="w-3 h-3" /> Captured
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                    Snap Required
-                  </span>
-                )}
-              </div>
+            <div className="space-y-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 flex flex-col justify-between h-full shadow-2xs">
+              <div className="space-y-3">
+                <div className="w-full flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+                    <Camera className="w-3.5 h-3.5 text-[#635BFF]" />
+                    1. Live Selfie
+                  </label>
+                  {capturedPhoto ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      <CheckCircle2 className="w-3 h-3" /> Captured
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                      Snap Required
+                    </span>
+                  )}
+                </div>
 
-              {/* Viewfinder Frame */}
-              <div className="relative w-full aspect-[4/3] max-w-[260px] rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-200 shadow-md flex items-center justify-center">
-                {capturedPhoto ? (
-                  <div className="relative w-full h-full">
-                    <img
-                      src={capturedPhoto}
-                      alt="Captured Live Attendance"
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-2 left-2 bg-emerald-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow backdrop-blur-xs">
-                      <CheckCircle2 className="w-3 h-3" />
-                      Verified
+                {/* Viewfinder Frame */}
+                <div className="relative w-full aspect-[4/3] max-w-[280px] rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-200 shadow-md flex items-center justify-center mx-auto">
+                  {capturedPhoto ? (
+                    <div className="relative w-full h-full">
+                      <img
+                        src={capturedPhoto}
+                        alt="Captured Live Attendance"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute top-2 left-2 bg-emerald-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow backdrop-blur-xs">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Verified
+                      </div>
                     </div>
-                  </div>
-                ) : isCameraLoading ? (
-                  <div className="p-4 text-center space-y-2 text-white">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#635BFF]" />
-                    <p className="text-[11px] text-slate-300 font-medium">Starting camera...</p>
-                  </div>
-                ) : cameraError ? (
-                  <div className="p-3 text-center space-y-2">
-                    <AlertTriangle className="w-6 h-6 text-rose-400 mx-auto" />
-                    <p className="text-[10px] text-rose-200 leading-tight">
-                      {cameraError}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={startCamera}
-                      className="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white text-[10px] font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <RefreshCw className="w-3 h-3" /> Retry
-                    </button>
-                  </div>
-                ) : (
-                  <div className="relative w-full h-full flex items-center justify-center">
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="w-full h-full object-cover transform -scale-x-100"
-                    />
-                    {/* Face Guide Oval */}
-                    <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-                      <div className="w-28 h-36 rounded-[48%] border-2 border-dashed border-white/60 shadow-xs flex items-center justify-center" />
-                      <span className="text-[9px] text-white/90 font-medium bg-slate-950/60 px-2 py-0.5 rounded-full mt-1.5 backdrop-blur-xs">
-                        Center face
-                      </span>
+                  ) : isCameraLoading ? (
+                    <div className="p-4 text-center space-y-2 text-white">
+                      <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#635BFF]" />
+                      <p className="text-[11px] text-slate-300 font-medium">Starting camera...</p>
                     </div>
-                  </div>
-                )}
+                  ) : cameraError ? (
+                    <div className="p-3 text-center space-y-2">
+                      <AlertTriangle className="w-6 h-6 text-rose-400 mx-auto" />
+                      <p className="text-[10px] text-rose-200 leading-tight">
+                        {cameraError}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={startCamera}
+                        className="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white text-[10px] font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <RefreshCw className="w-3 h-3" /> Retry
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative w-full h-full flex items-center justify-center">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover transform -scale-x-100"
+                      />
+                      {/* Face Guide Oval */}
+                      <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
+                        <div className="w-28 h-36 rounded-[48%] border-2 border-dashed border-white/60 shadow-xs flex items-center justify-center" />
+                        <span className="text-[9px] text-white/90 font-medium bg-slate-950/60 px-2 py-0.5 rounded-full mt-1.5 backdrop-blur-xs">
+                          Center face
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Action Buttons Below Viewfinder */}
-              <div className="w-full flex flex-col items-center gap-2 pt-1">
+              <div className="w-full flex flex-col items-center gap-2 pt-2">
                 {capturedPhoto ? (
                   <button
                     type="button"
                     onClick={handleRetakePhoto}
                     disabled={isLoading}
-                    className="w-full max-w-[260px] py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                    className="w-full max-w-[280px] py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs min-h-[42px]"
                   >
                     <RotateCcw className="w-3.5 h-3.5 text-slate-600" />
                     Retake Selfie
@@ -409,7 +435,7 @@ export default function AttendanceVerificationModal({
                     type="button"
                     onClick={handleCapturePhoto}
                     disabled={isCameraLoading || Boolean(cameraError)}
-                    className="w-full max-w-[260px] py-2 rounded-xl bg-gradient-to-r from-[#635BFF] to-[#7B73FF] hover:from-[#5249ea] hover:to-[#685ff8] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                    className="w-full max-w-[280px] py-2.5 rounded-xl bg-gradient-to-r from-[#635BFF] to-[#7B73FF] hover:from-[#5249ea] hover:to-[#685ff8] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50 min-h-[42px]"
                   >
                     <Camera className="w-4 h-4" />
                     Take Live Selfie
@@ -420,7 +446,7 @@ export default function AttendanceVerificationModal({
             </div>
 
             {/* Column 2: Office Geofence Verification */}
-            <div className="space-y-3 bg-slate-50/60 p-3.5 rounded-2xl border border-slate-100 flex flex-col justify-between h-full">
+            <div className="space-y-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 flex flex-col justify-between h-full shadow-2xs">
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
@@ -581,7 +607,7 @@ export default function AttendanceVerificationModal({
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer inline-flex items-center gap-1.5"
+              className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 min-h-[42px]"
             >
               <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
               <span>Back</span>
@@ -590,7 +616,7 @@ export default function AttendanceVerificationModal({
               type="button"
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className={`px-5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md disabled:opacity-40 disabled:cursor-not-allowed ${
+              className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md disabled:opacity-40 disabled:cursor-not-allowed min-h-[42px] ${
                 isPunchIn
                   ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30'
                   : 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/30'

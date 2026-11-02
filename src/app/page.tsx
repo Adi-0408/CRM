@@ -70,17 +70,81 @@ export default function CRMApp() {
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [leadsSection, setLeadsSection] = useState<'leads' | 'quotations'>('leads');
 
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ crmApp: true, tab }, '');
+    }
+  };
+
   const navigateToTab = (tab: string, section?: 'leads' | 'quotations') => {
     if (tab === 'quotations') {
       setLeadsSection('quotations');
-      setActiveTab('leads');
+      handleTabChange('leads');
     } else if (tab === 'leads') {
       setLeadsSection(section || 'leads');
-      setActiveTab('leads');
+      handleTabChange('leads');
     } else {
-      setActiveTab(tab);
+      handleTabChange(tab);
     }
   };
+
+  const openModal = (setter: (v: boolean) => void) => {
+    setter(true);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ crmModal: true }, '');
+    }
+  };
+
+  const toggleMobileMenu = () => {
+    if (!mobileMenuOpen) {
+      setMobileMenuOpen(true);
+      if (typeof window !== 'undefined') {
+        window.history.pushState({ crmMenu: true }, '');
+      }
+    } else {
+      setMobileMenuOpen(false);
+    }
+  };
+
+  // Mobile Back Button Navigation Trap (prevents accidental exit from site)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (!window.history.state || !window.history.state.crmApp) {
+      window.history.replaceState({ crmApp: true, tab: 'overview' }, '');
+    }
+
+    const handlePopState = (e: PopStateEvent) => {
+      // 1. If mobile drawer is open, close it
+      if (mobileMenuOpen) {
+        setMobileMenuOpen(false);
+        return;
+      }
+
+      // 2. If any main modal is open, close it
+      if (showCreateTask || showAddLead || showCreateProject || showAddEmployee) {
+        setShowCreateTask(false);
+        setShowAddLead(false);
+        setShowCreateProject(false);
+        setShowAddEmployee(false);
+        return;
+      }
+
+      // 3. Tab pop
+      if (e.state && e.state.tab) {
+        setActiveTab(e.state.tab);
+        if (e.state.section) {
+          setLeadsSection(e.state.section);
+        }
+      } else {
+        setActiveTab('overview');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [mobileMenuOpen, showCreateTask, showAddLead, showCreateProject, showAddEmployee]);
   const [projectPrefill, setProjectPrefill] = useState<{
     client?: string;
     budget?: number;
@@ -200,7 +264,7 @@ export default function CRMApp() {
       {/* 1. Left Sidebar (Fixed on Desktop, Slide-Over Drawer on Mobile/Tablet) */}
       <Sidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleTabChange}
         collapsed={collapsed}
         setCollapsed={setCollapsed}
         mobileOpen={mobileMenuOpen}
@@ -212,12 +276,12 @@ export default function CRMApp() {
         {/* Top Header with Role-Specific Actions */}
         <Header
           title={getHeaderTitle()}
-          onOpenCreateTask={() => setShowCreateTask(true)}
-          onOpenAddLead={() => setShowAddLead(true)}
-          onOpenCreateProject={() => setShowCreateProject(true)}
-          onOpenAddEmployee={() => setShowAddEmployee(true)}
+          onOpenCreateTask={() => openModal(setShowCreateTask)}
+          onOpenAddLead={() => openModal(setShowAddLead)}
+          onOpenCreateProject={() => openModal(setShowCreateProject)}
+          onOpenAddEmployee={() => openModal(setShowAddEmployee)}
           onNavigateTab={navigateToTab}
-          onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
+          onToggleMobileMenu={toggleMobileMenu}
         />
 
         {/* Inner Content Area */}
@@ -225,7 +289,7 @@ export default function CRMApp() {
           {/* Business Intelligence Header & Pill Navigation */}
           <BusinessIntelligenceNav
             activeTab={activeTab}
-            setActiveTab={setActiveTab}
+            setActiveTab={handleTabChange}
             syncing={syncing}
           />
 
@@ -251,10 +315,10 @@ export default function CRMApp() {
                     data={dashboardData}
                     employees={employees}
                     onNavigate={navigateToTab}
-                    onOpenCreateTask={() => setShowCreateTask(true)}
-                    onOpenAddLead={() => setShowAddLead(true)}
-                    onOpenCreateProject={() => setShowCreateProject(true)}
-                    onOpenAddEmployee={() => setShowAddEmployee(true)}
+                    onOpenCreateTask={() => openModal(setShowCreateTask)}
+                    onOpenAddLead={() => openModal(setShowAddLead)}
+                    onOpenCreateProject={() => openModal(setShowCreateProject)}
+                    onOpenAddEmployee={() => openModal(setShowAddEmployee)}
                   />
                 </div>
               )}
@@ -264,7 +328,7 @@ export default function CRMApp() {
                 <div className={activeTab === 'tasks' ? 'block' : 'hidden'}>
                   <TasksView
                     tasks={tasks}
-                    onOpenCreateTask={() => setShowCreateTask(true)}
+                    onOpenCreateTask={() => openModal(setShowCreateTask)}
                     onRefresh={fetchData}
                   />
                 </div>
@@ -277,10 +341,10 @@ export default function CRMApp() {
                     leads={leads}
                     projects={projects}
                     initialSection={leadsSection}
-                    onOpenAddLead={() => setShowAddLead(true)}
+                    onOpenAddLead={() => openModal(setShowAddLead)}
                     onOpenCreateProject={(prefill) => {
                       setProjectPrefill(prefill || null);
-                      setShowCreateProject(true);
+                      openModal(setShowCreateProject);
                     }}
                     onNavigateTab={navigateToTab}
                     onRefresh={fetchData}
@@ -293,7 +357,7 @@ export default function CRMApp() {
                 <div className={activeTab === 'projects' ? 'block' : 'hidden'}>
                   <ProjectsView
                     projects={projects}
-                    onOpenCreateProject={() => setShowCreateProject(true)}
+                    onOpenCreateProject={() => openModal(setShowCreateProject)}
                     onRefresh={fetchData}
                   />
                 </div>
@@ -346,7 +410,7 @@ export default function CRMApp() {
                 <div className={activeTab === 'employees' ? 'block' : 'hidden'}>
                   <EmployeesView
                     employees={employees}
-                    onOpenAddEmployee={() => setShowAddEmployee(true)}
+                    onOpenAddEmployee={() => openModal(setShowAddEmployee)}
                     onRefresh={fetchData}
                   />
                 </div>
