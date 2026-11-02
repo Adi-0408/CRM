@@ -4,7 +4,13 @@ import Payroll from '@/models/Payroll';
 import Employee from '@/models/Employee';
 import Attendance from '@/models/Attendance';
 import Leave from '@/models/Leave';
-import { calculateEmployeePayroll, getCurrentMonthStr } from '@/lib/payrollEngine';
+import {
+  calculateEmployeePayroll,
+  getCurrentMonthStr,
+  PAYROLL_CACHE,
+  PAYROLL_CACHE_TTL_MS,
+  invalidatePayrollCache,
+} from '@/lib/payrollEngine';
 import { getAuthUser, requireRoles, isValidDocId } from '@/lib/apiAuth';
 import { triggerAutoClockOutIfDue } from '@/lib/autoClockOutService';
 
@@ -17,6 +23,12 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const month = searchParams.get('month') || getCurrentMonthStr();
     const employeeId = searchParams.get('employeeId');
+
+    const cacheKey = `${authUser?.id || 'all'}_${month}_${employeeId || ''}`;
+    const cached = PAYROLL_CACHE.get(cacheKey);
+    if (cached && Date.now() < cached.exp) {
+      return NextResponse.json(cached.data);
+    }
 
     // Build employee query
     const empQuery: any = { status: { $ne: 'suspended' } };
@@ -81,6 +93,7 @@ export async function GET(req: NextRequest) {
       })
     );
 
+    PAYROLL_CACHE.set(cacheKey, { data: results, exp: Date.now() + PAYROLL_CACHE_TTL_MS });
     return NextResponse.json(results);
   } catch (error: any) {
     console.error('Error in GET /api/payroll:', error);
@@ -133,6 +146,7 @@ export async function POST(req: NextRequest) {
       { upsert: true, new: true }
     ).populate('employee', 'name email role department avatar baseSalary salary');
 
+    invalidatePayrollCache(month);
     return NextResponse.json(payroll, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -164,6 +178,7 @@ export async function PUT(req: NextRequest) {
       { new: true }
     ).populate('employee', 'name email role department avatar baseSalary salary');
 
+    invalidatePayrollCache(month);
     return NextResponse.json(updated);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -39,6 +39,16 @@ export default function CRMApp() {
   const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Keep visited tabs alive in memory for 0ms instant tab switching
+  const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>({
+    overview: true,
+    dashboard: true,
+  });
+
+  useEffect(() => {
+    setVisitedTabs((prev) => (prev[activeTab] ? prev : { ...prev, [activeTab]: true }));
+  }, [activeTab]);
+
   // Core Data Stores (Clean 0s, no dummy data)
   const [dashboardData, setDashboardData] = useState<any>({
     stats: { totalEmployees: 0, activeProjects: 0, attendanceRate: 0 },
@@ -235,98 +245,118 @@ export default function CRMApp() {
           ) : (
             <>
               {/* 1. Dashboard (Overview) with Dynamic Role Rendering */}
-              {(activeTab === 'overview' || activeTab === 'dashboard') && (
-                <OverviewView
-                  data={dashboardData}
-                  employees={employees}
-                  onNavigate={navigateToTab}
-                  onOpenCreateTask={() => setShowCreateTask(true)}
-                  onOpenAddLead={() => setShowAddLead(true)}
-                  onOpenCreateProject={() => setShowCreateProject(true)}
-                  onOpenAddEmployee={() => setShowAddEmployee(true)}
-                />
+              {(visitedTabs.overview || visitedTabs.dashboard) && (
+                <div className={activeTab === 'overview' || activeTab === 'dashboard' ? 'block' : 'hidden'}>
+                  <OverviewView
+                    data={dashboardData}
+                    employees={employees}
+                    onNavigate={navigateToTab}
+                    onOpenCreateTask={() => setShowCreateTask(true)}
+                    onOpenAddLead={() => setShowAddLead(true)}
+                    onOpenCreateProject={() => setShowCreateProject(true)}
+                    onOpenAddEmployee={() => setShowAddEmployee(true)}
+                  />
+                </div>
               )}
 
               {/* 2. Task Management */}
-              {activeTab === 'tasks' && (
-                <TasksView
-                  tasks={tasks}
-                  onOpenCreateTask={() => setShowCreateTask(true)}
-                  onRefresh={fetchData}
-                />
+              {visitedTabs.tasks && (
+                <div className={activeTab === 'tasks' ? 'block' : 'hidden'}>
+                  <TasksView
+                    tasks={tasks}
+                    onOpenCreateTask={() => setShowCreateTask(true)}
+                    onRefresh={fetchData}
+                  />
+                </div>
               )}
 
               {/* 3. Lead Management */}
-              {activeTab === 'leads' && (
-                <LeadsView
-                  leads={leads}
-                  projects={projects}
-                  initialSection={leadsSection}
-                  onOpenAddLead={() => setShowAddLead(true)}
-                  onOpenCreateProject={(prefill) => {
-                    setProjectPrefill(prefill || null);
-                    setShowCreateProject(true);
-                  }}
-                  onNavigateTab={navigateToTab}
-                  onRefresh={fetchData}
-                />
+              {visitedTabs.leads && (
+                <div className={activeTab === 'leads' ? 'block' : 'hidden'}>
+                  <LeadsView
+                    leads={leads}
+                    projects={projects}
+                    initialSection={leadsSection}
+                    onOpenAddLead={() => setShowAddLead(true)}
+                    onOpenCreateProject={(prefill) => {
+                      setProjectPrefill(prefill || null);
+                      setShowCreateProject(true);
+                    }}
+                    onNavigateTab={navigateToTab}
+                    onRefresh={fetchData}
+                  />
+                </div>
               )}
 
               {/* 4. Project */}
-              {activeTab === 'projects' && (
-                <ProjectsView
-                  projects={projects}
-                  onOpenCreateProject={() => setShowCreateProject(true)}
-                  onRefresh={fetchData}
-                />
+              {visitedTabs.projects && (
+                <div className={activeTab === 'projects' ? 'block' : 'hidden'}>
+                  <ProjectsView
+                    projects={projects}
+                    onOpenCreateProject={() => setShowCreateProject(true)}
+                    onRefresh={fetchData}
+                  />
+                </div>
               )}
 
               {/* 5. Support */}
-              {activeTab === 'support' && (
-                <SupportView
-                  tickets={tickets}
-                  employees={employees}
-                  onRefresh={fetchData}
-                />
+              {visitedTabs.support && (
+                <div className={activeTab === 'support' ? 'block' : 'hidden'}>
+                  <SupportView
+                    tickets={tickets}
+                    employees={employees}
+                    onRefresh={fetchData}
+                  />
+                </div>
               )}
 
               {/* 6. Attendance */}
-              {activeTab === 'attendance' && (
-                <AttendanceView
-                  employees={employees}
-                  onRefresh={fetchData}
-                />
+              {visitedTabs.attendance && (
+                <div className={activeTab === 'attendance' ? 'block' : 'hidden'}>
+                  <AttendanceView
+                    employees={employees}
+                    onRefresh={fetchData}
+                  />
+                </div>
               )}
 
               {/* 7. Payroll & Invoicing */}
-              {activeTab === 'payroll' && (
-                <PayrollView
-                  employees={employees}
-                  projects={projects}
-                  onRefresh={fetchData}
-                />
+              {visitedTabs.payroll && (
+                <div className={activeTab === 'payroll' ? 'block' : 'hidden'}>
+                  <PayrollView
+                    employees={employees}
+                    projects={projects}
+                    onRefresh={fetchData}
+                  />
+                </div>
               )}
 
               {/* 8. Leave */}
-              {activeTab === 'leave' && (
-                <LeavesView
-                  employees={employees}
-                  onRefresh={fetchData}
-                />
+              {visitedTabs.leave && (
+                <div className={activeTab === 'leave' ? 'block' : 'hidden'}>
+                  <LeavesView
+                    employees={employees}
+                    onRefresh={fetchData}
+                  />
+                </div>
               )}
 
               {/* 9. Employee Management */}
-              {activeTab === 'employees' && (
-                <EmployeesView
-                  employees={employees}
-                  onOpenAddEmployee={() => setShowAddEmployee(true)}
-                  onRefresh={fetchData}
-                />
+              {visitedTabs.employees && (
+                <div className={activeTab === 'employees' ? 'block' : 'hidden'}>
+                  <EmployeesView
+                    employees={employees}
+                    onOpenAddEmployee={() => setShowAddEmployee(true)}
+                    onRefresh={fetchData}
+                  />
+                </div>
               )}
 
               {/* 10. Management */}
-              {(activeTab === 'management' || activeTab === 'branches') && (
-                <ManagementView onRefresh={fetchData} />
+              {(visitedTabs.management || visitedTabs.branches) && (
+                <div className={activeTab === 'management' || activeTab === 'branches' ? 'block' : 'hidden'}>
+                  <ManagementView onRefresh={fetchData} />
+                </div>
               )}
             </>
           )}

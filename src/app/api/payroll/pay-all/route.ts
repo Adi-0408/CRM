@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Payroll from '@/models/Payroll';
 import Employee from '@/models/Employee';
-import { calculateEmployeePayroll, getCurrentMonthStr } from '@/lib/payrollEngine';
+import { calculateEmployeePayroll, getCurrentMonthStr, invalidatePayrollCache } from '@/lib/payrollEngine';
 import { requireRoles } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
@@ -78,6 +78,8 @@ export async function POST(req: NextRequest) {
     if (bulkOps.length > 0) {
       await Payroll.bulkWrite(bulkOps);
     }
+
+    invalidatePayrollCache(month);
 
     return NextResponse.json({
       success: true,

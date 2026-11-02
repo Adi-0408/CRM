@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Payroll from '@/models/Payroll';
 import Employee from '@/models/Employee';
-import { calculateEmployeePayroll } from '@/lib/payrollEngine';
+import { calculateEmployeePayroll, invalidatePayrollCache } from '@/lib/payrollEngine';
 import { requireRoles, isValidDocId } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
@@ -153,6 +153,8 @@ export async function PATCH(req: NextRequest) {
       { $set: updateDoc },
       { upsert: true, new: true }
     ).populate('employee', 'name email role department avatar baseSalary salary');
+
+    invalidatePayrollCache(month);
 
     return NextResponse.json({
       success: true,

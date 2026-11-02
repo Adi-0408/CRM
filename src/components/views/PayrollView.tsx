@@ -79,8 +79,25 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
 
-  const [payrolls, setPayrolls] = useState<PayrollRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Stale-While-Revalidate: Seed initial payrolls immediately from localStorage if available
+  const [payrolls, setPayrolls] = useState<PayrollRecord[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const now = new Date();
+        const m = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const cached = localStorage.getItem(`prismcrm_payroll_${m}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (_) {}
+    }
+    return [];
+  });
+
+  // If cached data was restored on frame 1, do NOT show a blank screen
+  const [loading, setLoading] = useState(() => payrolls.length === 0);
+  const [isRevalidating, setIsRevalidating] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [bulkPaying, setBulkPaying] = useState(false);
   const [isOfflineFallback, setIsOfflineFallback] = useState(false);
@@ -128,9 +145,25 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
     );
   };
 
-  // 1. Fetch Payrolls from MongoDB (with graceful localStorage fallback)
-  const fetchPayrolls = async (month: string) => {
-    setLoading(true);
+  // 1. Fetch Payrolls with Instant SWR Cache and background live sync
+  const fetchPayrolls = async (month: string, silent = false) => {
+    // If we have cached rows for this month, immediately load them so the user sees data instantly
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem(`prismcrm_payroll_${month}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setPayrolls(parsed);
+            silent = true; // Cache exists: show data immediately, sync in background
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (!silent) setLoading(true);
+    setIsRevalidating(true);
+
     try {
       const res = await authFetch(`/api/payroll?month=${month}`);
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -139,13 +172,13 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
       if (Array.isArray(data)) {
         setPayrolls(data);
         setIsOfflineFallback(false);
-        // Cache to localStorage
+        // Update localStorage cache
         try {
           localStorage.setItem(`prismcrm_payroll_${month}`, JSON.stringify(data));
         } catch (_) {}
       }
     } catch (err) {
-      console.warn('MongoDB payroll fetch failed, checking local cache:', err);
+      console.warn('Live payroll fetch failed, checking local cache:', err);
       setIsOfflineFallback(true);
       try {
         const cached = localStorage.getItem(`prismcrm_payroll_${month}`);
@@ -180,6 +213,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
       } catch (_) {}
     } finally {
       setLoading(false);
+      setIsRevalidating(false);
     }
   };
 
@@ -474,8 +508,8 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                 Automated Payroll Engine
               </h2>
               <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Live Synced
+                <span className={`w-1.5 h-1.5 rounded-full ${isRevalidating ? 'bg-amber-500 animate-ping' : 'bg-emerald-500 animate-pulse'}`}></span>
+                {isRevalidating ? 'Syncing...' : 'Live Synced'}
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -517,7 +551,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
               className="h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition shadow-2xs shrink-0"
               title="Refresh Payroll"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${loading || isRevalidating ? 'animate-spin' : ''}`} />
             </button>
           </div>
 

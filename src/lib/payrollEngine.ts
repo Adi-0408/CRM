@@ -3,6 +3,22 @@ import Employee from '@/models/Employee';
 import Attendance from '@/models/Attendance';
 import Leave from '@/models/Leave';
 
+// Global in-memory cache for fast payroll reads
+export const PAYROLL_CACHE = new Map<string, { data: any; exp: number }>();
+export const PAYROLL_CACHE_TTL_MS = 60000; // 60 seconds
+
+export function invalidatePayrollCache(month?: string) {
+  if (!month) {
+    PAYROLL_CACHE.clear();
+    return;
+  }
+  for (const key of Array.from(PAYROLL_CACHE.keys())) {
+    if (key.includes(month)) {
+      PAYROLL_CACHE.delete(key);
+    }
+  }
+}
+
 /**
  * Helper to get current YYYY-MM
  */
