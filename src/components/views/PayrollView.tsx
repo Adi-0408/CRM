@@ -463,8 +463,8 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
       ) : (
         <>
           {/* 1. Header Toolbar with Month Selector, Role Switcher, and 1-Click Pay All */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3.5">
+      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        <div className="flex items-center space-x-3.5 shrink-0">
           <div className="w-11 h-11 rounded-2xl bg-[#F0EEFF] text-[#635BFF] flex items-center justify-center font-bold text-lg shadow-xs flex-shrink-0">
             ₹
           </div>
@@ -485,34 +485,45 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
         </div>
 
         {/* Month Selector & Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Month Switcher Pill */}
-          <div className="flex items-center h-10 bg-slate-50 border border-slate-200/80 rounded-xl px-1 shadow-xs">
-            <button
-              onClick={handlePrevMonth}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-white transition"
-              title="Previous Month"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <div className="flex items-center space-x-1.5 px-3">
-              <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-              <span className="text-xs font-bold text-slate-800 select-none min-w-[110px] text-center">
-                {formattedMonth}
-              </span>
+        <div className="flex flex-wrap items-center gap-2.5 w-full xl:w-auto xl:justify-end">
+          {/* Month Switcher & Refresh Group */}
+          <div className="flex items-center space-x-2 shrink-0">
+            <div className="flex items-center h-10 bg-slate-50 border border-slate-200/80 rounded-xl px-1 shadow-2xs">
+              <button
+                onClick={handlePrevMonth}
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-white transition"
+                title="Previous Month"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="flex items-center space-x-1.5 px-3">
+                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                <span className="text-xs font-bold text-slate-800 select-none min-w-[110px] text-center">
+                  {formattedMonth}
+                </span>
+              </div>
+              <button
+                onClick={handleNextMonth}
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-white transition"
+                title="Next Month"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
+
+            {/* Refresh button */}
             <button
-              onClick={handleNextMonth}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-white transition"
-              title="Next Month"
+              onClick={() => fetchPayrolls(selectedMonth)}
+              className="h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition shadow-2xs shrink-0"
+              title="Refresh Payroll"
             >
-              <ChevronRight className="w-4 h-4" />
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
 
           {/* Admin vs Employee Preview Toggle (Only for Admin/HR) */}
           {isAdminOrHR && (
-            <div className="flex items-center h-10 bg-slate-100/80 rounded-xl p-1 border border-slate-200/60">
+            <div className="flex items-center h-10 bg-slate-100/80 rounded-xl p-1 border border-slate-200/60 shrink-0">
               <button
                 onClick={() => setViewMode('admin')}
                 className={`h-full px-3 rounded-lg text-xs font-bold transition flex items-center ${
@@ -541,7 +552,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
             <button
               onClick={handlePayAll}
               disabled={bulkPaying || kpiStats.pendingCount === 0}
-              className={`flex items-center space-x-1.5 h-10 px-4 rounded-xl text-xs font-bold text-white transition shadow-sm ${
+              className={`flex items-center space-x-1.5 h-10 px-4 rounded-xl text-xs font-bold text-white transition shadow-sm shrink-0 whitespace-nowrap ${
                 kpiStats.pendingCount === 0
                   ? 'bg-emerald-600/70 cursor-not-allowed'
                   : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 shadow-emerald-500/20'
@@ -559,15 +570,6 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
               </span>
             </button>
           )}
-
-          {/* Refresh button */}
-          <button
-            onClick={() => fetchPayrolls(selectedMonth)}
-            className="h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition"
-            title="Refresh Payroll"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
         </div>
       </div>
 
