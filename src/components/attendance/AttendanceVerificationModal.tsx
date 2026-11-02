@@ -15,7 +15,6 @@ import {
   Crosshair,
   Check,
   ArrowLeft,
-  Upload,
 } from 'lucide-react';
 import {
   ITPL_OFFICE_LOCATION,
@@ -46,7 +45,6 @@ export default function AttendanceVerificationModal({
   // Camera states
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
@@ -130,11 +128,11 @@ export default function AttendanceVerificationModal({
       }
     } catch (err: any) {
       console.error('Camera initialization error:', err);
-      let msg = 'Unable to access camera. Please allow camera permissions or upload a selfie below.';
+      let msg = 'Unable to access camera. Please allow camera permissions in your browser.';
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        msg = 'Camera permission was denied. Please allow camera access in browser settings or upload a selfie.';
+        msg = 'Camera permission was denied. Please allow camera access in browser settings.';
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        msg = 'No camera found. You can upload a selfie below.';
+        msg = 'No camera found on this device.';
       }
       setCameraError(msg);
     } finally {
@@ -173,25 +171,6 @@ export default function AttendanceVerificationModal({
   const handleRetakePhoto = () => {
     setCapturedPhoto(null);
     startCamera();
-  };
-
-  // Fallback: Upload selfie from file or mobile camera
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      if (dataUrl) {
-        setCapturedPhoto(dataUrl);
-        if (stream) {
-          stream.getTracks().forEach((track) => track.stop());
-          setStream(null);
-        }
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   // Geolocation Fetching
@@ -492,27 +471,6 @@ export default function AttendanceVerificationModal({
                     Take Live Selfie
                   </button>
                 )}
-
-                {/* Upload Fallback for Camera Issues */}
-                <div className="flex items-center gap-1 text-[11px] text-slate-500">
-                  <span>Camera blocked?</span>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="text-[#635BFF] hover:underline font-bold inline-flex items-center gap-1 cursor-pointer"
-                  >
-                    <Upload className="w-3 h-3" />
-                    Upload Photo
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    capture="user"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                  />
-                </div>
               </div>
               <canvas ref={canvasRef} className="hidden" />
             </div>
