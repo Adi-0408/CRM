@@ -12,7 +12,6 @@ import {
   Navigation,
   Lock,
   RotateCcw,
-  Crosshair,
   Check,
   ArrowLeft,
 } from 'lucide-react';
@@ -55,11 +54,6 @@ export default function AttendanceVerificationModal({
   const [locationError, setLocationError] = useState<string | null>(null);
   const [geoResult, setGeoResult] = useState<GeofenceResult | null>(null);
   const [isSimulated, setIsSimulated] = useState(false);
-  const [calibratedCoords, setCalibratedCoords] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
-  const [isCalibratedNotice, setIsCalibratedNotice] = useState(false);
 
   // Keyboard shortcut: Escape to close / go back
   useEffect(() => {
@@ -74,19 +68,11 @@ export default function AttendanceVerificationModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isLoading, onClose]);
 
-  // Load calibrated office coords from localStorage if previously set
+  // Clean up legacy local calibration if any exists
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('itpl_calibrated_office_coords');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (typeof parsed.latitude === 'number' && typeof parsed.longitude === 'number') {
-          setCalibratedCoords(parsed);
-        }
-      }
-    } catch {
-      // ignore parse error
-    }
+      localStorage.removeItem('itpl_calibrated_office_coords');
+    } catch {}
   }, []);
 
   // Start Camera Stream with automatic fallback
@@ -188,20 +174,7 @@ export default function AttendanceVerificationModal({
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-
-        let savedOffice: { latitude: number; longitude: number } | undefined = undefined;
-        try {
-          const saved = localStorage.getItem('itpl_calibrated_office_coords');
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            if (typeof parsed.latitude === 'number' && typeof parsed.longitude === 'number') {
-              savedOffice = parsed;
-              setCalibratedCoords(parsed);
-            }
-          }
-        } catch {}
-
-        const evaluation = evaluateGeofence(latitude, longitude, savedOffice);
+        const evaluation = evaluateGeofence(latitude, longitude);
         setGeoResult(evaluation);
         setLocationLoading(false);
       },
@@ -226,41 +199,13 @@ export default function AttendanceVerificationModal({
     );
   }, []);
 
-  // Calibrate Office Coordinates to Current Device Position
-  const handleCalibrateOfficeToCurrentLocation = () => {
-    if (!geoResult) return;
-    const newCoords = {
-      latitude: geoResult.userLat,
-      longitude: geoResult.userLng,
-    };
-    setCalibratedCoords(newCoords);
-    localStorage.setItem('itpl_calibrated_office_coords', JSON.stringify(newCoords));
-    setIsCalibratedNotice(true);
-    setTimeout(() => setIsCalibratedNotice(false), 4000);
-
-    const reEvaluated = evaluateGeofence(geoResult.userLat, geoResult.userLng, newCoords);
-    setGeoResult(reEvaluated);
-  };
-
-  // Reset Calibrated Coordinates to Default
-  const handleResetCalibration = () => {
-    setCalibratedCoords(null);
-    localStorage.removeItem('itpl_calibrated_office_coords');
-    if (geoResult) {
-      const reEvaluated = evaluateGeofence(geoResult.userLat, geoResult.userLng);
-      setGeoResult(reEvaluated);
-    }
-  };
-
   // Development / Admin Testing Simulation Toggle
   const handleSimulateOfficeLocation = () => {
     setIsSimulated(true);
     setLocationError(null);
-    const targetLat = calibratedCoords?.latitude || ITPL_OFFICE_LOCATION.latitude;
-    const targetLng = calibratedCoords?.longitude || ITPL_OFFICE_LOCATION.longitude;
-    const simulatedLat = targetLat + 0.0001;
-    const simulatedLng = targetLng + 0.0001;
-    const evaluation = evaluateGeofence(simulatedLat, simulatedLng, calibratedCoords || undefined);
+    const simulatedLat = ITPL_OFFICE_LOCATION.latitude + 0.0001;
+    const simulatedLng = ITPL_OFFICE_LOCATION.longitude + 0.0001;
+    const evaluation = evaluateGeofence(simulatedLat, simulatedLng);
     setGeoResult(evaluation);
   };
 
@@ -306,7 +251,6 @@ export default function AttendanceVerificationModal({
       distanceMeters: geoResult.distanceMeters,
       address: geoResult.officeAddress,
       isWithinPerimeter: geoResult.isWithinPerimeter,
-      calibratedOffice: calibratedCoords || undefined,
     };
 
     await onVerified({
@@ -509,30 +453,7 @@ export default function AttendanceVerificationModal({
                   <p className="text-[10px] text-slate-500 leading-snug">
                     Pearl Enclave, MSEB Rd, near Walchand college, Vishrambag, Sangli
                   </p>
-                  {calibratedCoords && (
-                    <div className="pt-1 flex items-center justify-between text-[10px] text-emerald-700 font-medium border-t border-slate-100 mt-1">
-                      <span className="flex items-center gap-1">
-                        <Check className="w-3 h-3 text-emerald-600" />
-                        Office Pin Calibrated to your desk
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleResetCalibration}
-                        className="text-slate-400 hover:text-slate-600 underline cursor-pointer text-[9px]"
-                      >
-                        Reset
-                      </button>
-                    </div>
-                  )}
                 </div>
-
-                {/* Calibration Notice Banner */}
-                {isCalibratedNotice && (
-                  <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 flex items-center gap-1.5 animate-in fade-in">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Office GPS pin calibrated to your exact location!</span>
-                  </div>
-                )}
 
                 {/* Live Location Status Indicator */}
                 {locationLoading ? (
@@ -619,24 +540,6 @@ export default function AttendanceVerificationModal({
                   </div>
                 ) : null}
               </div>
-
-              {/* Office Desk GPS Calibration Button */}
-              {geoResult && (
-                <div className="pt-2 border-t border-slate-200/60 flex flex-col gap-1.5">
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    Sitting in office? Calibrate pin to your exact desk:
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleCalibrateOfficeToCurrentLocation}
-                    className="w-full py-1.5 px-2.5 rounded-xl bg-white border border-slate-300 hover:border-indigo-400 text-indigo-700 font-bold hover:bg-indigo-50 transition-colors shadow-2xs cursor-pointer text-[10px] flex items-center justify-center gap-1.5"
-                    title="Calibrate office center coordinates to your exact current location"
-                  >
-                    <Crosshair className="w-3 h-3 text-indigo-600" />
-                    <span>Calibrate Office GPS Pin Here (0m)</span>
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         </div>
