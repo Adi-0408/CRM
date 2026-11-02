@@ -29,7 +29,10 @@ export async function uploadToCloudinary(
       transformation:
         folder === 'avatars'
           ? [{ width: 400, height: 400, crop: 'thumb', gravity: 'face' }]
+          : folder === 'attendance'
+          ? [{ width: 640, height: 480, crop: 'limit', quality: 'auto:good' }]
           : undefined,
+      tags: folder === 'attendance' ? ['attendance_selfie', 'expire_30d'] : undefined,
     });
 
     return {
@@ -64,6 +67,25 @@ export async function deleteFromCloudinary(publicId: string): Promise<boolean> {
   } catch (error) {
     console.error('Error deleting asset from Cloudinary:', error);
     return false;
+  }
+}
+
+/**
+ * Deletes multiple assets from Cloudinary in batch by their publicIds.
+ */
+export async function deleteMultipleFromCloudinary(publicIds: string[]): Promise<number> {
+  const validIds = (publicIds || []).filter(
+    (id) => id && typeof id === 'string' && !id.startsWith('fallback_')
+  );
+  if (validIds.length === 0) return 0;
+
+  try {
+    const res = await cloudinary.api.delete_resources(validIds);
+    const deletedCount = Object.keys(res.deleted || {}).length;
+    return deletedCount;
+  } catch (error) {
+    console.error('Error batch deleting assets from Cloudinary:', error);
+    return 0;
   }
 }
 

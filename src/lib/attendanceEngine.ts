@@ -21,7 +21,12 @@ export interface AttendanceSession {
   notes?: string;
   isAutoClockOut?: boolean;
   checkInPhoto?: string;
+  checkInPhotoPublicId?: string;
+  checkInPhotoExpiresAt?: Date | string;
   checkOutPhoto?: string;
+  checkOutPhotoPublicId?: string;
+  checkOutPhotoExpiresAt?: Date | string;
+  isPhotoExpired?: boolean;
   checkInLocation?: any;
   checkOutLocation?: any;
 }

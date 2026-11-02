@@ -10,6 +10,8 @@ import {
 } from '@/lib/attendanceEngine';
 import { triggerAutoClockOutIfDue, initAutoClockOutJob } from '@/lib/autoClockOutService';
 import { evaluateGeofence, ITPL_OFFICE_LOCATION } from '@/lib/geoFence';
+import { uploadToCloudinary } from '@/lib/cloudinary';
+import { triggerPhotoCleanupIfDue } from '@/lib/attendancePhotoCleanupService';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,8 +19,9 @@ export async function GET(req: NextRequest) {
   try {
     await connectToDatabase();
     initAutoClockOutJob();
-    // Run auto clock-out in the background without blocking the GET response
+    // Run auto clock-out and 30-day expired photo cleanup in background without blocking response
     triggerAutoClockOutIfDue().catch(() => {});
+    triggerPhotoCleanupIfDue().catch(() => {});
 
     const authUser = await getAuthUser(req);
     const { searchParams } = new URL(req.url);
@@ -97,8 +100,9 @@ export async function POST(req: NextRequest) {
   try {
     await connectToDatabase();
     initAutoClockOutJob();
-    // Run auto clock-out in the background without blocking the GET response
+    // Run auto clock-out and 30-day expired photo cleanup in background without blocking response
     triggerAutoClockOutIfDue().catch(() => {});
+    triggerPhotoCleanupIfDue().catch(() => {});
 
     const authUser = await getAuthUser(req);
     const body = await req.json();
@@ -272,9 +276,24 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Upload selfie to Cloudinary storage
+      let uploadedCheckOutPhoto = photo;
+      let checkOutPhotoPublicId: string | undefined = undefined;
+      const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+      try {
+        const uploadRes = await uploadToCloudinary(photo, 'attendance');
+        uploadedCheckOutPhoto = uploadRes.secureUrl || photo;
+        checkOutPhotoPublicId = uploadRes.publicId;
+      } catch (err) {
+        console.warn('Cloudinary upload warning:', err);
+      }
+
       // Close the active session with verified photo and location
       lastSession.checkOut = now;
-      lastSession.checkOutPhoto = photo;
+      lastSession.checkOutPhoto = uploadedCheckOutPhoto;
+      lastSession.checkOutPhotoPublicId = checkOutPhotoPublicId;
+      lastSession.checkOutPhotoExpiresAt = thirtyDaysFromNow;
       lastSession.checkOutLocation = {
         latitude: location.latitude,
         longitude: location.longitude,
@@ -362,6 +381,19 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Upload selfie to Cloudinary storage
+      let uploadedCheckInPhoto = photo;
+      let checkInPhotoPublicId: string | undefined = undefined;
+      const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+      try {
+        const uploadRes = await uploadToCloudinary(photo, 'attendance');
+        uploadedCheckInPhoto = uploadRes.secureUrl || photo;
+        checkInPhotoPublicId = uploadRes.publicId;
+      } catch (err) {
+        console.warn('Cloudinary upload warning:', err);
+      }
+
       if (!record) {
         record = new Attendance({
           employee: targetEmployeeId,
@@ -375,7 +407,9 @@ export async function POST(req: NextRequest) {
         checkIn: now,
         checkOut: null,
         notes: notes || '',
-        checkInPhoto: photo,
+        checkInPhoto: uploadedCheckInPhoto,
+        checkInPhotoPublicId,
+        checkInPhotoExpiresAt: thirtyDaysFromNow,
         checkInLocation: {
           latitude: location.latitude,
           longitude: location.longitude,

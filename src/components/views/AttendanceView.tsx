@@ -882,11 +882,21 @@ export default function AttendanceView({
                                                         ? formatTimeAmPm(s.checkOut)
                                                         : 'Active'}
                                                     </span>
-                                                    {s.checkInPhoto && (
-                                                      <span title="Live Selfie Verified">
+                                                    {s.checkInPhoto ? (
+                                                      <a
+                                                        href={s.checkInPhoto}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        title="View Cloudinary Selfie (Retained for 30 days)"
+                                                        className="hover:scale-110 transition-transform cursor-pointer"
+                                                      >
                                                         <Camera className="w-2.5 h-2.5 text-emerald-600" />
+                                                      </a>
+                                                    ) : s.isPhotoExpired ? (
+                                                      <span title="Selfie auto-deleted after 30 days">
+                                                        <Camera className="w-2.5 h-2.5 text-slate-300" />
                                                       </span>
-                                                    )}
+                                                    ) : null}
                                                     {s.checkInLocation && (
                                                       <span title={`Pearl Enclave Office Perimeter (${s.checkInLocation.distanceMeters || 0}m)`}>
                                                         <MapPin className="w-2.5 h-2.5 text-teal-600" />

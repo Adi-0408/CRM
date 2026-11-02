@@ -512,16 +512,27 @@ export default function LiveClockCard({
                         {s.checkOut ? formatTimeAmPm(s.checkOut) : 'Active'}
                       </span>
 
-                      {/* Photo verification badge */}
-                      {s.checkInPhoto && (
-                        <span
-                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200"
-                          title="Live selfie verified on punch in"
+                      {/* Photo verification badge with Cloudinary link / expiration badge */}
+                      {s.checkInPhoto ? (
+                        <a
+                          href={s.checkInPhoto}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200 transition-colors"
+                          title="View Cloudinary Live Selfie (Retained for 30 days)"
                         >
                           <Camera className="w-3 h-3 text-emerald-600" />
                           <span>Selfie Verified</span>
+                        </a>
+                      ) : s.isPhotoExpired ? (
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200"
+                          title="Selfie auto-deleted after 30-day retention period"
+                        >
+                          <Camera className="w-3 h-3 text-slate-400" />
+                          <span>Photo Expired</span>
                         </span>
-                      )}
+                      ) : null}
 
                       {/* Office Geofence verification badge */}
                       {s.checkInLocation && (
