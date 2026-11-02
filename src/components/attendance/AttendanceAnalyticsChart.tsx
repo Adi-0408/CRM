@@ -228,30 +228,76 @@ export default function AttendanceAnalyticsChart({
         let lateShiftsCount = 0;
         let firstCheckInTimes: string[] = [];
 
+        // Group records strictly by unique calendar date (YYYY-MM-DD)
+        // Rule: Even if an employee clocks in and out multiple times on a single day (multiple sessions),
+        // or multiple records exist, that day is counted as AT MOST 1 day and AT MOST 1 late day.
+        const recordsByDate = new Map<string, any[]>();
         empRecords.forEach((rec) => {
-          const sessions: AttendanceSession[] = rec.sessions || [];
-          const evaluation = evaluateDailyAttendance(sessions, rec.date, now);
+          if (!rec.date) return;
+          if (!recordsByDate.has(rec.date)) {
+            recordsByDate.set(rec.date, []);
+          }
+          recordsByDate.get(rec.date)!.push(rec);
+        });
 
-          const isAuto = Boolean(rec.isAutoClockOut || evaluation.isAutoClockOut);
+        recordsByDate.forEach((dayRecords, dateKey) => {
+          // Merge all sessions for this calendar date
+          let mergedSessions: AttendanceSession[] = [];
+          dayRecords.forEach((dr) => {
+            if (Array.isArray(dr.sessions) && dr.sessions.length > 0) {
+              mergedSessions.push(...dr.sessions);
+            } else if (dr.checkIn) {
+              mergedSessions.push({
+                checkIn: dr.checkIn,
+                checkOut: dr.checkOut || null,
+                notes: dr.notes || '',
+                isAutoClockOut: dr.isAutoClockOut,
+              });
+            }
+          });
+
+          // Deduplicate sessions by check-in timestamp
+          mergedSessions = mergedSessions.filter(
+            (s, idx, self) =>
+              idx ===
+              self.findIndex(
+                (o) =>
+                  new Date(o.checkIn).getTime() === new Date(s.checkIn).getTime()
+              )
+          );
+
+          // Sort sessions chronologically
+          mergedSessions.sort(
+            (a, b) => new Date(a.checkIn).getTime() - new Date(b.checkIn).getTime()
+          );
+
+          const evaluation = evaluateDailyAttendance(mergedSessions, dateKey, now);
+
+          const primaryRec = dayRecords[0];
+          const isAuto = dayRecords.some((dr) => dr.isAutoClockOut) || evaluation.isAutoClockOut;
           const effectiveMinutes = isAuto
-            ? rec.effectiveMinutes || evaluation.effectiveWorkedMinutes
+            ? primaryRec.effectiveMinutes || evaluation.effectiveWorkedMinutes
             : evaluation.effectiveWorkedMinutes;
 
           totalWorkedMinutes += effectiveMinutes;
 
-          if (rec.status === 'full_day' || evaluation.status === 'full_day' || effectiveMinutes >= 480) {
+          if (primaryRec.status === 'full_day' || evaluation.status === 'full_day' || effectiveMinutes >= 480) {
             fullDaysCount += 1;
           } else if (
-            rec.status === 'half_day' ||
+            primaryRec.status === 'half_day' ||
             evaluation.status === 'half_day' ||
-            (effectiveMinutes < 480 && sessions.length > 0 && !evaluation.isCurrentlyWorking)
+            (effectiveMinutes < 480 && mergedSessions.length > 0 && !evaluation.isCurrentlyWorking)
           ) {
             halfDaysCount += 1;
-          } else if (evaluation.isCurrentlyWorking || rec.status === 'working') {
+          } else if (evaluation.isCurrentlyWorking || primaryRec.status === 'working') {
             workingShiftsCount += 1;
           }
 
-          if (rec.isLate || evaluation.isLate) {
+          // Strict Punctuality Rule:
+          // If the employee is late on that day, even if they clock in and out multiple times,
+          // it is considered ONLY 1 time per day!
+          const isDayLate = Boolean(dayRecords.some((dr) => dr.isLate) || evaluation.isLate);
+          if (isDayLate) {
             lateShiftsCount += 1;
           }
 
@@ -299,18 +345,48 @@ export default function AttendanceAnalyticsChart({
               ? `${totalActiveDays} Days Active (${fullDaysCount} Full)`
               : '0 Days Logged',
           punctualityText:
-            lateShiftsCount > 0 ? `${lateShiftsCount} Late Shifts` : `${totalActiveDays} On Time`,
+            lateShiftsCount === 1
+              ? '1 Late Day'
+              : lateShiftsCount > 1
+              ? `${lateShiftsCount} Late Days`
+              : `${totalActiveDays > 0 ? `${totalActiveDays} Days On Time` : 'On Time'}`,
           firstPunchIn: firstCheckInTimes[0] || '--',
         };
       } else {
         // --- DAILY AGGREGATION ---
-        const rec = empRecords.find((r) => r.date === internalDate);
-        const sessions: AttendanceSession[] = rec?.sessions || [];
-        const evaluation = evaluateDailyAttendance(sessions, internalDate, now);
+        const dayRecords = empRecords.filter((r) => r.date === internalDate);
+        let mergedSessions: AttendanceSession[] = [];
+        dayRecords.forEach((dr) => {
+          if (Array.isArray(dr.sessions) && dr.sessions.length > 0) {
+            mergedSessions.push(...dr.sessions);
+          } else if (dr.checkIn) {
+            mergedSessions.push({
+              checkIn: dr.checkIn,
+              checkOut: dr.checkOut || null,
+              notes: dr.notes || '',
+              isAutoClockOut: dr.isAutoClockOut,
+            });
+          }
+        });
 
-        const isAuto = Boolean(rec?.isAutoClockOut || evaluation.isAutoClockOut);
+        mergedSessions = mergedSessions.filter(
+          (s, idx, self) =>
+            idx ===
+            self.findIndex(
+              (o) =>
+                new Date(o.checkIn).getTime() === new Date(s.checkIn).getTime()
+            )
+        );
+        mergedSessions.sort(
+          (a, b) => new Date(a.checkIn).getTime() - new Date(b.checkIn).getTime()
+        );
+
+        const evaluation = evaluateDailyAttendance(mergedSessions, internalDate, now);
+        const primaryRec = dayRecords[0];
+
+        const isAuto = dayRecords.some((dr) => dr.isAutoClockOut) || evaluation.isAutoClockOut;
         const effectiveMinutes = isAuto
-          ? rec?.effectiveMinutes || evaluation.effectiveWorkedMinutes
+          ? primaryRec?.effectiveMinutes || evaluation.effectiveWorkedMinutes
           : evaluation.effectiveWorkedMinutes;
 
         const totalWorkedHours = Math.round((effectiveMinutes / 60) * 10) / 10;
@@ -318,13 +394,13 @@ export default function AttendanceAnalyticsChart({
 
         let statusDisplay = 'Absent';
         let statusCode = 'absent';
-        if (rec?.status === 'full_day' || evaluation.status === 'full_day' || effectiveMinutes >= 480) {
+        if (primaryRec?.status === 'full_day' || evaluation.status === 'full_day' || effectiveMinutes >= 480) {
           statusDisplay = 'Full Day';
           statusCode = 'full_day';
         } else if (
-          rec?.status === 'half_day' ||
+          primaryRec?.status === 'half_day' ||
           evaluation.status === 'half_day' ||
-          (effectiveMinutes < 480 && sessions.length > 0 && !evaluation.isCurrentlyWorking)
+          (effectiveMinutes < 480 && mergedSessions.length > 0 && !evaluation.isCurrentlyWorking)
         ) {
           statusDisplay = 'Half Day';
           statusCode = 'half_day';
@@ -333,11 +409,12 @@ export default function AttendanceAnalyticsChart({
           statusCode = 'working';
         }
 
-        const isLate = Boolean(rec?.isLate ?? evaluation.isLate);
-        const lateBy = rec?.lateByMinutes ?? evaluation.lateByMinutes;
+        // Strict 1 time per day
+        const isLate = Boolean(dayRecords.some((dr) => dr.isLate) || evaluation.isLate);
+        const lateBy = primaryRec?.lateByMinutes ?? evaluation.lateByMinutes;
         const punctualityText = isLate
           ? `Late (+${lateBy}m)`
-          : sessions.length > 0
+          : mergedSessions.length > 0
           ? 'On Time'
           : 'Not Checked In';
 
@@ -354,7 +431,7 @@ export default function AttendanceAnalyticsChart({
           fullDaysCount: statusCode === 'full_day' ? 1 : 0,
           halfDaysCount: statusCode === 'half_day' ? 1 : 0,
           workingShiftsCount: statusCode === 'working' ? 1 : 0,
-          totalActiveDays: sessions.length > 0 ? 1 : 0,
+          totalActiveDays: mergedSessions.length > 0 ? 1 : 0,
           lateShiftsCount: isLate ? 1 : 0,
           attendanceRate: completionRate,
           onTimeRate: isLate ? 0 : 100,
@@ -565,10 +642,10 @@ export default function AttendanceAnalyticsChart({
   // 5. Shift Distribution Pie Data
   const statusPieData = useMemo(() => {
     return [
-      { name: 'Full Day Shifts', value: orgKpiStats.totalFullDay, color: '#10B981' },
+      { name: 'Full Day', value: orgKpiStats.totalFullDay, color: '#10B981' },
       { name: 'Active Working', value: orgKpiStats.totalWorking, color: '#0D9488' },
-      { name: 'Half Day Shifts', value: orgKpiStats.totalHalfDay, color: '#F59E0B' },
-      { name: 'Late Shifts', value: orgKpiStats.totalLate, color: '#EF4444' },
+      { name: 'Half Day', value: orgKpiStats.totalHalfDay, color: '#F59E0B' },
+      { name: 'Late Days', value: orgKpiStats.totalLate, color: '#EF4444' },
     ].filter((item) => item.value > 0);
   }, [orgKpiStats]);
 
@@ -606,7 +683,7 @@ export default function AttendanceAnalyticsChart({
               <strong className="text-white">{data.halfDayShifts}</strong>
             </div>
             <div>
-              <span className="text-rose-400">Late Shifts:</span>{' '}
+              <span className="text-rose-400">Late Days:</span>{' '}
               <strong className="text-white">{data.lateShifts}</strong>
             </div>
           </div>
@@ -646,6 +723,12 @@ export default function AttendanceAnalyticsChart({
               </strong>
             </div>
             <div className="flex justify-between">
+              <span className="text-slate-400">Total Days Active:</span>
+              <strong className="text-slate-100">
+                {data.totalActiveDays} {data.totalActiveDays === 1 ? 'day' : 'days'}
+              </strong>
+            </div>
+            <div className="flex justify-between">
               <span className="text-slate-400">Full Day Shifts:</span>
               <strong className="text-slate-200">{data.fullDaysCount} days</strong>
             </div>
@@ -653,6 +736,14 @@ export default function AttendanceAnalyticsChart({
               <span className="text-slate-400">Half Day Shifts:</span>
               <strong className="text-slate-200">{data.halfDaysCount} days</strong>
             </div>
+            {data.workingShiftsCount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-slate-400">Active Working:</span>
+                <strong className="text-teal-300">
+                  {data.workingShiftsCount} {data.workingShiftsCount === 1 ? 'day' : 'days'}
+                </strong>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-slate-400">Punctuality:</span>
               <span
@@ -1054,7 +1145,7 @@ export default function AttendanceAnalyticsChart({
                         />
                         <Bar
                           dataKey="lateShifts"
-                          name="Late Shifts"
+                          name="Late Days"
                           stackId="a"
                           fill="#EF4444"
                           radius={[4, 4, 0, 0]}

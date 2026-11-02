@@ -229,7 +229,8 @@ export default function AttendanceView({
         })
         .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
-      // Process each daily log
+      // Process each daily log grouped strictly by unique date (YYYY-MM-DD)
+      // Ensures 1 day contributes at most 1 day and at most 1 late count
       let fullDaysCount = 0;
       let halfDaysCount = 0;
       let totalWorkedMinutes = 0;
@@ -238,14 +239,52 @@ export default function AttendanceView({
       let isWorkingToday = false;
       let latestDayRecord: any = null;
 
-      const dailyLogs = empRecords.map((r) => {
-        const sessions: AttendanceSession[] = r.sessions || [];
-        const evaluation = evaluateDailyAttendance(sessions, r.date, new Date());
-        const isAuto = Boolean(r.isAutoClockOut || evaluation.isAutoClockOut);
+      const recordsByDate = new Map<string, any[]>();
+      empRecords.forEach((r) => {
+        if (!r.date) return;
+        if (!recordsByDate.has(r.date)) {
+          recordsByDate.set(r.date, []);
+        }
+        recordsByDate.get(r.date)!.push(r);
+      });
+
+      const sortedDates = Array.from(recordsByDate.keys()).sort((a, b) => b.localeCompare(a));
+
+      const dailyLogs = sortedDates.map((dateKey) => {
+        const dayRecords = recordsByDate.get(dateKey)!;
+        let mergedSessions: AttendanceSession[] = [];
+        dayRecords.forEach((dr) => {
+          if (Array.isArray(dr.sessions) && dr.sessions.length > 0) {
+            mergedSessions.push(...dr.sessions);
+          } else if (dr.checkIn) {
+            mergedSessions.push({
+              checkIn: dr.checkIn,
+              checkOut: dr.checkOut || null,
+              notes: dr.notes || '',
+              isAutoClockOut: dr.isAutoClockOut,
+            });
+          }
+        });
+
+        mergedSessions = mergedSessions.filter(
+          (s, idx, self) =>
+            idx ===
+            self.findIndex(
+              (o) =>
+                new Date(o.checkIn).getTime() === new Date(s.checkIn).getTime()
+            )
+        );
+        mergedSessions.sort(
+          (a, b) => new Date(a.checkIn).getTime() - new Date(b.checkIn).getTime()
+        );
+
+        const evaluation = evaluateDailyAttendance(mergedSessions, dateKey, new Date());
+        const primaryRec = dayRecords[0];
+        const isAuto = dayRecords.some((dr) => dr.isAutoClockOut) || evaluation.isAutoClockOut;
 
         let dayStatusCode = evaluation.status;
-        if (r.status) {
-          dayStatusCode = r.status;
+        if (primaryRec.status) {
+          dayStatusCode = primaryRec.status;
         }
 
         const isFullDay =
@@ -253,38 +292,41 @@ export default function AttendanceView({
           (!isAuto && evaluation.totalWorkedMinutes >= 480);
         const isHalfDay =
           dayStatusCode === 'half_day' ||
-          (!isFullDay && sessions.length > 0 && !evaluation.isCurrentlyWorking);
+          (!isFullDay && mergedSessions.length > 0 && !evaluation.isCurrentlyWorking);
 
         if (isFullDay) fullDaysCount++;
         else if (isHalfDay) halfDaysCount++;
 
         totalWorkedMinutes += evaluation.totalWorkedMinutes || 0;
 
-        if (sessions.length > 0) {
-          if (evaluation.isLate) {
+        // Punctuality: STRICTLY MAX 1 TIME PER DAY
+        // Even if employee clocked in/out multiple times, only 1 time per day
+        const isLate = Boolean(dayRecords.some((dr) => dr.isLate) || evaluation.isLate);
+        if (mergedSessions.length > 0) {
+          if (isLate) {
             lateDaysCount++;
           } else {
             onTimeDaysCount++;
           }
         }
 
-        if (r.date === todayStr && evaluation.isCurrentlyWorking) {
+        if (dateKey === todayStr && evaluation.isCurrentlyWorking) {
           isWorkingToday = true;
         }
 
         if (!latestDayRecord) {
           latestDayRecord = {
-            record: r,
+            record: primaryRec,
             evaluation,
-            sessions,
+            sessions: mergedSessions,
             dayStatusCode,
           };
         }
 
         return {
-          date: r.date,
-          record: r,
-          sessions,
+          date: dateKey,
+          record: primaryRec,
+          sessions: mergedSessions,
           evaluation,
           dayStatusCode,
           isFullDay,
