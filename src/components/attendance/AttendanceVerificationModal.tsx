@@ -45,6 +45,7 @@ export default function AttendanceVerificationModal({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [isCameraLoading, setIsCameraLoading] = useState(false);
@@ -55,42 +56,24 @@ export default function AttendanceVerificationModal({
   const [geoResult, setGeoResult] = useState<GeofenceResult | null>(null);
   const [isSimulated, setIsSimulated] = useState(false);
 
-  // Handle mobile hardware/gesture Back button (popstate)
+  // Keep latest onClose in a ref for keydown/listeners
+  const onCloseRef = useRef(onClose);
   useEffect(() => {
-    if (!isOpen) return;
-
-    // Push a state so pressing phone back button pops this state instead of exiting the site
-    const stateId = `modal_verification_${Date.now()}`;
-    window.history.pushState({ modalOpen: true, stateId }, '');
-
-    const handlePopState = () => {
-      // User pressed phone back button: close the modal and remain in the app
-      onClose();
-    };
-
-    window.addEventListener('popstate', handlePopState);
-
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-      // If modal was closed programmatically (via Back/Cancel/Close button), pop the history entry
-      if (window.history.state?.stateId === stateId) {
-        window.history.back();
-      }
-    };
-  }, [isOpen, onClose]);
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   // Keyboard shortcut: Escape to close / go back
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isLoading) {
-        onClose();
+      if (e.key === 'Escape' && !isLoading && !isCameraLoading && !locationLoading) {
+        onCloseRef.current();
       }
     };
     if (isOpen) {
       window.addEventListener('keydown', handleKeyDown);
     }
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isLoading, onClose]);
+  }, [isOpen, isLoading, isCameraLoading, locationLoading]);
 
   // Clean up legacy local calibration if any exists
   useEffect(() => {
@@ -104,8 +87,9 @@ export default function AttendanceVerificationModal({
     setCameraError(null);
     setIsCameraLoading(true);
     try {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -131,6 +115,7 @@ export default function AttendanceVerificationModal({
         });
       }
 
+      streamRef.current = mediaStream;
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
@@ -148,7 +133,7 @@ export default function AttendanceVerificationModal({
     } finally {
       setIsCameraLoading(false);
     }
-  }, [stream]);
+  }, []);
 
   // Capture Photo with natural aspect ratio
   const handleCapturePhoto = () => {
@@ -170,10 +155,11 @@ export default function AttendanceVerificationModal({
       const photoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
       setCapturedPhoto(photoDataUrl);
 
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-        setStream(null);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
+      setStream(null);
     }
   };
 
@@ -241,17 +227,20 @@ export default function AttendanceVerificationModal({
       startCamera();
       fetchLocation();
     } else {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-        setStream(null);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
+      setStream(null);
     }
     return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
+      setStream(null);
     };
-  }, [isOpen]);
+  }, [isOpen, startCamera, fetchLocation]);
 
   // Ensure video element plays when stream updates
   useEffect(() => {
@@ -287,7 +276,7 @@ export default function AttendanceVerificationModal({
     <div
       className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-md flex flex-col items-center justify-start sm:justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-200"
       onClick={(e) => {
-        if (e.target === e.currentTarget && !isLoading) {
+        if (e.target === e.currentTarget && !isLoading && !isCameraLoading && !locationLoading) {
           onClose();
         }
       }}

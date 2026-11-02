@@ -158,60 +158,67 @@ export default function LiveClockCard({
     setIsVerificationModalOpen(true);
   };
 
-  const handlePerformPunch = async ({
-    photo,
-    location,
-  }: {
-    photo: string;
-    location: IAttendanceLocation;
-  }) => {
-    if (!user?.id) return;
-    try {
-      setLoading(true);
-      setErrorMsg('');
-      setSuccessMsg('');
+  const handleCloseVerificationModal = React.useCallback(() => {
+    setIsVerificationModalOpen(false);
+  }, []);
 
-      const action = isClockedIn ? 'punch_out' : 'punch_in';
-      const res = await authFetch('/api/attendance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          employeeId: user.id,
-          action,
-          photo,
-          location,
-        }),
-      });
+  const handlePerformPunch = React.useCallback(
+    async ({
+      photo,
+      location,
+    }: {
+      photo: string;
+      location: IAttendanceLocation;
+    }) => {
+      if (!user?.id) return;
+      try {
+        setLoading(true);
+        setErrorMsg('');
+        setSuccessMsg('');
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to update attendance session');
+        const action = isClockedIn ? 'punch_out' : 'punch_in';
+        const res = await authFetch('/api/attendance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            employeeId: user.id,
+            action,
+            photo,
+            location,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to update attendance session');
+        }
+
+        const updatedSessions: AttendanceSession[] = data.sessions || [];
+        setSessions(updatedSessions);
+
+        const cacheKey = `attendance_${user.id}_${todayStr}`;
+        localStorage.setItem(cacheKey, JSON.stringify({ sessions: updatedSessions }));
+
+        setSuccessMsg(
+          isClockedIn
+            ? 'Punched out successfully with photo & location verified! Session ended.'
+            : 'Punched in successfully with photo & location verified! Have a productive session.'
+        );
+
+        setIsVerificationModalOpen(false);
+
+        if (onPunchSuccess) {
+          onPunchSuccess();
+        }
+      } catch (err: any) {
+        setErrorMsg(err.message || 'Error recording punch');
+        throw err;
+      } finally {
+        setLoading(false);
       }
-
-      const updatedSessions: AttendanceSession[] = data.sessions || [];
-      setSessions(updatedSessions);
-
-      const cacheKey = `attendance_${user.id}_${todayStr}`;
-      localStorage.setItem(cacheKey, JSON.stringify({ sessions: updatedSessions }));
-
-      setSuccessMsg(
-        isClockedIn
-          ? 'Punched out successfully with photo & location verified! Session ended.'
-          : 'Punched in successfully with photo & location verified! Have a productive session.'
-      );
-
-      setIsVerificationModalOpen(false);
-
-      if (onPunchSuccess) {
-        onPunchSuccess();
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Error recording punch');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [user?.id, isClockedIn, todayStr, onPunchSuccess]
+  );
 
   const formattedCurrentTime = format12HourClock(now, true);
 
@@ -565,7 +572,7 @@ export default function LiveClockCard({
       {/* Live Selfie & Geofence Verification Modal */}
       <AttendanceVerificationModal
         isOpen={isVerificationModalOpen}
-        onClose={() => setIsVerificationModalOpen(false)}
+        onClose={handleCloseVerificationModal}
         action={isClockedIn ? 'punch_out' : 'punch_in'}
         onVerified={handlePerformPunch}
         isLoading={loading}
