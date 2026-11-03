@@ -7,6 +7,7 @@ import Leave from '@/models/Leave';
 import {
   calculateEmployeePayroll,
   getCurrentMonthStr,
+  getEmployeeJoinDateInfo,
   PAYROLL_CACHE,
   PAYROLL_CACHE_TTL_MS,
   invalidatePayrollCache,
@@ -58,7 +59,15 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const employees = await Employee.find(empQuery).sort({ name: 1 });
+    const allEmployees = await Employee.find(empQuery).sort({ name: 1 });
+
+    // Strict Rule: An employee only appears in payroll from the month they joined onward!
+    // If an employee joined in Nov (e.g. 15 Nov), they will not appear in Oct or earlier.
+    const employees = allEmployees.filter((emp: any) => {
+      const joinInfo = getEmployeeJoinDateInfo(emp);
+      if (!joinInfo) return true;
+      return joinInfo.joinMonth <= month;
+    });
 
     // Fetch existing Payroll docs, Month Attendance, and Leaves in parallel
     const [existingPayrolls, monthAttendance, monthLeaves] = await Promise.all([
@@ -118,10 +127,10 @@ export async function POST(req: NextRequest) {
 
     const empId = body.employeeId || body.employee;
     const month = body.month || getCurrentMonthStr();
-    const baseSalary = Number(body.baseSalary || 45000);
+    const targetEmployee = (await Employee.findById(empId)) || { _id: empId, baseSalary: Number(body.baseSalary || 45000) };
 
     const calculated = await calculateEmployeePayroll(
-      { _id: empId, baseSalary },
+      targetEmployee,
       month,
       body
     );
@@ -133,7 +142,14 @@ export async function POST(req: NextRequest) {
           employeeId: empId,
           employee: empId,
           month,
-          baseSalary,
+          baseSalary: calculated.baseSalary,
+          fullBaseSalary: calculated.fullBaseSalary,
+          isProrated: calculated.isProrated,
+          proratedDays: calculated.proratedDays,
+          totalDaysInMonth: calculated.totalDaysInMonth,
+          joinDate: calculated.joinDate,
+          distributionDate: calculated.distributionDate,
+          distributionSchedule: calculated.distributionSchedule,
           approvedLeaves: calculated.approvedLeaves,
           unapprovedLeaves: calculated.unapprovedLeaves,
           halfDays: calculated.halfDays,

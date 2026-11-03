@@ -41,6 +41,10 @@ export default function AddEmployeeModal({
   const [department, setDepartment] = useState('Engineering');
   const [status, setStatus] = useState<'active' | 'suspended'>('active');
   const [salary, setSalary] = useState('60000');
+  const [joinDate, setJoinDate] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  });
   const [phone, setPhone] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -132,6 +136,7 @@ export default function AddEmployeeModal({
           phone: cleanPhone || undefined,
           salary: Number(salary) || 45000,
           baseSalary: Number(salary) || 45000,
+          joinDate: joinDate ? new Date(joinDate).toISOString() : new Date().toISOString(),
           avatar: avatarUrl || undefined,
         }),
       });
@@ -478,15 +483,15 @@ export default function AddEmployeeModal({
                 </p>
               </div>
 
-              {/* Mobile Number & Monthly Salary */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* Mobile Number, Monthly Salary & Joining Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-xs font-bold text-slate-700">
                       Mobile Number
                     </label>
                     <span className={`text-[10px] font-mono ${phone.length === 10 ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>
-                      {phone.length}/10 digits
+                      {phone.length}/10
                     </span>
                   </div>
                   <input
@@ -494,7 +499,7 @@ export default function AddEmployeeModal({
                     inputMode="numeric"
                     pattern="[0-9]*"
                     maxLength={10}
-                    placeholder="10-digit mobile number"
+                    placeholder="10-digit mobile"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#635BFF]/15 focus:border-[#635BFF] text-base sm:text-xs text-slate-900 bg-white font-mono"
@@ -512,6 +517,18 @@ export default function AddEmployeeModal({
                     value={salary}
                     onChange={(e) => setSalary(e.target.value.replace(/\D/g, ''))}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#635BFF]/15 focus:border-[#635BFF] text-base sm:text-xs text-slate-900 bg-white font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Joining Date
+                  </label>
+                  <input
+                    type="date"
+                    value={joinDate}
+                    onChange={(e) => setJoinDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#635BFF]/15 focus:border-[#635BFF] text-base sm:text-xs text-slate-900 bg-white"
                   />
                 </div>
               </div>

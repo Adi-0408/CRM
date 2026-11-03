@@ -40,9 +40,17 @@ interface PayrollRecord {
     avatar?: string;
     baseSalary?: number;
     salary?: number;
+    joinDate?: string;
   };
   month: string;
   baseSalary: number;
+  fullBaseSalary?: number;
+  isProrated?: boolean;
+  proratedDays?: number;
+  totalDaysInMonth?: number;
+  joinDate?: string;
+  distributionDate?: string;
+  distributionSchedule?: string;
   dailyRate: number;
   halfDayRate: number;
   approvedLeaves: number;
@@ -58,6 +66,13 @@ interface PayrollRecord {
   netSalary: number;
   status: 'Pending' | 'Paid';
   paidAt?: string | null;
+}
+
+function formatJoinDate(dateStr?: string | Date) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return String(dateStr);
+  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
 }
 
 interface PayrollViewProps {
@@ -185,16 +200,55 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
         if (cached) {
           setPayrolls(JSON.parse(cached));
         } else if (employees.length > 0) {
-          // Generate fallback calculated rows from employees array
-          const generated: PayrollRecord[] = employees.map((emp) => {
-            const baseSalary = emp.baseSalary || emp.salary || 45000;
-            const dailyRate = Math.round(baseSalary / 30);
+          // Generate fallback calculated rows from employees array (only eligible employees)
+          const [yearStr, monthNumStr] = month.split('-');
+          const y = parseInt(yearStr, 10);
+          const mIdx = parseInt(monthNumStr, 10) - 1;
+          const daysInMonth = new Date(y, mIdx + 1, 0).getDate();
+
+          const eligibleEmps = employees.filter((emp) => {
+            const rawJoin = emp.joinDate || emp.createdAt;
+            if (!rawJoin) return true;
+            const jDate = new Date(rawJoin);
+            if (isNaN(jDate.getTime())) return true;
+            const jMonth = `${jDate.getFullYear()}-${String(jDate.getMonth() + 1).padStart(2, '0')}`;
+            return jMonth <= month;
+          });
+
+          const generated: PayrollRecord[] = eligibleEmps.map((emp) => {
+            const fullBaseSalary = Number(emp.baseSalary || emp.salary || 45000);
+            const rawJoin = emp.joinDate || emp.createdAt;
+            const jDate = rawJoin ? new Date(rawJoin) : null;
+            const jMonth = jDate && !isNaN(jDate.getTime()) ? `${jDate.getFullYear()}-${String(jDate.getMonth() + 1).padStart(2, '0')}` : null;
+            const isJoinMonth = jMonth === month;
+            const jDay = jDate && !isNaN(jDate.getTime()) ? jDate.getDate() : 1;
+
+            let payableDays = daysInMonth;
+            let proratedSalary = fullBaseSalary;
+            if (isJoinMonth && jDay > 1) {
+              if (jDay === 15 && daysInMonth === 30) {
+                payableDays = 15;
+              } else {
+                payableDays = Math.max(1, daysInMonth - jDay + 1);
+              }
+              proratedSalary = Math.round(fullBaseSalary * (payableDays / (daysInMonth || 30)));
+            }
+
+            const baseSalary = isJoinMonth ? proratedSalary : fullBaseSalary;
+            const dailyRate = Math.round(fullBaseSalary / 30);
             const halfDayRate = Math.round(dailyRate * 0.5);
             return {
               employeeId: emp._id,
               employee: emp,
               month,
               baseSalary,
+              fullBaseSalary,
+              isProrated: Boolean(isJoinMonth && jDay > 1),
+              proratedDays: payableDays,
+              totalDaysInMonth: daysInMonth,
+              joinDate: jDate ? jDate.toISOString().split('T')[0] : undefined,
+              distributionDate: '1st of the month',
+              distributionSchedule: 'Distributed on the 1st day of the month',
               dailyRate,
               halfDayRate,
               approvedLeaves: 0,
@@ -545,6 +599,15 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
               </button>
             </div>
 
+            {/* Salary Disbursal Schedule Badge */}
+            <div
+              className="hidden sm:flex items-center space-x-1.5 h-10 px-3 bg-indigo-50/80 border border-indigo-200/60 rounded-xl text-indigo-700 text-xs font-semibold shadow-2xs shrink-0 select-none"
+              title="Salary is distributed on the 1st day of the month for the completed monthly cycle"
+            >
+              <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span>Disbursal: <strong className="font-extrabold text-indigo-900">1st of the month</strong></span>
+            </div>
+
             {/* Refresh button */}
             <button
               onClick={() => fetchPayrolls(selectedMonth)}
@@ -645,8 +708,9 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                 ₹{kpiStats.totalBase.toLocaleString()}
               </h3>
             </div>
-            <p className="text-[11px] text-indigo-600 font-semibold mt-4 pt-2 border-t border-slate-50">
-              Standard 30-Day Pay Cycle
+            <p className="text-[11px] text-indigo-600 font-semibold mt-4 pt-2 border-t border-slate-50 flex items-center justify-between">
+              <span>Distributed on 1st of the month</span>
+              <span className="text-slate-400 font-normal">30-Day Pay Cycle</span>
             </p>
           </div>
 
@@ -847,9 +911,24 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                               <Edit2 className="w-3 h-3 text-slate-300 group-hover/sal:text-indigo-600 transition" />
                             </button>
                           )}
-                          <p className="text-[10px] text-slate-400 font-mono">
-                            ₹{p.dailyRate}/day
-                          </p>
+                          {p.isProrated ? (
+                            <div className="mt-1">
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200"
+                                title={`Joined on ${p.joinDate ? formatJoinDate(p.joinDate) : 'mid-month'}. Prorated for ${p.proratedDays} of ${p.totalDaysInMonth || 30} days. Full monthly salary: ₹${(p.fullBaseSalary || 0).toLocaleString()}`}
+                              >
+                                <Clock className="w-2.5 h-2.5 text-amber-600" />
+                                <span>Prorated ({p.proratedDays}/{p.totalDaysInMonth || 30}d)</span>
+                              </span>
+                              <p className="text-[9px] text-slate-400 font-mono mt-0.5">
+                                Full: ₹{(p.fullBaseSalary || p.baseSalary).toLocaleString()} • Joined {p.joinDate ? formatJoinDate(p.joinDate) : ''}
+                              </p>
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-slate-400 font-mono">
+                              ₹{p.dailyRate}/day
+                            </p>
+                          )}
                         </td>
 
                         {/* 3. Attendance & Leave Pills with Micro-adjusters (- / +) */}
@@ -1068,14 +1147,23 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
               {/* Itemized Calculation Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5 my-6">
                 <div className="p-4 rounded-2xl bg-slate-50/70 border border-slate-100">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Base Gross Salary
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Base Gross Salary
+                    </p>
+                    {currentEmployeeRecord.isProrated && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        Prorated ({currentEmployeeRecord.proratedDays}/{currentEmployeeRecord.totalDaysInMonth || 30}d)
+                      </span>
+                    )}
+                  </div>
                   <h4 className="text-2xl font-black text-slate-900 mt-1 font-mono">
                     ₹{(currentEmployeeRecord.baseSalary || 45000).toLocaleString()}
                   </h4>
                   <p className="text-[11px] text-slate-400 mt-1">
-                    Daily Rate: ₹{currentEmployeeRecord.dailyRate}/day
+                    {currentEmployeeRecord.isProrated
+                      ? `Joined ${currentEmployeeRecord.joinDate ? formatJoinDate(currentEmployeeRecord.joinDate) : 'mid-month'} • Full: ₹${(currentEmployeeRecord.fullBaseSalary || 0).toLocaleString()}`
+                      : `Daily Rate: ₹${currentEmployeeRecord.dailyRate}/day`}
                   </p>
                 </div>
 
@@ -1113,7 +1201,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                 <div className="divide-y divide-slate-100 text-xs">
                   <div className="flex justify-between p-3.5 hover:bg-slate-50/50">
                     <span className="text-slate-600 font-medium">
-                      Basic Salary (30 Working Days Basis)
+                      Basic Salary {currentEmployeeRecord.isProrated ? `(Prorated for Joining Month: ${currentEmployeeRecord.proratedDays} Days)` : '(30 Working Days Basis)'}
                     </span>
                     <span className="font-mono font-bold text-slate-900">
                       ₹{(currentEmployeeRecord.baseSalary || 45000).toLocaleString()}
@@ -1205,6 +1293,9 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                     Statement For
                   </span>
                   <p className="text-base font-extrabold text-slate-900">{formattedMonth}</p>
+                  <p className="text-[11px] text-indigo-600 font-semibold mt-0.5">
+                    Disbursal: 1st of the month
+                  </p>
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
@@ -1263,13 +1354,25 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                   <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                     <tr>
                       <td className="py-2.5 px-4 font-bold text-slate-900">
-                        Gross Base Salary
+                        Gross Base Salary{' '}
+                        {payslipRecord.isProrated && (
+                          <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded font-normal ml-1">
+                            Prorated ({payslipRecord.proratedDays} Days)
+                          </span>
+                        )}
                       </td>
                       <td className="py-2.5 px-4 text-center text-slate-400">
-                        30-Day Rate
+                        {payslipRecord.isProrated
+                          ? `${payslipRecord.proratedDays}/${payslipRecord.totalDaysInMonth || 30} Days`
+                          : '30-Day Rate'}
                       </td>
                       <td className="py-2.5 px-4 text-right font-mono font-bold text-slate-900">
                         ₹{(payslipRecord.baseSalary || 45000).toLocaleString()}
+                        {payslipRecord.isProrated && (
+                          <span className="block text-[10px] font-normal text-slate-400">
+                            Full: ₹{(payslipRecord.fullBaseSalary || 0).toLocaleString()}
+                          </span>
+                        )}
                       </td>
                     </tr>
                     <tr className="bg-emerald-50/40 text-emerald-800">

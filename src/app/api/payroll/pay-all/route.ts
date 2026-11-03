@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Payroll from '@/models/Payroll';
 import Employee from '@/models/Employee';
-import { calculateEmployeePayroll, getCurrentMonthStr, invalidatePayrollCache } from '@/lib/payrollEngine';
+import {
+  calculateEmployeePayroll,
+  getCurrentMonthStr,
+  getEmployeeJoinDateInfo,
+  invalidatePayrollCache,
+} from '@/lib/payrollEngine';
 import { requireRoles } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
@@ -20,8 +25,13 @@ export async function POST(req: NextRequest) {
     const month = body.month || getCurrentMonthStr();
     const paidAt = new Date();
 
-    // 1. Fetch all active employees
-    const employees = await Employee.find({ status: { $ne: 'suspended' } });
+    // 1. Fetch all active employees who have joined on or before this month
+    const allEmployees = await Employee.find({ status: { $ne: 'suspended' } });
+    const employees = allEmployees.filter((emp: any) => {
+      const joinInfo = getEmployeeJoinDateInfo(emp);
+      if (!joinInfo) return true;
+      return joinInfo.joinMonth <= month;
+    });
 
     // 2. Fetch existing payrolls for month
     const existingPayrolls = await Payroll.find({ month });
@@ -44,6 +54,13 @@ export async function POST(req: NextRequest) {
         employee: emp._id,
         month,
         baseSalary: calculated.baseSalary,
+        fullBaseSalary: calculated.fullBaseSalary,
+        isProrated: calculated.isProrated,
+        proratedDays: calculated.proratedDays,
+        totalDaysInMonth: calculated.totalDaysInMonth,
+        joinDate: calculated.joinDate,
+        distributionDate: calculated.distributionDate,
+        distributionSchedule: calculated.distributionSchedule,
         approvedLeaves: calculated.approvedLeaves,
         unapprovedLeaves: calculated.unapprovedLeaves,
         halfDays: calculated.halfDays,

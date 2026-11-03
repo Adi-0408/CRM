@@ -88,6 +88,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       body.baseSalary = 45000;
     }
 
+    if (body.joinDate) {
+      try {
+        body.joinDate = new Date(body.joinDate).toISOString();
+      } catch {
+        body.joinDate = new Date().toISOString();
+      }
+    } else {
+      body.joinDate = new Date().toISOString();
+    }
+
     const newEmp = await Employee.create(body);
 
     // Also sync credentials into User collection

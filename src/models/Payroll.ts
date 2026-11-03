@@ -18,6 +18,13 @@ export interface IPayroll {
   paidAt?: Date | string;
   bonus?: number;
   notes?: string;
+  isProrated?: boolean;
+  fullBaseSalary?: number;
+  proratedDays?: number;
+  totalDaysInMonth?: number;
+  joinDate?: string;
+  distributionDate?: string;
+  distributionSchedule?: string;
   createdAt?: Date | string;
   updatedAt?: Date | string;
 }

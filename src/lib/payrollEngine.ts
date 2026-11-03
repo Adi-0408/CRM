@@ -30,6 +30,68 @@ export function getCurrentMonthStr(): string {
 }
 
 /**
+ * Extracts and normalizes employee join date info:
+ * joinDateStr: "YYYY-MM-DD"
+ * joinMonth: "YYYY-MM"
+ * joinDay: 1..31
+ */
+export function getEmployeeJoinDateInfo(emp: any): {
+  joinDateStr: string;
+  joinMonth: string;
+  joinDay: number;
+  joinDate: Date;
+} | null {
+  const raw = emp?.joinDate || emp?.createdAt;
+  if (!raw) return null;
+
+  let d: Date;
+  if (raw instanceof Date) {
+    d = raw;
+  } else if (typeof raw === 'object' && raw.seconds) {
+    d = new Date(raw.seconds * 1000);
+  } else if (typeof raw === 'string' || typeof raw === 'number') {
+    d = new Date(raw);
+  } else {
+    d = new Date(raw);
+  }
+
+  if (isNaN(d.getTime())) return null;
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = d.getDate();
+
+  return {
+    joinDateStr: `${year}-${month}-${String(day).padStart(2, '0')}`,
+    joinMonth: `${year}-${month}`,
+    joinDay: day,
+    joinDate: d,
+  };
+}
+
+/**
+ * Salary is distributed on the 1st day of the month
+ */
+export function getSalaryDistributionInfo(month: string) {
+  const [yearStr, monthNumStr] = month.split('-');
+  const year = parseInt(yearStr, 10);
+  const monthNum = parseInt(monthNumStr, 10);
+
+  // 1st of the subsequent month is the standard pay disbursement day for this cycle
+  const nextMonthDate = new Date(year, monthNum, 1);
+  const nextYear = nextMonthDate.getFullYear();
+  const nextMonth = String(nextMonthDate.getMonth() + 1).padStart(2, '0');
+  const nextMonthName = nextMonthDate.toLocaleDateString('en-US', { month: 'short' });
+
+  return {
+    distributionDay: 1,
+    distributionDateStr: `${nextYear}-${nextMonth}-01`,
+    distributionLabel: `1st ${nextMonthName} ${nextYear}`,
+    distributionSchedule: 'Distributed on the 1st day of the month',
+  };
+}
+
+/**
  * Calculates payroll for an employee in a given month
  */
 export async function calculateEmployeePayroll(
@@ -41,12 +103,48 @@ export async function calculateEmployeePayroll(
     leaves?: any[];
   }
 ) {
-  const baseSalary =
-    existingPayroll?.baseSalary !== undefined
-      ? Number(existingPayroll.baseSalary)
-      : Number(emp.baseSalary || emp.salary || 45000);
+  const fullBaseSalary = Number(emp.baseSalary || emp.salary || 45000);
+  const joinInfo = getEmployeeJoinDateInfo(emp);
 
-  const dailyRate = baseSalary / 30;
+  // Month day bounds
+  const [yearStr, monthNumStr] = month.split('-');
+  const year = parseInt(yearStr, 10);
+  const monthIndex = parseInt(monthNumStr, 10) - 1;
+  const startOfMonth = new Date(year, monthIndex, 1);
+  const endOfMonth = new Date(year, monthIndex + 1, 0, 23, 59, 59, 999);
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+
+  // Proration Rule for Joining Month:
+  // If employee joined during this month, calculate salary from their joining date to end of month.
+  // Example: 10,000 base salary, joined 15 Nov -> 15 days worked in 30-day month = ₹5,000.
+  const isJoiningMonth = Boolean(joinInfo && joinInfo.joinMonth === month);
+  let proratedBaseSalary = fullBaseSalary;
+  let payableDays = daysInMonth;
+
+  if (isJoiningMonth && joinInfo) {
+    const joinDay = joinInfo.joinDay;
+    if (joinDay === 1) {
+      payableDays = daysInMonth;
+    } else if (joinDay === 15 && daysInMonth === 30) {
+      // Exactly 15 days = 50% of monthly salary
+      payableDays = 15;
+    } else {
+      payableDays = Math.max(1, daysInMonth - joinDay + 1);
+    }
+    const prorationRatio = payableDays / (daysInMonth || 30);
+    proratedBaseSalary = Math.round(fullBaseSalary * prorationRatio);
+  }
+
+  // Base salary for this payroll document:
+  // If existing record has an override, keep it; otherwise use prorated for joining month or full base
+  const baseSalary =
+    existingPayroll?.baseSalary !== undefined && existingPayroll?.baseSalary !== null
+      ? Number(existingPayroll.baseSalary)
+      : isJoiningMonth
+      ? proratedBaseSalary
+      : fullBaseSalary;
+
+  const dailyRate = fullBaseSalary / 30;
   const halfDayRate = dailyRate * 0.5;
 
   // 1. Query Attendance for the month (use preloaded data if provided)
@@ -61,6 +159,13 @@ export async function calculateEmployeePayroll(
     attendanceRecords = await Attendance.find({
       employee: emp._id,
       date: { $regex: `^${month}` },
+    });
+  }
+
+  // If in joining month, do not penalize days before joining as absent!
+  if (isJoiningMonth && joinInfo) {
+    attendanceRecords = attendanceRecords.filter((att: any) => {
+      return !att.date || att.date >= joinInfo.joinDateStr;
     });
   }
 
@@ -82,11 +187,6 @@ export async function calculateEmployeePayroll(
   }
 
   // 2. Query Leaves overlapping with the month (use preloaded data if provided)
-  const [yearStr, monthNumStr] = month.split('-');
-  const year = parseInt(yearStr, 10);
-  const monthIndex = parseInt(monthNumStr, 10) - 1;
-  const startOfMonth = new Date(year, monthIndex, 1);
-  const endOfMonth = new Date(year, monthIndex + 1, 0, 23, 59, 59, 999);
 
   let leaveRecords: any[];
   if (preloaded?.leaves) {
@@ -105,6 +205,14 @@ export async function calculateEmployeePayroll(
       employee: emp._id,
       startDate: { $lte: endOfMonth },
       endDate: { $gte: startOfMonth },
+    });
+  }
+
+  // If in joining month, only count leaves from joining date onwards
+  if (isJoiningMonth && joinInfo) {
+    leaveRecords = leaveRecords.filter((leave: any) => {
+      const sDate = leave.startDate ? new Date(leave.startDate) : null;
+      return !sDate || sDate >= joinInfo.joinDate;
     });
   }
 
@@ -145,7 +253,7 @@ export async function calculateEmployeePayroll(
       : rawUnapprovedLeaves;
 
   // Formula per requirements:
-  // dailyRate = baseSalary / 30
+  // dailyRate = fullBaseSalary / 30
   // halfDayRate = dailyRate * 0.5
   // unpaidLeaveDeduction = unapprovedLeaves * dailyRate
   // halfDayDeduction = halfDays * halfDayRate
@@ -162,6 +270,7 @@ export async function calculateEmployeePayroll(
       : 'Pending';
 
   const paidAt = existingPayroll?.paidAt || null;
+  const distInfo = getSalaryDistributionInfo(month);
 
   return {
     employeeId: emp._id,
@@ -173,10 +282,18 @@ export async function calculateEmployeePayroll(
       department: emp.department,
       avatar: emp.avatar,
       baseSalary,
-      salary: baseSalary,
+      salary: fullBaseSalary,
+      joinDate: joinInfo?.joinDateStr,
     },
     month,
     baseSalary,
+    fullBaseSalary,
+    isProrated: Boolean(isJoiningMonth && joinInfo && joinInfo.joinDay > 1),
+    proratedDays: isJoiningMonth ? payableDays : daysInMonth,
+    totalDaysInMonth: daysInMonth,
+    joinDate: joinInfo?.joinDateStr || null,
+    distributionDate: distInfo.distributionLabel,
+    distributionSchedule: distInfo.distributionSchedule,
     dailyRate: Math.round(dailyRate),
     halfDayRate: Math.round(halfDayRate),
     approvedLeaves,
