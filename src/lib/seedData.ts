@@ -251,11 +251,12 @@ export async function wipeAndSeedDatabase() {
     client: 'Nexus Health Labs',
     description: 'Cross-platform mobile CRM app for healthcare reps.',
     budget: 280000,
-    status: 'planning',
+    status: 'on_hold',
     progress: 25,
     priority: 'medium',
     deadline: new Date('2026-12-30T00:00:00.000Z'),
     projectLead: 'emp_lead',
+    leadId: 'lead_nexus',
     teamMembers: ['emp_lead', 'emp_android', 'emp_intern'],
     createdAt: new Date('2026-10-15T00:00:00.000Z'),
   });
@@ -346,6 +347,8 @@ export async function wipeAndSeedDatabase() {
     notes: 'Discussed requirements for mobile field representative tracking.',
     quotationId: 'quot_qt_101',
     quotationNumber: 'QT-2026-101',
+    projectId: 'proj_mobile_crm',
+    projectTitle: 'Mobile CRM App v2',
     createdAt: new Date('2026-10-25T00:00:00.000Z'),
   });
 

@@ -85,7 +85,10 @@ export default function ProjectsView({
 
   const filteredProjects = scopedProjects.filter((p) => {
     const normalized = (p.status === 'planning' ? 'new' : p.status) || 'new';
-    return filter === 'all' || normalized === filter;
+    if (filter === 'all') {
+      return normalized !== 'on_hold';
+    }
+    return normalized === filter;
   });
 
   return (
@@ -93,7 +96,7 @@ export default function ProjectsView({
       {/* Top Filter Bar */}
       <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 p-5 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full sm:w-auto p-1 bg-slate-100/80 border border-slate-200/50 rounded-full">
-          {['all', 'new', 'in_progress', 'completed'].map((st) => (
+          {['all', 'new', 'in_progress', 'completed', 'on_hold'].map((st) => (
             <button
               key={st}
               onClick={() => setFilter(st)}
@@ -103,7 +106,7 @@ export default function ProjectsView({
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              {st.replace('_', ' ')}
+              {st === 'on_hold' ? 'On Hold' : st.replace('_', ' ')}
             </button>
           ))}
         </div>
@@ -137,17 +140,24 @@ export default function ProjectsView({
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <span
-                      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                        project.priority === 'urgent'
-                          ? 'bg-rose-50 text-rose-600 border border-rose-200'
-                          : project.priority === 'high'
-                          ? 'bg-amber-50 text-amber-600 border border-amber-200'
-                          : 'bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      {project.priority} priority
-                    </span>
+                    <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
+                      <span
+                        className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                          project.priority === 'urgent'
+                            ? 'bg-rose-50 text-rose-600 border border-rose-200'
+                            : project.priority === 'high'
+                            ? 'bg-amber-50 text-amber-600 border border-amber-200'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        {project.priority} priority
+                      </span>
+                      {project.status === 'on_hold' && (
+                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
+                          On Hold
+                        </span>
+                      )}
+                    </div>
 
                     {/* Delete Project button: visible to Admin, Manager & Team Lead */}
                     {canManageProjects && (
@@ -213,6 +223,7 @@ export default function ProjectsView({
                           { value: 'new', label: 'NEW' },
                           { value: 'in_progress', label: 'IN PROGRESS' },
                           { value: 'completed', label: 'COMPLETED' },
+                          { value: 'on_hold', label: 'ON HOLD' },
                         ]}
                       />
                     ) : (
@@ -222,6 +233,8 @@ export default function ProjectsView({
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             : project.status === 'in_progress'
                             ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : project.status === 'on_hold'
+                            ? 'bg-rose-50 text-rose-700 border-rose-200'
                             : 'bg-blue-50 text-blue-700 border-blue-200'
                         }`}
                       >
@@ -229,6 +242,8 @@ export default function ProjectsView({
                           ? 'In Progress'
                           : project.status === 'completed'
                           ? 'Completed'
+                          : project.status === 'on_hold'
+                          ? 'On Hold'
                           : 'New'}
                       </span>
                     )}
