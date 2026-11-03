@@ -38,14 +38,21 @@ export async function GET() {
         .limit(5)
         .populate('assignedTo', 'name avatar'),
       Lead.find(),
-      Task.find().select('status'),
+      Task.find().populate('project', 'status').select('status project'),
     ]);
 
     const presentToday = todayAttendance.filter((a: any) => a.status === 'present').length;
     const totalTasks = allTasks.length;
     const completedTasks = allTasks.filter((t: any) => t.status === 'completed').length;
-    const inProgressTasks = allTasks.filter((t: any) => t.status === 'in_progress').length;
-    const newTasks = allTasks.filter((t: any) => t.status === 'new' || t.status === 'todo').length;
+    const inProgressTasks = allTasks.filter(
+      (t: any) => t.status === 'in_progress' && t.project?.status !== 'on_hold'
+    ).length;
+    const onHoldTasks = allTasks.filter(
+      (t: any) => t.status === 'on_hold' || t.project?.status === 'on_hold'
+    ).length;
+    const newTasks = allTasks.filter(
+      (t: any) => (t.status === 'new' || t.status === 'todo') && t.project?.status !== 'on_hold'
+    ).length;
 
     const attendanceRate = totalEmployees > 0 ? Math.round((presentToday / totalEmployees) * 100) : 0;
 
@@ -132,6 +139,7 @@ export async function GET() {
         totalTasks,
         completedTasks,
         inProgressTasks,
+        onHoldTasks,
         newTasks,
         todoTasks: newTasks,
       },

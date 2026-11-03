@@ -9,7 +9,7 @@ interface CreateTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTaskCreated: () => void;
-  projects: Array<{ _id: string; title: string }>;
+  projects: Array<{ _id: string; title: string; status?: string }>;
   employees: Array<any>;
   tasks?: any[];
   initialProjectId?: string;
@@ -28,7 +28,7 @@ export default function CreateTaskModal({
   const [projectId, setProjectId] = useState(initialProjectId || '');
   const [assignedTo, setAssignedTo] = useState('');
   const [priority, setPriority] = useState('medium');
-  const [status, setStatus] = useState<'new' | 'in_progress' | 'completed'>('new');
+  const [status, setStatus] = useState<'new' | 'in_progress' | 'completed' | 'on_hold'>('new');
   const [dueDate, setDueDate] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,6 +39,15 @@ export default function CreateTaskModal({
       setProjectId(initialProjectId);
     }
   }, [isOpen, initialProjectId]);
+
+  React.useEffect(() => {
+    if (projectId) {
+      const selectedProj = projects.find((p: any) => (p._id || p.id) === projectId);
+      if (selectedProj && selectedProj.status === 'on_hold') {
+        setStatus('on_hold');
+      }
+    }
+  }, [projectId, projects]);
 
   if (!isOpen) return null;
 
@@ -138,7 +147,10 @@ export default function CreateTaskModal({
                 placeholder="-- Select Project --"
                 options={[
                   { value: '', label: '-- Select Project --' },
-                  ...projects.map((p) => ({ value: p._id, label: p.title })),
+                  ...projects.map((p) => ({
+                    value: p._id,
+                    label: p.status === 'on_hold' ? `${p.title} (On Hold)` : p.title,
+                  })),
                 ]}
               />
             </div>
@@ -155,6 +167,7 @@ export default function CreateTaskModal({
                   { value: 'new', label: 'New' },
                   { value: 'in_progress', label: 'In Progress' },
                   { value: 'completed', label: 'Completed' },
+                  { value: 'on_hold', label: 'On Hold' },
                 ]}
               />
             </div>

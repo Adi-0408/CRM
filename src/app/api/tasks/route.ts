@@ -47,6 +47,11 @@ export async function GET(req: NextRequest) {
         obj.status = 'new';
         Task.findByIdAndUpdate(obj._id || obj.id, { status: 'new' }).catch(() => {});
       }
+      // If linked project is on hold and task is not completed, sync task to on_hold
+      if (obj.project?.status === 'on_hold' && obj.status !== 'completed' && obj.status !== 'on_hold') {
+        obj.status = 'on_hold';
+        Task.findByIdAndUpdate(obj._id || obj.id, { status: 'on_hold' }).catch(() => {});
+      }
       return obj;
     });
 
@@ -71,6 +76,14 @@ export async function POST(req: NextRequest) {
 
     if (!body.status || body.status === 'todo') {
       body.status = 'new';
+    }
+
+    // If parent project is on hold and task is not completed, automatically assign to on_hold
+    if (body.project && body.status !== 'completed') {
+      const parentProject = await Project.findById(body.project);
+      if (parentProject && parentProject.status === 'on_hold') {
+        body.status = 'on_hold';
+      }
     }
 
     if (body.status === 'completed' && !body.completedAt) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Project from '@/models/Project';
+import Task from '@/models/Task';
 import Employee from '@/models/Employee';
 import Lead from '@/models/Lead';
 import { requireRoles } from '@/lib/apiAuth';
@@ -124,6 +125,30 @@ export async function PUT(
 
     if (!updated) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    // Cascade on_hold status to associated tasks
+    if (body.status === 'on_hold') {
+      try {
+        const linkedTasks = await Task.find({ project: params.id });
+        for (const t of linkedTasks) {
+          if (t.status !== 'completed' && t.status !== 'on_hold') {
+            await Task.findByIdAndUpdate(t._id || t.id, { status: 'on_hold' });
+          }
+        }
+      } catch (taskErr) {
+        console.error('Error cascading project on_hold status to tasks:', taskErr);
+      }
+    } else if (currentProject.status === 'on_hold' && body.status && body.status !== 'on_hold') {
+      try {
+        const linkedTasks = await Task.find({ project: params.id, status: 'on_hold' });
+        const targetStatus = body.status === 'in_progress' ? 'in_progress' : 'new';
+        for (const t of linkedTasks) {
+          await Task.findByIdAndUpdate(t._id || t.id, { status: targetStatus });
+        }
+      } catch (taskErr) {
+        console.error('Error restoring tasks from on_hold status:', taskErr);
+      }
     }
 
     const populated = await Project.findById(params.id)

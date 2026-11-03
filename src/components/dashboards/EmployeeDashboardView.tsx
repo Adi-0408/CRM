@@ -78,7 +78,9 @@ export default function EmployeeDashboardView({
       t.assignedTo?.name === user?.name
   );
 
-  const pendingTasks = myTasks.filter((t) => t.status !== 'completed');
+  const pendingTasks = myTasks.filter(
+    (t) => t.status !== 'completed' && t.status !== 'on_hold' && t.project?.status !== 'on_hold'
+  );
 
   // Dynamic Attendance Calculation for the active employee
   const myAttendances = attendances.filter(
@@ -304,13 +306,17 @@ export default function EmployeeDashboardView({
                           ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                           : t.status === 'in_progress'
                           ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                          : t.status === 'on_hold' || t.project?.status === 'on_hold'
+                          ? 'bg-rose-50 text-rose-700 border border-rose-200'
                           : 'bg-blue-50 text-blue-700 border border-blue-200'
                       }`}
                     >
-                      {t.status === 'in_progress'
-                        ? 'In Progress'
-                        : isCompleted
+                      {isCompleted
                         ? 'Completed'
+                        : t.status === 'on_hold' || t.project?.status === 'on_hold'
+                        ? 'On Hold'
+                        : t.status === 'in_progress'
+                        ? 'In Progress'
                         : t.status === 'todo'
                         ? 'New'
                         : t.status || 'New'}

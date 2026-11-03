@@ -287,7 +287,7 @@ export async function wipeAndSeedDatabase() {
     project: 'proj_mobile_crm',
     assignedTo: 'emp_android',
     priority: 'urgent',
-    status: 'in_progress',
+    status: 'on_hold',
     dueDate: new Date('2026-11-22T00:00:00.000Z'),
     description: 'Cache patient visitation logs when device is offline.',
     createdAt: new Date('2026-11-01T00:00:00.000Z'),

@@ -81,7 +81,8 @@ export default function TeamMemberPicker({
   const workloadMap = useMemo(() => {
     const counts: Record<string, number> = {};
     tasks.forEach((t) => {
-      if (t.status !== 'completed' && t.assignedTo) {
+      const isHold = t.status === 'on_hold' || t.project?.status === 'on_hold';
+      if (t.status !== 'completed' && !isHold && t.assignedTo) {
         const assigneeId = String(t.assignedTo._id || t.assignedTo);
         counts[assigneeId] = (counts[assigneeId] || 0) + 1;
       }

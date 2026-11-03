@@ -32,7 +32,10 @@ export default function TasksView({
   const [search, setSearch] = useState('');
 
   const toggleTaskStatus = async (task: any) => {
-    const nextStatus = task.status === 'completed' ? 'new' : 'completed';
+    const isProjectOnHold = task.project?.status === 'on_hold';
+    const nextStatus = task.status === 'completed'
+      ? (isProjectOnHold ? 'on_hold' : 'new')
+      : 'completed';
     try {
       await authFetch(`/api/tasks/${task._id}`, {
         method: 'PUT',
@@ -91,8 +94,15 @@ export default function TasksView({
   }, [tasks, role, user]);
 
   const filteredTasks = scopedTasks.filter((t) => {
-    const normalizedStatus = (t.status === 'todo' ? 'new' : t.status) || 'new';
-    const matchesFilter = filter === 'all' || normalizedStatus === filter;
+    const isProjectOnHold = t.project?.status === 'on_hold';
+    const rawStatus = (t.status === 'todo' ? 'new' : t.status) || 'new';
+    const effectiveStatus = isProjectOnHold && rawStatus !== 'completed' ? 'on_hold' : rawStatus;
+
+    const matchesFilter =
+      filter === 'all'
+        ? effectiveStatus !== 'on_hold'
+        : effectiveStatus === filter;
+
     const matchesSearch =
       t.title.toLowerCase().includes(search.toLowerCase()) ||
       t.project?.title?.toLowerCase().includes(search.toLowerCase()) ||
@@ -116,18 +126,18 @@ export default function TasksView({
             />
           </div>
 
-          <div className="flex items-center space-x-1 bg-slate-100/80 border border-slate-200/50 p-1 rounded-full">
-            {['all', 'new', 'in_progress', 'completed'].map((st) => (
+          <div className="flex items-center space-x-1 bg-slate-100/80 border border-slate-200/50 p-1 rounded-full overflow-x-auto no-scrollbar">
+            {['all', 'new', 'in_progress', 'completed', 'on_hold'].map((st) => (
               <button
                 key={st}
                 onClick={() => setFilter(st)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize transition-all ${
+                className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold capitalize transition-all ${
                   filter === st
                     ? 'bg-white text-slate-900 shadow-sm font-bold'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                {st.replace('_', ' ')}
+                {st === 'on_hold' ? 'On Hold' : st.replace('_', ' ')}
               </button>
             ))}
           </div>
@@ -150,6 +160,9 @@ export default function TasksView({
         {filteredTasks.length > 0 ? (
           filteredTasks.map((task) => {
             const isCompleted = task.status === 'completed';
+            const isProjectOnHold = task.project?.status === 'on_hold';
+            const rawStatus = (task.status === 'todo' ? 'new' : task.status) || 'new';
+            const effectiveStatus = isProjectOnHold && !isCompleted ? 'on_hold' : rawStatus;
 
             return (
               <div
@@ -157,6 +170,8 @@ export default function TasksView({
                 className={`rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border transition-all ${
                   isCompleted
                     ? 'bg-slate-50/50 border-slate-200/60 opacity-80'
+                    : effectiveStatus === 'on_hold'
+                    ? 'bg-rose-50/20 border-rose-100 hover:border-rose-200 shadow-[0_4px_20px_-4px_rgba(244,63,94,0.04)]'
                     : 'bg-white border-slate-100 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] hover:shadow-[0_8px_25px_-4px_rgba(15,23,42,0.05)]'
                 }`}
               >
@@ -183,8 +198,13 @@ export default function TasksView({
                     </h4>
                     <div className="flex flex-wrap items-center gap-2 mt-1">
                       {task.project && (
-                        <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
-                          📁 {task.project.title}
+                        <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded inline-flex items-center gap-1.5">
+                          <span>📁 {task.project.title}</span>
+                          {isProjectOnHold && (
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 border border-rose-200">
+                              Project On Hold
+                            </span>
+                          )}
                         </span>
                       )}
                       {task.assignedTo && (
@@ -206,20 +226,23 @@ export default function TasksView({
 
                       {/* Status Selector Pill */}
                       <select
-                        value={task.status === 'todo' ? 'new' : task.status || 'new'}
+                        value={effectiveStatus}
                         onChange={(e) => updateTaskStatus(task, e.target.value)}
                         className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full border transition-all cursor-pointer focus:outline-none ${
-                          task.status === 'completed'
+                          effectiveStatus === 'completed'
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : task.status === 'in_progress'
+                            : effectiveStatus === 'in_progress'
                             ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : effectiveStatus === 'on_hold'
+                            ? 'bg-rose-50 text-rose-700 border-rose-200'
                             : 'bg-blue-50 text-blue-700 border-blue-200'
                         }`}
-                        title="Update Task Status (New ➔ In Progress ➔ Completed)"
+                        title="Update Task Status (New ➔ In Progress ➔ Completed ➔ On Hold)"
                       >
                         <option value="new">New</option>
                         <option value="in_progress">In Progress</option>
                         <option value="completed">Completed</option>
+                        <option value="on_hold">On Hold</option>
                       </select>
                     </div>
                   </div>
@@ -252,9 +275,13 @@ export default function TasksView({
         ) : (
           <div className="glass-card p-12 text-center border-slate-100">
             <CheckSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h4 className="text-sm font-bold text-slate-700">No tasks found</h4>
+            <h4 className="text-sm font-bold text-slate-700">
+              {filter === 'on_hold' ? 'No tasks on hold' : 'No tasks found'}
+            </h4>
             <p className="text-xs text-slate-400 mt-1">
-              {canManage
+              {filter === 'on_hold'
+                ? 'Tasks belonging to on-hold projects or marked on hold will appear here.'
+                : canManage
                 ? 'Click "New Task" above to add your first work item.'
                 : 'No tasks currently assigned to you.'}
             </p>
