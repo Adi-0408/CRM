@@ -113,7 +113,7 @@ function formatEmployeeTick(name?: string): string {
 }
 
 // Custom angled tick component for department axis
-const renderDeptAxisTick = (props: any) => {
+const DeptAxisTick = (props: any) => {
   const { x, y, payload } = props;
   const val = payload?.value || '';
   const label = formatDeptTick(val);
@@ -122,13 +122,13 @@ const renderDeptAxisTick = (props: any) => {
       <text
         x={0}
         y={0}
-        dy={10}
-        dx={-4}
+        dy={14}
+        dx={-6}
         textAnchor="end"
         fill="#64748B"
         fontSize={10.5}
         fontWeight={600}
-        transform="rotate(-35)"
+        transform="rotate(-45)"
       >
         {label}
       </text>
@@ -137,7 +137,7 @@ const renderDeptAxisTick = (props: any) => {
 };
 
 // Custom angled tick component for employee axis
-const renderEmployeeAxisTick = (props: any) => {
+const EmployeeAxisTick = (props: any) => {
   const { x, y, payload } = props;
   const val = payload?.value || '';
   const label = formatEmployeeTick(val);
@@ -146,13 +146,13 @@ const renderEmployeeAxisTick = (props: any) => {
       <text
         x={0}
         y={0}
-        dy={10}
-        dx={-4}
+        dy={14}
+        dx={-6}
         textAnchor="end"
         fill="#64748B"
         fontSize={10.5}
         fontWeight={600}
-        transform="rotate(-35)"
+        transform="rotate(-45)"
       >
         {label}
       </text>
@@ -1166,7 +1166,7 @@ export default function AttendanceAnalyticsChart({
         <>
           {/* VIEW MODE 1: COMBINED (Dept Stacked Bar Chart + Individual Employees Side-by-Side) */}
           {activeTab === 'combined' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               {/* Left: Department Distribution Chart */}
               <div className="bg-slate-50/60 rounded-2xl p-4 sm:p-5 border border-slate-100 flex flex-col justify-between">
                 <div className="flex items-center justify-between mb-4">
@@ -1184,26 +1184,25 @@ export default function AttendanceAnalyticsChart({
                   </span>
                 </div>
 
-                <div className="h-72 sm:h-80 w-full">
+                <div className="h-80 sm:h-88 w-full">
                   {departmentData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={departmentData}
-                        margin={{ top: 10, right: 10, left: -20, bottom: 30 }}
+                        margin={{ top: 10, right: 10, left: -20, bottom: 45 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                         <XAxis
                           dataKey="department"
                           interval={departmentData.length > 10 ? 'preserveStartEnd' : 0}
                           minTickGap={16}
-                          height={55}
-                          tickFormatter={formatDeptTick}
-                          tick={renderDeptAxisTick}
+                          height={65}
+                          tick={<DeptAxisTick />}
                         />
                         <YAxis tick={{ fill: '#94A3B8', fontSize: 11 }} allowDecimals={false} />
                         <Tooltip content={<CustomDeptTooltip />} />
                         <Legend
-                          wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
+                          wrapperStyle={{ fontSize: '11px', paddingTop: '16px' }}
                           formatter={(value) => (
                             <span className="text-slate-700 font-semibold">{value}</span>
                           )}
@@ -1263,21 +1262,20 @@ export default function AttendanceAnalyticsChart({
                   </div>
                 </div>
 
-                <div className="h-72 sm:h-80 w-full">
+                <div className="h-80 sm:h-88 w-full">
                   {filteredEmployees.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={filteredEmployees}
-                        margin={{ top: 10, right: 10, left: -20, bottom: 30 }}
+                        margin={{ top: 10, right: 10, left: -20, bottom: 45 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                         <XAxis
                           dataKey="name"
                           interval={filteredEmployees.length > 12 ? 'preserveStartEnd' : 0}
                           minTickGap={20}
-                          height={55}
-                          tickFormatter={formatEmployeeTick}
-                          tick={renderEmployeeAxisTick}
+                          height={65}
+                          tick={<EmployeeAxisTick />}
                         />
                         <YAxis
                           tick={{ fill: '#94A3B8', fontSize: 11 }}
@@ -1337,16 +1335,15 @@ export default function AttendanceAnalyticsChart({
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={departmentData}
-                      margin={{ top: 20, right: 20, left: -10, bottom: 35 }}
+                      margin={{ top: 20, right: 20, left: -10, bottom: 45 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                       <XAxis
                         dataKey="department"
                         interval={departmentData.length > 10 ? 'preserveStartEnd' : 0}
                         minTickGap={16}
-                        height={55}
-                        tickFormatter={formatDeptTick}
-                        tick={renderDeptAxisTick}
+                        height={65}
+                        tick={<DeptAxisTick />}
                       />
                       <YAxis
                         tick={{ fill: '#94A3B8', fontSize: 11 }}
@@ -1496,16 +1493,15 @@ export default function AttendanceAnalyticsChart({
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={filteredEmployees}
-                      margin={{ top: 20, right: 30, left: -10, bottom: 35 }}
+                      margin={{ top: 20, right: 30, left: -10, bottom: 45 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                       <XAxis
                         dataKey="name"
                         interval={filteredEmployees.length > 12 ? 'preserveStartEnd' : 0}
                         minTickGap={20}
-                        height={55}
-                        tickFormatter={formatEmployeeTick}
-                        tick={renderEmployeeAxisTick}
+                        height={65}
+                        tick={<EmployeeAxisTick />}
                       />
                       <YAxis
                         tick={{ fill: '#94A3B8', fontSize: 11 }}

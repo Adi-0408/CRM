@@ -18,13 +18,14 @@ export async function PUT(
     const updated = await Lead.findByIdAndUpdate(params.id, body, {
       new: true,
       runValidators: true,
-    }).populate('assignedTo', 'name email avatar role');
+    });
 
     if (!updated) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
     }
 
-    return NextResponse.json(updated);
+    const populated = await Lead.findById(params.id).populate('assignedTo', 'name email avatar role');
+    return NextResponse.json(populated || updated);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
