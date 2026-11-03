@@ -4,6 +4,10 @@ export function isUserAdminManager(user: AuthUser | null): boolean {
   return user?.role === 'admin_manager';
 }
 
+export function isUserTeamLead(user: AuthUser | null): boolean {
+  return user?.role === 'team_lead';
+}
+
 export function isUserHR(user: AuthUser | null): boolean {
   return user?.role === 'hr';
 }

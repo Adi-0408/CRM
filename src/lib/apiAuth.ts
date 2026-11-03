@@ -31,6 +31,7 @@ export interface AuthenticatedUser {
 
 const VALID_ROLES: UserRole[] = [
   'admin_manager',
+  'team_lead',
   'hr',
   'accounts',
   'sales',
@@ -46,6 +47,16 @@ export function normalizeRole(rawRole: any): UserRole {
 
   if (r === 'admin_manager' || r === 'admin' || r === 'manager_admin' || r === 'super_admin') {
     return 'admin_manager';
+  }
+  if (
+    r === 'team_lead' ||
+    r === 'lead' ||
+    r === 'pm' ||
+    r === 'project_manager' ||
+    r === 'teamlead' ||
+    r === 'team lead'
+  ) {
+    return 'team_lead';
   }
   if (r === 'hr' || r === 'hr_manager') {
     return 'hr';
