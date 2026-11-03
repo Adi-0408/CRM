@@ -124,13 +124,13 @@ export default function Sidebar({
     <>
       {/* 1. Desktop Fixed / Collapsible Sidebar (Screens >= 1024px) */}
       <aside
-        className={`hidden lg:flex sticky top-0 h-full self-stretch z-30 transition-all duration-200 flex-col justify-between flex-shrink-0 ${
+        className={`hidden lg:flex h-full self-stretch z-30 transition-all duration-200 flex-col justify-between flex-shrink-0 ${
           collapsed ? 'w-[72px]' : 'w-60'
-        } bg-white border-r border-slate-100 select-none`}
+        } bg-white/65 backdrop-blur-2xl backdrop-saturate-150 border-r border-slate-200/50 shadow-[4px_0_24px_-4px_rgba(15,23,42,0.03)] select-none`}
       >
         <div className="flex flex-col flex-1 min-h-0">
           {/* Brand Header - Height 16 (64px) matching Navbar height */}
-          <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 flex-shrink-0">
+          <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200/50 bg-white/40 backdrop-blur-md flex-shrink-0">
             <div className="flex items-center space-x-2.5 overflow-hidden">
               <div className="w-8 h-8 rounded-xl bg-[#635BFF] flex items-center justify-center text-white font-extrabold text-sm shadow-xs shrink-0">
                 P
@@ -146,7 +146,7 @@ export default function Sidebar({
             {!collapsed && (
               <button
                 onClick={() => setCollapsed(true)}
-                className="p-1.5 rounded-lg hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors active:scale-95"
+                className="p-1.5 rounded-lg hover:bg-slate-100/80 text-slate-400 hover:text-slate-600 transition-colors active:scale-95"
                 title="Collapse sidebar"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -159,9 +159,9 @@ export default function Sidebar({
         </div>
 
         {/* Footer Role Badge & Expand Toggle */}
-        <div className="p-3 border-t border-slate-100 bg-white flex-shrink-0">
+        <div className="p-3 border-t border-slate-200/50 bg-white/40 backdrop-blur-md flex-shrink-0">
           {!collapsed ? (
-            <div className="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-slate-50 transition-colors">
+            <div className="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/70 transition-colors">
               <div className="relative shrink-0">
                 <div className="w-8 h-8 rounded-full bg-[#F0EEFF] text-[#635BFF] border border-[#635BFF]/15 flex items-center justify-center font-bold text-xs overflow-hidden">
                   {user?.avatar ? (
@@ -191,7 +191,7 @@ export default function Sidebar({
             <div className="w-full flex justify-center py-1">
               <button
                 onClick={() => setCollapsed(false)}
-                className="w-9 h-9 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-700 border border-slate-200/80 transition-colors flex items-center justify-center active:scale-95"
+                className="w-9 h-9 rounded-xl hover:bg-white/80 text-slate-400 hover:text-slate-700 border border-slate-200/80 transition-colors flex items-center justify-center active:scale-95"
                 title="Expand sidebar"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -206,15 +206,15 @@ export default function Sidebar({
         <div className="lg:hidden fixed inset-0 z-50">
           {/* Backdrop Blur Overlay */}
           <div
-            className="fixed inset-0 bg-slate-900/20 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+            className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm transition-opacity animate-in fade-in duration-200"
             onClick={onCloseMobile}
           />
 
           {/* Slide-in Drawer Container */}
-          <div className="fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-2xl flex flex-col justify-between h-full border-r border-slate-100 animate-in slide-in-from-left duration-200 select-none">
+          <div className="fixed inset-y-0 left-0 z-50 w-72 bg-white/85 backdrop-blur-2xl backdrop-saturate-150 shadow-2xl flex flex-col justify-between h-full border-r border-slate-200/60 animate-in slide-in-from-left duration-200 select-none">
             <div className="flex flex-col flex-1 min-h-0">
               {/* Drawer Top Header */}
-              <div className="h-16 flex items-center justify-between px-5 border-b border-slate-100">
+              <div className="h-16 flex items-center justify-between px-5 border-b border-slate-200/50 bg-white/50 backdrop-blur-md">
                 <div className="flex items-center space-x-2.5">
                   <div className="w-8 h-8 rounded-xl bg-[#635BFF] flex items-center justify-center text-white font-extrabold text-sm shadow-xs">
                     P
@@ -229,7 +229,7 @@ export default function Sidebar({
                 {/* Close Button */}
                 <button
                   onClick={onCloseMobile}
-                  className="p-2 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center"
+                  className="p-2 rounded-xl hover:bg-slate-100/80 text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center"
                   title="Close menu"
                 >
                   <X className="w-4 h-4" />
@@ -241,8 +241,8 @@ export default function Sidebar({
             </div>
 
             {/* Drawer User Info Footer */}
-            <div className="p-3 border-t border-slate-100 bg-white">
-              <div className="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-slate-50 transition-colors">
+            <div className="p-3 border-t border-slate-200/50 bg-white/50 backdrop-blur-md">
+              <div className="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/70 transition-colors">
                 <div className="relative shrink-0">
                   <div className="w-8 h-8 rounded-full bg-[#F0EEFF] text-[#635BFF] border border-[#635BFF]/15 flex items-center justify-center font-bold text-xs overflow-hidden">
                     {user?.avatar ? (

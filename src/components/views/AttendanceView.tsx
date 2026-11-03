@@ -21,6 +21,9 @@ import {
   List,
   Camera,
   MapPin,
+  ExternalLink,
+  X,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
@@ -128,6 +131,14 @@ export default function AttendanceView({
   const [selectedDateForOverride, setSelectedDateForOverride] = useState<string>(getLocalTodayStr());
   const [selectedRecordForOverride, setSelectedRecordForOverride] = useState<any>(null);
   const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<{
+    url: string;
+    title: string;
+    time?: string;
+    type: 'Clock In' | 'Clock Out';
+    employeeName?: string;
+    location?: any;
+  } | null>(null);
 
   const fetchRecords = async () => {
     try {
@@ -925,20 +936,55 @@ export default function AttendanceView({
                                                         : 'Active'}
                                                     </span>
                                                     {s.checkInPhoto ? (
-                                                      <a
-                                                        href={s.checkInPhoto}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        title="View Cloudinary Selfie (Retained for 30 days)"
-                                                        className="hover:scale-110 transition-transform cursor-pointer"
+                                                      <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                          setPreviewPhoto({
+                                                            url: s.checkInPhoto!,
+                                                            title: `${record.employee?.name || 'Employee'} • Check-In Selfie`,
+                                                            time: formatTimeAmPm(s.checkIn),
+                                                            type: 'Clock In',
+                                                            employeeName: record.employee?.name,
+                                                            location: s.checkInLocation,
+                                                          })
+                                                        }
+                                                        className="w-4 h-4 rounded overflow-hidden bg-slate-900 border border-emerald-400 hover:scale-125 transition-transform cursor-pointer shrink-0"
+                                                        title="Click to view Check-In Selfie"
                                                       >
-                                                        <Camera className="w-2.5 h-2.5 text-emerald-600" />
-                                                      </a>
+                                                        <img
+                                                          src={s.checkInPhoto}
+                                                          alt="In Selfie"
+                                                          className="w-full h-full object-cover"
+                                                        />
+                                                      </button>
                                                     ) : s.isPhotoExpired ? (
                                                       <span title="Selfie auto-deleted after 30 days">
                                                         <Camera className="w-2.5 h-2.5 text-slate-300" />
                                                       </span>
                                                     ) : null}
+                                                    {s.checkOutPhoto && (
+                                                      <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                          setPreviewPhoto({
+                                                            url: s.checkOutPhoto!,
+                                                            title: `${record.employee?.name || 'Employee'} • Check-Out Selfie`,
+                                                            time: formatTimeAmPm(s.checkOut!),
+                                                            type: 'Clock Out',
+                                                            employeeName: record.employee?.name,
+                                                            location: s.checkOutLocation,
+                                                          })
+                                                        }
+                                                        className="w-4 h-4 rounded overflow-hidden bg-slate-900 border border-amber-400 hover:scale-125 transition-transform cursor-pointer shrink-0"
+                                                        title="Click to view Check-Out Selfie"
+                                                      >
+                                                        <img
+                                                          src={s.checkOutPhoto}
+                                                          alt="Out Selfie"
+                                                          className="w-full h-full object-cover"
+                                                        />
+                                                      </button>
+                                                    )}
                                                     {s.checkInLocation && (
                                                       <span title={`Pearl Enclave Office Perimeter (${s.checkInLocation.distanceMeters || 0}m)`}>
                                                         <MapPin className="w-2.5 h-2.5 text-teal-600" />
@@ -1041,6 +1087,83 @@ export default function AttendanceView({
           date={selectedDateForOverride}
           initialRecord={selectedRecordForOverride}
         />
+      )}
+
+      {/* Neat Full-Size Selfie Lightbox Modal */}
+      {previewPhoto && (
+        <div
+          className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200"
+          onClick={() => setPreviewPhoto(null)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm sm:max-w-md overflow-hidden relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/90">
+              <div className="flex items-center space-x-2.5">
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-xs ${
+                    previewPhoto.type === 'Clock In' ? 'bg-emerald-600' : 'bg-amber-500'
+                  }`}
+                >
+                  <Camera className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">{previewPhoto.title}</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    {previewPhoto.type} • {previewPhoto.time || 'Logged'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Photo Body */}
+            <div className="p-4 flex flex-col items-center bg-slate-950/5">
+              <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-slate-950 shadow-md border-2 border-slate-200 flex items-center justify-center">
+                <img
+                  src={previewPhoto.url}
+                  alt={previewPhoto.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+
+            {/* Footer with verification metadata & Cloudinary button */}
+            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-1.5 text-teal-700 font-medium text-[11px]">
+                <ShieldCheck className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                <span>Pearl Enclave (Verified)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewPhoto.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold transition-all shadow-2xs hover:shadow"
+                >
+                  <span>Open Original</span>
+                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewPhoto(null)}
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

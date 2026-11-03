@@ -14,6 +14,8 @@ import {
   Camera,
   MapPin,
   ShieldCheck,
+  ExternalLink,
+  X,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
@@ -50,6 +52,13 @@ export default function LiveClockCard({
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [previewPhoto, setPreviewPhoto] = useState<{
+    url: string;
+    title: string;
+    time?: string;
+    type: 'Clock In' | 'Clock Out';
+    location?: IAttendanceLocation;
+  } | null>(null);
 
   const todayStr = useMemo(() => getLocalTodayStr(now), [now]);
 
@@ -519,25 +528,69 @@ export default function LiveClockCard({
                         {s.checkOut ? formatTimeAmPm(s.checkOut) : 'Active'}
                       </span>
 
-                      {/* Photo verification badge with Cloudinary link / expiration badge */}
+                      {/* Photo verification thumbnails with instant neat lightbox preview */}
                       {s.checkInPhoto ? (
-                        <a
-                          href={s.checkInPhoto}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200 transition-colors"
-                          title="View Cloudinary Live Selfie (Retained for 30 days)"
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewPhoto({
+                              url: s.checkInPhoto!,
+                              title: `Session #${idx + 1} Clock-In Selfie`,
+                              time: formatTimeAmPm(s.checkIn),
+                              type: 'Clock In',
+                              location: s.checkInLocation,
+                            })
+                          }
+                          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 transition-all cursor-pointer shadow-2xs hover:shadow active:scale-95"
+                          title="Click to view neat full-size Clock-In Selfie"
                         >
-                          <Camera className="w-3 h-3 text-emerald-600" />
-                          <span>Selfie Verified</span>
-                        </a>
+                          <div className="w-5 h-5 rounded overflow-hidden bg-slate-900 border border-emerald-400 shrink-0">
+                            <img
+                              src={s.checkInPhoto}
+                              alt="In Selfie"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <span className="text-[10px] font-bold">In Selfie</span>
+                        </button>
                       ) : s.isPhotoExpired ? (
                         <span
                           className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200"
                           title="Selfie auto-deleted after 30-day retention period"
                         >
                           <Camera className="w-3 h-3 text-slate-400" />
-                          <span>Photo Expired</span>
+                          <span>In-Expired</span>
+                        </span>
+                      ) : null}
+
+                      {s.checkOutPhoto ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewPhoto({
+                              url: s.checkOutPhoto!,
+                              title: `Session #${idx + 1} Clock-Out Selfie`,
+                              time: formatTimeAmPm(s.checkOut!),
+                              type: 'Clock Out',
+                              location: s.checkOutLocation,
+                            })
+                          }
+                          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 transition-all cursor-pointer shadow-2xs hover:shadow active:scale-95"
+                          title="Click to view neat full-size Clock-Out Selfie"
+                        >
+                          <div className="w-5 h-5 rounded overflow-hidden bg-slate-900 border border-amber-400 shrink-0">
+                            <img
+                              src={s.checkOutPhoto}
+                              alt="Out Selfie"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <span className="text-[10px] font-bold">Out Selfie</span>
+                        </button>
+                      ) : !s.checkOut ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 text-slate-500 text-[10px] font-medium border border-slate-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <span>Out: In Progress</span>
                         </span>
                       ) : null}
 
@@ -577,6 +630,83 @@ export default function LiveClockCard({
         onVerified={handlePerformPunch}
         isLoading={loading}
       />
+
+      {/* Neat Full-Size Selfie Lightbox Modal */}
+      {previewPhoto && (
+        <div
+          className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200"
+          onClick={() => setPreviewPhoto(null)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm sm:max-w-md overflow-hidden relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/90">
+              <div className="flex items-center space-x-2.5">
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-xs ${
+                    previewPhoto.type === 'Clock In' ? 'bg-emerald-600' : 'bg-amber-500'
+                  }`}
+                >
+                  <Camera className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">{previewPhoto.title}</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    {previewPhoto.type} • {previewPhoto.time || 'Logged'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Photo Body */}
+            <div className="p-4 flex flex-col items-center bg-slate-950/5">
+              <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-slate-950 shadow-md border-2 border-slate-200 flex items-center justify-center">
+                <img
+                  src={previewPhoto.url}
+                  alt={previewPhoto.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+
+            {/* Footer with verification metadata & Cloudinary button */}
+            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-1.5 text-teal-700 font-medium text-[11px]">
+                <ShieldCheck className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                <span>Pearl Enclave (Verified)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewPhoto.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold transition-all shadow-2xs hover:shadow"
+                >
+                  <span>Open Original</span>
+                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewPhoto(null)}
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

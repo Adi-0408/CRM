@@ -19,6 +19,11 @@ import {
   Coffee,
   Check,
   ChevronDown,
+  Camera,
+  MapPin,
+  ExternalLink,
+  X,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   evaluateDailyAttendance,
@@ -68,6 +73,18 @@ export interface DayData {
   statusLabel: string;
 }
 
+function formatDateDisplay(dateStr: string): string {
+  if (!dateStr) return '';
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  return d.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 export default function EmployeeAttendanceCalendar({
   employee,
   employees = [],
@@ -82,6 +99,14 @@ export default function EmployeeAttendanceCalendar({
 }: EmployeeAttendanceCalendarProps) {
   const [empSearch, setEmpSearch] = useState('');
   const [showEmpDropdown, setShowEmpDropdown] = useState(false);
+  const [calendarPreviewPhoto, setCalendarPreviewPhoto] = useState<{
+    url: string;
+    title: string;
+    subtitle?: string;
+    time?: string;
+    type: 'Clock In' | 'Clock Out';
+    location?: any;
+  } | null>(null);
 
   const todayStr = useMemo(() => getLocalTodayStr(), []);
 
@@ -810,26 +835,121 @@ export default function EmployeeAttendanceCalendar({
                 </span>
 
                 {selectedDay.sessions.length > 0 ? (
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <div className="space-y-2.5 max-h-72 overflow-y-auto pr-0.5">
                     {selectedDay.sessions.map((s, idx) => (
                       <div
                         key={idx}
-                        className="bg-white border border-slate-100 rounded-xl p-2.5 shadow-2xs flex items-center justify-between text-xs"
+                        className="bg-white border border-slate-100 hover:border-slate-200 rounded-2xl p-3 shadow-2xs space-y-2 transition-all text-xs"
                       >
-                        <div>
-                          <div className="font-mono font-bold text-slate-800">
-                            {formatTimeAmPm(s.checkIn)} &rarr;{' '}
-                            {s.checkOut ? formatTimeAmPm(s.checkOut) : 'Active Session'}
+                        {/* Top Row: Session Index, Time Range, and Duration */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center space-x-2">
+                            <span className="w-4 h-4 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-[9px]">
+                              #{idx + 1}
+                            </span>
+                            <span className="font-mono font-bold text-slate-800 text-[11px]">
+                              {formatTimeAmPm(s.checkIn)} &rarr;{' '}
+                              {s.checkOut ? formatTimeAmPm(s.checkOut) : 'Active Session'}
+                            </span>
                           </div>
-                          {s.isAutoClockOut && (
-                            <span className="text-[10px] text-amber-600 font-semibold">
-                              (Auto-clockout applied)
+                          <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100 text-[10px]">
+                            {formatMinutes(s.durationMinutes || 0)}
+                          </span>
+                        </div>
+
+                        {/* Bottom Row: Verification Selfies & Badges with Clean Alignment */}
+                        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-50">
+                          {/* 1. Clock-In Selfie (Shown for each recorded check-in) */}
+                          {s.checkInPhoto ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCalendarPreviewPhoto({
+                                  url: s.checkInPhoto!,
+                                  title: `${employee?.name || 'Employee'} • Clock-In Selfie`,
+                                  subtitle: `Session #${idx + 1} • ${formatDateDisplay(selectedDay.dateStr)}`,
+                                  time: formatTimeAmPm(s.checkIn),
+                                  type: 'Clock In',
+                                  location: s.checkInLocation,
+                                })
+                              }
+                              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-xl bg-emerald-50/80 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 transition-all cursor-pointer shadow-2xs hover:shadow active:scale-95"
+                              title="Click to view full-size Clock-In Selfie"
+                            >
+                              <div className="w-5 h-5 rounded-md overflow-hidden bg-slate-900 border border-emerald-300 shrink-0">
+                                <img
+                                  src={s.checkInPhoto}
+                                  alt="In Selfie"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <span className="text-[10px] font-bold">In Selfie</span>
+                            </button>
+                          ) : s.isPhotoExpired ? (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-xl border border-slate-200"
+                              title="Selfie auto-deleted after 30-day retention"
+                            >
+                              <Camera className="w-3 h-3 text-slate-400" />
+                              <span>Expired</span>
+                            </span>
+                          ) : null}
+
+                          {/* 2. Clock-Out Selfie:
+                              RULE: DO NOT show if employee forgot to punch out (s.isAutoClockOut is true)!
+                              Only show if employee actually punched out with a selfie */}
+                          {!s.isAutoClockOut && s.checkOutPhoto ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCalendarPreviewPhoto({
+                                  url: s.checkOutPhoto!,
+                                  title: `${employee?.name || 'Employee'} • Clock-Out Selfie`,
+                                  subtitle: `Session #${idx + 1} • ${formatDateDisplay(selectedDay.dateStr)}`,
+                                  time: formatTimeAmPm(s.checkOut!),
+                                  type: 'Clock Out',
+                                  location: s.checkOutLocation,
+                                })
+                              }
+                              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-xl bg-amber-50/80 hover:bg-amber-100 border border-amber-200 text-amber-800 transition-all cursor-pointer shadow-2xs hover:shadow active:scale-95"
+                              title="Click to view full-size Clock-Out Selfie"
+                            >
+                              <div className="w-5 h-5 rounded-md overflow-hidden bg-slate-900 border border-amber-300 shrink-0">
+                                <img
+                                  src={s.checkOutPhoto}
+                                  alt="Out Selfie"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <span className="text-[10px] font-bold">Out Selfie</span>
+                            </button>
+                          ) : s.isAutoClockOut ? (
+                            // When employee forgot to punch out: NO image is shown; show auto badge
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-semibold"
+                              title="Employee forgot to punch out on this day. Auto clock-out applied at 12:01 AM without checkout photo."
+                            >
+                              <AlertCircle className="w-3 h-3 text-amber-500" />
+                              <span>Forgot Punch Out (Auto)</span>
+                            </span>
+                          ) : !s.checkOut ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xl bg-slate-100 text-slate-500 text-[10px] font-medium border border-slate-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              <span>Active Session</span>
+                            </span>
+                          ) : null}
+
+                          {/* Geofence verification tag */}
+                          {s.checkInLocation && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[9px] font-medium text-teal-700 bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200 ml-auto"
+                              title={`Verified within ${s.checkInLocation.distanceMeters || 0}m of office`}
+                            >
+                              <MapPin className="w-2.5 h-2.5 text-teal-600" />
+                              <span>Verified</span>
                             </span>
                           )}
                         </div>
-                        <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100 text-[11px]">
-                          {formatMinutes(s.durationMinutes || 0)}
-                        </span>
                       </div>
                     ))}
                   </div>
@@ -871,6 +991,85 @@ export default function EmployeeAttendanceCalendar({
           )}
         </div>
       </div>
+
+      {/* Full-Size Verified Selfie Lightbox Modal */}
+      {calendarPreviewPhoto && (
+        <div
+          className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200"
+          onClick={() => setCalendarPreviewPhoto(null)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm sm:max-w-md overflow-hidden relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/90">
+              <div className="flex items-center space-x-2.5">
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-xs ${
+                    calendarPreviewPhoto.type === 'Clock In' ? 'bg-emerald-600' : 'bg-amber-500'
+                  }`}
+                >
+                  <Camera className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 leading-tight">
+                    {calendarPreviewPhoto.title}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium leading-tight mt-0.5">
+                    {calendarPreviewPhoto.subtitle || calendarPreviewPhoto.type} • {calendarPreviewPhoto.time || 'Logged'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCalendarPreviewPhoto(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Photo Body */}
+            <div className="p-4 flex flex-col items-center bg-slate-950/5">
+              <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-slate-950 shadow-md border-2 border-slate-200 flex items-center justify-center">
+                <img
+                  src={calendarPreviewPhoto.url}
+                  alt={calendarPreviewPhoto.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+
+            {/* Footer with verification metadata & Cloudinary button */}
+            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-1.5 text-teal-700 font-medium text-[11px]">
+                <ShieldCheck className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                <span>Pearl Enclave (Verified)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={calendarPreviewPhoto.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold transition-all shadow-2xs hover:shadow"
+                >
+                  <span>Open Original</span>
+                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setCalendarPreviewPhoto(null)}
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

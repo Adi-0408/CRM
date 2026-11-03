@@ -191,14 +191,14 @@ export default function Header({
   };
 
   return (
-    <header className="sticky top-0 z-20 h-16 bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 flex items-center justify-between transition-all select-none">
+    <header className="sticky top-0 z-20 h-16 bg-white/70 backdrop-blur-2xl backdrop-saturate-150 border-b border-slate-200/50 px-4 sm:px-6 flex items-center justify-between shrink-0 shadow-[0_4px_24px_-4px_rgba(15,23,42,0.03)] transition-all select-none">
       <div className="flex items-center justify-between w-full gap-3">
         {/* Left: Mobile Hamburger + Title + Active Role Context */}
         <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
           <button
             type="button"
             onClick={onToggleMobileMenu}
-            className="p-2 rounded-xl border border-slate-200 bg-white shadow-2xs text-slate-700 hover:text-slate-900 transition-colors lg:hidden flex items-center justify-center shrink-0 active:scale-95"
+            className="p-2 rounded-xl border border-slate-200/80 bg-white/80 hover:bg-white backdrop-blur-xs shadow-2xs text-slate-700 hover:text-slate-900 transition-colors lg:hidden flex items-center justify-center shrink-0 active:scale-95"
             title="Open navigation menu"
           >
             <Menu className="w-5 h-5 text-slate-700" />
@@ -228,7 +228,7 @@ export default function Header({
           <div className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="w-9 h-9 rounded-xl bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors relative border border-slate-200/80 shadow-2xs flex items-center justify-center"
+              className="w-9 h-9 rounded-xl bg-white/80 hover:bg-white backdrop-blur-xs text-slate-500 hover:text-slate-800 transition-colors relative border border-slate-200/80 shadow-2xs flex items-center justify-center cursor-pointer active:scale-95"
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
@@ -238,7 +238,7 @@ export default function Header({
             </button>
 
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-100 p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white/95 backdrop-blur-2xl rounded-2xl shadow-xl border border-slate-200/60 p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <span className="font-semibold text-xs text-slate-800">Notifications</span>
                   {notifications.length > 0 && (
@@ -271,7 +271,7 @@ export default function Header({
           {/* Direct Logout Button */}
           <button
             onClick={logout}
-            className="w-9 h-9 rounded-xl bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors border border-slate-200/80 shadow-2xs flex items-center justify-center shrink-0"
+            className="w-9 h-9 rounded-xl bg-white/80 hover:bg-rose-50 backdrop-blur-xs text-slate-400 hover:text-rose-600 transition-colors border border-slate-200/80 shadow-2xs flex items-center justify-center shrink-0 cursor-pointer active:scale-95"
             title="Log Out"
           >
             <LogOut className="w-4 h-4" />

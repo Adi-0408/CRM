@@ -47,7 +47,7 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F4F3FA] via-[#FAF9FE] to-[#EFEBFD] flex items-center justify-center p-4 sm:p-6 relative overflow-hidden select-none">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-gradient-to-br from-[#F4F3FA] via-[#FAF9FE] to-[#EFEBFD] flex items-center justify-center p-4 sm:p-6 select-none">
       {/* Decorative Floating Glass Background Orbs */}
       <div className="absolute top-10 left-10 w-80 h-80 bg-purple-200/40 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-96 h-96 bg-indigo-200/30 rounded-full blur-3xl pointer-events-none" />

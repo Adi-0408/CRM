@@ -206,6 +206,7 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         ...(populated ? populated.toObject() : record.toObject()),
+        sessions: evaluation.sessions,
         evaluation,
       });
     }
@@ -281,8 +282,21 @@ export async function POST(req: NextRequest) {
       let checkOutPhotoPublicId: string | undefined = undefined;
       const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
+      // Resolve employee name for readable Cloudinary public ID & display name
+      let employeeName = authUser?.name || 'Employee';
       try {
-        const uploadRes = await uploadToCloudinary(photo, 'attendance');
+        const empDoc = await Employee.findById(targetEmployeeId);
+        if (empDoc && empDoc.name) {
+          employeeName = empDoc.name;
+        }
+      } catch {}
+
+      try {
+        const uploadRes = await uploadToCloudinary(photo, 'attendance', {
+          employeeName,
+          date: todayStr,
+          action: 'clock_out',
+        });
         uploadedCheckOutPhoto = uploadRes.secureUrl || photo;
         checkOutPhotoPublicId = uploadRes.publicId;
       } catch (err) {
@@ -321,6 +335,7 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         ...(populated ? populated.toObject() : record.toObject()),
+        sessions: evaluation.sessions,
         evaluation,
       });
     }
@@ -386,8 +401,21 @@ export async function POST(req: NextRequest) {
       let checkInPhotoPublicId: string | undefined = undefined;
       const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
+      // Resolve employee name for readable Cloudinary public ID & display name
+      let employeeName = authUser?.name || 'Employee';
       try {
-        const uploadRes = await uploadToCloudinary(photo, 'attendance');
+        const empDoc = await Employee.findById(targetEmployeeId);
+        if (empDoc && empDoc.name) {
+          employeeName = empDoc.name;
+        }
+      } catch {}
+
+      try {
+        const uploadRes = await uploadToCloudinary(photo, 'attendance', {
+          employeeName,
+          date: todayStr,
+          action: 'clock_in',
+        });
         uploadedCheckInPhoto = uploadRes.secureUrl || photo;
         checkInPhotoPublicId = uploadRes.publicId;
       } catch (err) {
@@ -422,6 +450,9 @@ export async function POST(req: NextRequest) {
       if (!record.checkIn) {
         record.checkIn = now;
       }
+      record.checkOut = null;
+      record.isAutoClockOut = false;
+      record.autoClockOutReason = undefined;
 
       // Evaluate
       const evaluation = evaluateDailyAttendance(record.sessions, todayStr, now);
@@ -429,7 +460,7 @@ export async function POST(req: NextRequest) {
       record.effectiveMinutes = evaluation.effectiveWorkedMinutes;
       record.isLate = evaluation.isLate;
       record.lateByMinutes = evaluation.lateByMinutes;
-      record.status = 'working';
+      record.status = evaluation.status;
 
       await record.save();
 
@@ -441,6 +472,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           ...(populated ? populated.toObject() : record.toObject()),
+          sessions: evaluation.sessions,
           evaluation,
         },
         { status: 201 }

@@ -260,7 +260,7 @@ export default function CRMApp() {
   };
 
   return (
-    <div className="w-full min-h-[calc(100vh-1rem)] sm:min-h-[calc(100vh-2rem)] lg:min-h-[calc(100vh-3rem)] bg-white/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-slate-200/60 shadow-[0_20px_50px_-20px_rgba(15,23,42,0.06)] flex overflow-hidden relative">
+    <div className="w-full flex-1 min-h-0 h-full bg-white/75 backdrop-blur-2xl rounded-2xl sm:rounded-3xl border border-slate-200/60 shadow-[0_20px_50px_-20px_rgba(15,23,42,0.08)] flex overflow-hidden relative">
       {/* 1. Left Sidebar (Fixed on Desktop, Slide-Over Drawer on Mobile/Tablet) */}
       <Sidebar
         activeTab={activeTab}
@@ -271,8 +271,8 @@ export default function CRMApp() {
         onCloseMobile={() => setMobileMenuOpen(false)}
       />
 
-      {/* 2. Main Content Layout */}
-      <div className="w-full flex-1 min-w-0 transition-all duration-300 flex flex-col min-h-full overflow-x-hidden">
+      {/* 2. Main Content Layout (Fixed Glassy Navbar + Scrolling Content View) */}
+      <div className="w-full flex-1 min-w-0 h-full flex flex-col overflow-hidden relative">
         {/* Top Header with Role-Specific Actions */}
         <Header
           title={getHeaderTitle()}
@@ -284,8 +284,8 @@ export default function CRMApp() {
           onToggleMobileMenu={toggleMobileMenu}
         />
 
-        {/* Inner Content Area */}
-        <main className="p-4 sm:p-6 md:p-8 flex-1 max-w-7xl w-full mx-auto overflow-x-hidden">
+        {/* Inner Content Area (Isolated Vertical Scrolling) */}
+        <main className="p-4 sm:p-6 md:p-8 flex-1 min-h-0 overflow-y-auto overflow-x-hidden max-w-7xl w-full mx-auto scroll-smooth focus:outline-none">
           {/* Business Intelligence Header & Pill Navigation */}
           <BusinessIntelligenceNav
             activeTab={activeTab}

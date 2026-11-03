@@ -1,11 +1,24 @@
 import { v2 as cloudinary } from 'cloudinary';
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true,
-});
+export function configureCloudinary() {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'fjnxnivd',
+    api_key: process.env.CLOUDINARY_API_KEY || '247959386251382',
+    api_secret: process.env.CLOUDINARY_API_SECRET || '0jQATntUSU0BI1j302CVVB4xgsM',
+    secure: true,
+  });
+  return cloudinary;
+}
+
+// Ensure configured at module load as well
+configureCloudinary();
+
+export interface UploadOptions {
+  customFilename?: string;
+  employeeName?: string;
+  date?: string;
+  action?: 'clock_in' | 'clock_out' | 'punch_in' | 'punch_out' | string;
+}
 
 export interface UploadResult {
   publicId: string;
@@ -17,15 +30,47 @@ export interface UploadResult {
 
 /**
  * Uploads a base64 or file buffer to Cloudinary in a designated folder.
+ * For attendance photos, generates a human-readable Public ID and Display Name
+ * featuring the employee name, date, and clock action.
  */
 export async function uploadToCloudinary(
   fileData: string,
-  folder: 'avatars' | 'projects' | 'tasks' | 'leads' | 'attendance' = 'avatars'
+  folder: 'avatars' | 'projects' | 'tasks' | 'leads' | 'attendance' = 'avatars',
+  options?: UploadOptions
 ): Promise<UploadResult> {
+  const client = configureCloudinary();
   try {
-    const result = await cloudinary.uploader.upload(fileData, {
+    let publicIdOption: string | undefined = undefined;
+    let displayNameOption: string | undefined = undefined;
+
+    if (folder === 'attendance') {
+      const cleanName = (options?.employeeName || 'Employee')
+        .trim()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-zA-Z0-9_-]/g, '');
+      const actionName = (options?.action || 'punch').toLowerCase().replace('punch', 'clock');
+      const datePart = options?.date || new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const timePart = [
+        String(now.getHours()).padStart(2, '0'),
+        String(now.getMinutes()).padStart(2, '0'),
+        String(now.getSeconds()).padStart(2, '0'),
+      ].join('-');
+
+      // Human-readable Public ID: e.g. "Smita_Desai_2026-11-03_clock_in_10-25-30"
+      publicIdOption = `${cleanName}_${datePart}_${actionName}_${timePart}`;
+      displayNameOption = `${options?.employeeName || 'Employee'} - ${actionName.replace('_', ' ').toUpperCase()} (${datePart} ${timePart.replace(/-/g, ':')})`;
+    } else if (options?.customFilename) {
+      publicIdOption = options.customFilename;
+    }
+
+    const result = await client.uploader.upload(fileData, {
       folder: `crm/${folder}`,
-      resource_type: 'auto',
+      public_id: publicIdOption,
+      display_name: displayNameOption,
+      use_filename: true,
+      unique_filename: false,
+      resource_type: 'image',
       transformation:
         folder === 'avatars'
           ? [{ width: 400, height: 400, crop: 'thumb', gravity: 'face' }]
@@ -35,6 +80,8 @@ export async function uploadToCloudinary(
       tags: folder === 'attendance' ? ['attendance_selfie', 'expire_30d'] : undefined,
     });
 
+    console.log(`[Cloudinary] Successfully uploaded ${folder} photo:`, result.secure_url, result.public_id);
+
     return {
       publicId: result.public_id,
       url: result.url,
@@ -43,8 +90,19 @@ export async function uploadToCloudinary(
       bytes: result.bytes,
     };
   } catch (error) {
-    console.warn('⚠️ Cloudinary upload failed or credentials invalid, using fallback asset handler:', error);
-    // Provide a resilient fallback so the user experience is smooth even if credentials are being updated
+    console.error('⚠️ Cloudinary upload failed:', error);
+    // For attendance selfies, never discard the actual photo; preserve the real image data URL
+    if (folder === 'attendance') {
+      const localId = `local_attendance_${Date.now()}`;
+      return {
+        publicId: localId,
+        url: fileData,
+        secureUrl: fileData,
+        format: 'jpeg',
+        bytes: fileData.length,
+      };
+    }
+
     const mockId = `fallback_${folder}_${Date.now()}`;
     const fallbackAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${mockId}`;
     return {
