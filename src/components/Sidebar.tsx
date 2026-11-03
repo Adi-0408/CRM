@@ -45,7 +45,7 @@ export default function Sidebar({
     { id: 'attendance', label: 'Attendance', icon: Calendar },
     { id: 'payroll', label: 'Payroll', icon: IndianRupee },
     { id: 'leave', label: 'Leave', icon: Luggage },
-    { id: 'support', label: 'Support', icon: HelpCircle },
+    { id: 'support', label: 'Tech Support', icon: HelpCircle },
     { id: 'employees', label: 'Employee Management', icon: Users },
     { id: 'management', label: 'Management', icon: Settings },
   ];

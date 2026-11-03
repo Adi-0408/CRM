@@ -1,5 +1,13 @@
 import { createFirestoreModel } from '@/lib/firestoreModel';
 
+export type TicketCategory =
+  | 'Bug / Defect'
+  | 'API & Integration'
+  | 'Server & Performance'
+  | 'System Crash / Downtime'
+  | 'Technical Inquiry'
+  | 'Technical'; // Legacy backward-compatibility
+
 export interface ITicket {
   _id?: string;
   id?: string;
@@ -9,7 +17,7 @@ export interface ITicket {
   customerEmail: string;
   priority?: 'low' | 'medium' | 'high' | 'urgent';
   status?: 'open' | 'in_progress' | 'resolved' | 'closed';
-  category?: 'Technical' | 'Billing' | 'Feature Request' | 'General';
+  category?: TicketCategory | string;
   assignedTo?: any;
   description?: string;
   createdAt?: Date | string;

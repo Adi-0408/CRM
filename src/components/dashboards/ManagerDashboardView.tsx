@@ -512,9 +512,9 @@ export default function ManagerDashboardView({
           <div className="flex items-center justify-between mb-4">
             <div>
               <h4 className="text-base font-bold tracking-tight text-slate-900">
-                Recent Client Support Tickets
+                Recent Tech Support Tickets
               </h4>
-              <p className="text-xs text-slate-400">Issues raised by project clients</p>
+              <p className="text-xs text-slate-400">Technical incidents &amp; bug reports</p>
             </div>
             <button
               onClick={() => onNavigate('support')}

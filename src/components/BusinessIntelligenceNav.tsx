@@ -36,7 +36,7 @@ export default function BusinessIntelligenceNav({
     { id: 'projects', label: 'Projects', icon: FolderKanban },
     { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
     { id: 'branches', label: 'Branches', icon: Building2 },
-    { id: 'support', label: 'Support', icon: HelpCircle },
+    { id: 'support', label: 'Tech Support', icon: HelpCircle },
     { id: 'payroll', label: 'Payroll', icon: CreditCard },
     { id: 'employees', label: 'Employees', icon: UserCheck },
   ];
