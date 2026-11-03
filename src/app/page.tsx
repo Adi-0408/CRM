@@ -151,6 +151,7 @@ export default function CRMApp() {
     title?: string;
     leadId?: string;
   } | null>(null);
+  const [selectedProjectIdForTask, setSelectedProjectIdForTask] = useState<string | undefined>(undefined);
 
   const fetchData = async () => {
     try {
@@ -357,7 +358,14 @@ export default function CRMApp() {
                 <div className={activeTab === 'projects' ? 'block' : 'hidden'}>
                   <ProjectsView
                     projects={projects}
+                    employees={employees}
+                    tasks={tasks}
+                    leads={leads}
                     onOpenCreateProject={() => openModal(setShowCreateProject)}
+                    onOpenCreateTask={(projId) => {
+                      setSelectedProjectIdForTask(projId);
+                      openModal(setShowCreateTask);
+                    }}
                     onRefresh={fetchData}
                   />
                 </div>
@@ -430,11 +438,18 @@ export default function CRMApp() {
       {/* Global Modals for Quick Actions */}
       <CreateTaskModal
         isOpen={showCreateTask}
-        onClose={() => setShowCreateTask(false)}
-        onTaskCreated={fetchData}
+        onClose={() => {
+          setShowCreateTask(false);
+          setSelectedProjectIdForTask(undefined);
+        }}
+        onTaskCreated={() => {
+          setSelectedProjectIdForTask(undefined);
+          fetchData();
+        }}
         projects={projects}
         employees={employees}
         tasks={tasks}
+        initialProjectId={selectedProjectIdForTask}
       />
 
       <AddLeadModal

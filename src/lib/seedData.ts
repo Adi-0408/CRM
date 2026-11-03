@@ -241,6 +241,9 @@ export async function wipeAndSeedDatabase() {
     deadline: new Date('2026-12-15T00:00:00.000Z'),
     projectLead: 'emp_lead',
     teamMembers: ['emp_lead', 'emp_web'],
+    clientRequirements: 'Client requested real-time GPS fleet tracking, driver dispatch console, and automated Excel audit reports for monthly GST filing.',
+    salesRep: 'emp_sales',
+    leadId: 'lead_phoenix',
     createdAt: new Date('2026-10-01T00:00:00.000Z'),
   });
 
@@ -257,6 +260,8 @@ export async function wipeAndSeedDatabase() {
     deadline: new Date('2026-12-30T00:00:00.000Z'),
     projectLead: 'emp_lead',
     leadId: 'lead_nexus',
+    salesRep: 'emp_sales',
+    clientRequirements: 'Client requires offline visit logging, biometric check-in for clinic visits, and drug sample inventory barcode scanning.',
     teamMembers: ['emp_lead', 'emp_android', 'emp_intern'],
     createdAt: new Date('2026-10-15T00:00:00.000Z'),
   });

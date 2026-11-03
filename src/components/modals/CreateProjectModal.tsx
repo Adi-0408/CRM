@@ -37,6 +37,7 @@ export default function CreateProjectModal({
   const [status, setStatus] = useState<'new' | 'in_progress' | 'completed'>('new');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [description, setDescription] = useState('');
+  const [clientRequirements, setClientRequirements] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -92,6 +93,7 @@ export default function CreateProjectModal({
           priority,
           teamMembers: selectedMembers,
           description,
+          clientRequirements: clientRequirements.trim() || undefined,
           status: status || 'new',
           progress: 0,
           leadId: initialLeadId || undefined,
@@ -123,6 +125,7 @@ export default function CreateProjectModal({
       setTitle('');
       setClient('');
       setDescription('');
+      setClientRequirements('');
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
     } finally {
@@ -259,8 +262,24 @@ export default function CreateProjectModal({
           />
 
           <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+              <span>What the Client Wants (Requirements &amp; Scope)</span>
+              <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
+                Sales Scope
+              </span>
+            </label>
+            <textarea
+              rows={3}
+              placeholder="Features, specifications, and deliverables requested by the client..."
+              value={clientRequirements}
+              onChange={(e) => setClientRequirements(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600 text-sm text-slate-900"
+            />
+          </div>
+
+          <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Description / Scope
+              Project Description / Summary
             </label>
             <textarea
               rows={2}

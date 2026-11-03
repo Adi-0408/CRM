@@ -33,6 +33,7 @@ const RELATION_MAP: Record<string, string> = {
   paidBy: 'employees',
   overriddenBy: 'employees',
   teamMembers: 'employees',
+  salesRep: 'employees',
   project: 'projects',
   client: 'leads',
   lead: 'leads',

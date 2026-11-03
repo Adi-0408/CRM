@@ -142,6 +142,41 @@ export function canManageProjects(user: AuthUser | null): boolean {
 }
 
 /**
+ * Permission checker for distributing projects & team assignment to developers
+ * - Strictly admin_manager & team_lead
+ */
+export function canDistributeProject(user: AuthUser | null): boolean {
+  return user?.role === 'admin_manager' || user?.role === 'team_lead';
+}
+
+/**
+ * Permission checker for editing what the client wants in a project
+ * - admin_manager & team_lead can edit any project
+ * - sales can ONLY edit projects for clients/leads THEY personally won
+ */
+export function canSalesEditProject(user: AuthUser | null, project: any, lead?: any): boolean {
+  if (!user) return false;
+  if (user.role === 'admin_manager' || user.role === 'team_lead') return true;
+  if (user.role !== 'sales') return false;
+
+  const userId = String(user.id || (user as any)._id || '');
+  const userIds = [userId, userId.replace('demo_', ''), userId.replace('user_', '')];
+  const userEmail = user.email?.toLowerCase().trim();
+
+  // 1. Check direct project.salesRep assignment
+  const repId = project?.salesRep?._id || project?.salesRep?.id || project?.salesRep;
+  if (repId && userIds.includes(String(repId))) return true;
+  if (project?.salesRep?.email && project.salesRep.email.toLowerCase().trim() === userEmail) return true;
+
+  // 2. Check linked lead ownership (the salesperson who won the deal)
+  const leadAssigned = lead?.assignedTo?._id || lead?.assignedTo?.id || lead?.assignedTo;
+  if (leadAssigned && userIds.includes(String(leadAssigned))) return true;
+  if (lead?.assignedTo?.email && lead.assignedTo.email.toLowerCase().trim() === userEmail) return true;
+
+  return false;
+}
+
+/**
  * Permission checker for creating and delegating tasks
  * - admin_manager & team_lead
  */

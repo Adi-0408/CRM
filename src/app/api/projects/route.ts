@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Project from '@/models/Project';
 import Employee from '@/models/Employee';
+import Lead from '@/models/Lead';
 import { getAuthUser, requireRoles, isValidDocId } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
@@ -21,8 +22,10 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // DATA SCOPING: Admin (Manager) sees all projects; developers see projects they are assigned to
-    if (authUser && authUser.role !== 'admin_manager') {
+    // DATA SCOPING: Admin (Manager), Team Lead, and Sales can view all company projects.
+    // Developers see only projects where they are assigned in teamMembers.
+    const hasBroadAccess = ['admin_manager', 'team_lead', 'sales'].includes(authUser?.role || '');
+    if (authUser && !hasBroadAccess) {
       if (isValidDocId(authUser.id)) {
         query.teamMembers = authUser.id;
       } else {
@@ -33,7 +36,8 @@ export async function GET(req: NextRequest) {
 
     const projects = await Project.find(query)
       .sort({ deadline: 1 })
-      .populate('teamMembers', 'name email avatar role');
+      .populate('teamMembers', 'name email avatar role')
+      .populate('salesRep', 'name email avatar role');
 
     const normalizedProjects = projects.map((p: any) => {
       const obj = p.toObject ? p.toObject() : { ...p };
@@ -52,7 +56,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    // Only Admin (Manager) & Team Lead can create company projects
+    // Admin (Manager) & Team Lead can create company projects
     const authResult = await requireRoles(req, ['admin_manager', 'team_lead']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
@@ -68,6 +72,16 @@ export async function POST(req: NextRequest) {
 
     if (!body.status || body.status === 'planning') {
       body.status = 'new';
+    }
+
+    // Auto-detect salesRep from linked Lead if not provided
+    if (body.leadId && !body.salesRep) {
+      const linkedLead = await Lead.findById(body.leadId);
+      if (linkedLead?.assignedTo) {
+        body.salesRep = typeof linkedLead.assignedTo === 'object'
+          ? (linkedLead.assignedTo._id || linkedLead.assignedTo.id)
+          : linkedLead.assignedTo;
+      }
     }
 
     // Verify that assigned team members are developers, interns, or team leads
@@ -93,10 +107,9 @@ export async function POST(req: NextRequest) {
     }
 
     const newProject = await Project.create(body);
-    const populated = await Project.findById(newProject._id).populate(
-      'teamMembers',
-      'name email avatar role'
-    );
+    const populated = await Project.findById(newProject._id)
+      .populate('teamMembers', 'name email avatar role')
+      .populate('salesRep', 'name email avatar role');
     return NextResponse.json(populated, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

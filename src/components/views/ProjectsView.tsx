@@ -10,27 +10,45 @@ import {
   Clock,
   Trash2,
   AlertTriangle,
+  Sparkles,
+  FileEdit,
+  CheckSquare,
+  Share2,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
 import CustomSelect from '@/components/common/CustomSelect';
+import { canDistributeProject, canSalesEditProject } from '@/lib/permissions';
+import DistributeProjectModal from '@/components/modals/DistributeProjectModal';
+import EditClientRequirementsModal from '@/components/modals/EditClientRequirementsModal';
 
 interface ProjectsViewProps {
   projects: any[];
+  employees?: any[];
+  tasks?: any[];
+  leads?: any[];
   onOpenCreateProject: () => void;
+  onOpenCreateTask?: (projectId: string) => void;
   onRefresh: () => void;
 }
 
 export default function ProjectsView({
   projects,
+  employees = [],
+  tasks = [],
+  leads = [],
   onOpenCreateProject,
+  onOpenCreateTask,
   onRefresh,
 }: ProjectsViewProps) {
   const { user, role } = useAuth();
   const isAdminOrManager = role === 'admin_manager';
   const canManageProjects = role === 'admin_manager' || role === 'team_lead';
+  const canDistribute = canDistributeProject(user);
 
   const [filter, setFilter] = useState('all');
+  const [distributeModalProject, setDistributeModalProject] = useState<any>(null);
+  const [requirementsModalProject, setRequirementsModalProject] = useState<any>(null);
 
   const updateStatus = async (id: string, status: string) => {
     if (!canManageProjects) return;
@@ -57,9 +75,9 @@ export default function ProjectsView({
     }
   };
 
-  // Scoping projects for employees (Admin & Team Lead view all projects)
+  // Scoping projects: Admin, Team Lead, and Sales view all company projects; developers view assigned projects
   const scopedProjects = useMemo(() => {
-    if (canManageProjects) return projects;
+    if (canManageProjects || role === 'sales') return projects;
     const currentUserId = user?.id || (user as any)?._id;
     const currentUserEmail = user?.email?.toLowerCase();
 
@@ -81,7 +99,7 @@ export default function ProjectsView({
         );
       });
     });
-  }, [projects, isAdminOrManager, user]);
+  }, [projects, canManageProjects, role, user]);
 
   const filteredProjects = scopedProjects.filter((p) => {
     const normalized = (p.status === 'planning' ? 'new' : p.status) || 'new';
@@ -90,6 +108,19 @@ export default function ProjectsView({
     }
     return normalized === filter;
   });
+
+  // Find linked lead for a project to determine salesperson ownership
+  const getMatchingLead = (project: any) => {
+    if (!Array.isArray(leads)) return null;
+    return leads.find(
+      (l) =>
+        (project.leadId &&
+          (String(l._id) === String(project.leadId) || String(l.id) === String(project.leadId))) ||
+        (l.projectId &&
+          (String(l.projectId) === String(project._id) || String(l.projectId) === String(project.id))) ||
+        (project.client && l.company && l.company.trim().toLowerCase() === project.client.trim().toLowerCase())
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -111,16 +142,33 @@ export default function ProjectsView({
           ))}
         </div>
 
-        {/* Create Project button: visible to Admin, Manager & Team Lead */}
-        {canManageProjects && (
-          <button
-            onClick={onOpenCreateProject}
-            className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm hover:shadow-md hover:shadow-indigo-500/15 active:scale-95 transition-all w-full sm:w-auto"
-          >
-            <Plus className="w-3.5 h-3.5 shrink-0" />
-            <span>New Project</span>
-          </button>
-        )}
+        {/* Role Helper Banner */}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          {role === 'sales' && (
+            <span className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full flex items-center space-x-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <span>Sales Workspace: You can edit scope for deals won by you</span>
+            </span>
+          )}
+
+          {role === 'team_lead' && (
+            <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-full flex items-center space-x-1.5">
+              <Users className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Team Lead: Distribute projects &amp; assign tasks</span>
+            </span>
+          )}
+
+          {/* Create Project button: visible to Admin, Manager & Team Lead */}
+          {canManageProjects && (
+            <button
+              onClick={onOpenCreateProject}
+              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm hover:shadow-md hover:shadow-indigo-500/15 active:scale-95 transition-all w-full sm:w-auto"
+            >
+              <Plus className="w-3.5 h-3.5 shrink-0" />
+              <span>New Project</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Projects Grid */}
@@ -133,10 +181,13 @@ export default function ProjectsView({
               (deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
             );
 
+            const matchingLead = getMatchingLead(project);
+            const canEditRequirements = canSalesEditProject(user, project, matchingLead);
+
             return (
               <div
                 key={project._id}
-                className="glass-card p-5 border-slate-100 flex flex-col justify-between hover:border-amber-200 transition-all"
+                className="glass-card p-5 border-slate-100 flex flex-col justify-between hover:border-amber-200 transition-all space-y-4"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">
@@ -174,18 +225,81 @@ export default function ProjectsView({
                   <h4 className="text-base font-bold text-slate-900 leading-snug">
                     {project.title}
                   </h4>
-                  <p className="text-xs text-slate-500 font-medium mt-1">
-                    Client: <span className="text-slate-700 font-semibold">{project.client}</span>
-                  </p>
+                  <div className="text-xs text-slate-500 font-medium mt-1 flex items-center flex-wrap gap-x-2">
+                    <span>
+                      Client: <strong className="text-slate-700">{project.client}</strong>
+                    </span>
+                    {project.salesRep && (
+                      <span className="text-[11px] text-slate-400">
+                        • Won by: <strong className="text-slate-600">{project.salesRep?.name || 'Sales'}</strong>
+                      </span>
+                    )}
+                  </div>
 
                   {project.description && (
                     <p className="text-xs text-slate-600 mt-2 line-clamp-2 leading-relaxed">
                       {project.description}
                     </p>
                   )}
+
+                  {/* What the Client Wants Section */}
+                  {project.clientRequirements ? (
+                    <div className="mt-3 p-3 rounded-2xl bg-amber-50/80 border border-amber-200/70 text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-[10px] text-amber-900 uppercase tracking-wider flex items-center space-x-1">
+                          <Sparkles className="w-3 h-3 text-amber-600" />
+                          <span>What Client Wants</span>
+                        </span>
+                        {canEditRequirements && (
+                          <button
+                            onClick={() => setRequirementsModalProject(project)}
+                            className="text-[10px] font-bold text-amber-700 hover:text-amber-900 underline flex items-center space-x-0.5"
+                          >
+                            <FileEdit className="w-3 h-3" />
+                            <span>Edit</span>
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-slate-700 leading-relaxed italic line-clamp-3">
+                        "{project.clientRequirements}"
+                      </p>
+                    </div>
+                  ) : canEditRequirements ? (
+                    <button
+                      onClick={() => setRequirementsModalProject(project)}
+                      className="mt-3 w-full py-2 px-3 rounded-2xl border border-dashed border-amber-300 bg-amber-50/40 hover:bg-amber-50 text-amber-800 text-xs font-bold flex items-center justify-center space-x-1.5 transition-all"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                      <span>+ Specify What the Client Wants</span>
+                    </button>
+                  ) : null}
                 </div>
 
-                <div className="mt-5 pt-4 border-t border-slate-100 space-y-3">
+                <div className="pt-3 border-t border-slate-100 space-y-3">
+                  {/* Assigned Developers Row */}
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[11px] font-semibold text-slate-400">Engineering Team:</span>
+                    <div className="flex items-center -space-x-1.5 overflow-hidden">
+                      {Array.isArray(project.teamMembers) && project.teamMembers.length > 0 ? (
+                        project.teamMembers.map((m: any, mIdx: number) => {
+                          const name = typeof m === 'object' ? (m.name || 'Developer') : 'Developer';
+                          const roleLabel = typeof m === 'object' ? (m.role || 'dev') : 'dev';
+                          return (
+                            <div
+                              key={m?._id || mIdx}
+                              className="w-6 h-6 rounded-full bg-gradient-to-tr from-indigo-500 to-indigo-600 border-2 border-white flex items-center justify-center text-[9px] font-black text-white uppercase shadow-2xs"
+                              title={`${name} (${roleLabel})`}
+                            >
+                              {name ? name[0] : 'D'}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <span className="text-[11px] text-slate-400 italic">No devs assigned</span>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Progress bar */}
                   <div>
                     <div className="flex items-center justify-between text-xs font-semibold text-slate-600 mb-1">
@@ -210,8 +324,45 @@ export default function ProjectsView({
                     </span>
                   </div>
 
+                  {/* Team Lead Distribution & Task Delegation Action Bar */}
+                  {(canDistribute || canEditRequirements) && (
+                    <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5">
+                      {canDistribute && (
+                        <button
+                          onClick={() => setDistributeModalProject(project)}
+                          className="flex-1 py-1.5 px-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-[#635BFF] text-xs font-bold flex items-center justify-center space-x-1 transition-all"
+                          title="Distribute this project between developers"
+                        >
+                          <Users className="w-3.5 h-3.5" />
+                          <span>Distribute Team</span>
+                        </button>
+                      )}
+
+                      {canDistribute && onOpenCreateTask && (
+                        <button
+                          onClick={() => onOpenCreateTask(project._id || project.id)}
+                          className="py-1.5 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center space-x-1 transition-all"
+                          title="Assign a new sprint task to developers on this project"
+                        >
+                          <CheckSquare className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>+ Task</span>
+                        </button>
+                      )}
+
+                      {canEditRequirements && !canDistribute && (
+                        <button
+                          onClick={() => setRequirementsModalProject(project)}
+                          className="flex-1 py-1.5 px-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold flex items-center justify-center space-x-1 transition-all"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Edit Client Scope</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between pt-1">
-                    {/* Status updater for Admin/Manager/Team Lead, read-only pill for Employee */}
+                    {/* Status updater for Admin/Manager/Team Lead, read-only pill for Employee/Sales */}
                     {canManageProjects ? (
                       <CustomSelect
                         value={project.status === 'planning' ? 'new' : project.status || 'new'}
@@ -272,6 +423,30 @@ export default function ProjectsView({
           </div>
         )}
       </div>
+
+      {/* Team Lead Distribution Modal */}
+      {distributeModalProject && (
+        <DistributeProjectModal
+          isOpen={Boolean(distributeModalProject)}
+          onClose={() => setDistributeModalProject(null)}
+          project={distributeModalProject}
+          employees={employees}
+          tasks={tasks}
+          onProjectUpdated={onRefresh}
+          onOpenCreateTask={onOpenCreateTask}
+        />
+      )}
+
+      {/* Sales Client Requirements Modal */}
+      {requirementsModalProject && (
+        <EditClientRequirementsModal
+          isOpen={Boolean(requirementsModalProject)}
+          onClose={() => setRequirementsModalProject(null)}
+          project={requirementsModalProject}
+          onProjectUpdated={onRefresh}
+        />
+      )}
     </div>
   );
 }
+

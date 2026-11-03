@@ -6,6 +6,7 @@ export interface IProject {
   title: string;
   client: string;
   description?: string;
+  clientRequirements?: string;
   budget?: number;
   status?: 'new' | 'in_progress' | 'completed' | 'planning' | 'review' | 'on_hold';
   progress?: number;
@@ -13,6 +14,7 @@ export interface IProject {
   deadline: Date | string;
   teamMembers?: any[];
   projectLead?: any;
+  salesRep?: any;
   leadId?: string;
   createdAt?: Date | string;
   updatedAt?: Date | string;

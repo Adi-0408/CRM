@@ -129,9 +129,9 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
     badgeBg: 'bg-amber-50',
     badgeText: 'text-amber-800',
     badgeBorder: 'border-amber-200',
-    sidebarTabs: ['dashboard', 'leads', 'tasks', 'attendance', 'leave', 'payroll'],
-    biNavTabs: ['overview', 'leads', 'tasks', 'attendance', 'payroll'],
-    allowedViews: ['overview', 'dashboard', 'leads', 'tasks', 'attendance', 'leave', 'payroll'],
+    sidebarTabs: ['dashboard', 'leads', 'projects', 'tasks', 'attendance', 'leave', 'payroll'],
+    biNavTabs: ['overview', 'leads', 'projects', 'tasks', 'attendance', 'payroll'],
+    allowedViews: ['overview', 'dashboard', 'leads', 'projects', 'tasks', 'attendance', 'leave', 'payroll'],
   },
 
   web_developer: {

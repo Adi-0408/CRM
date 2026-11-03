@@ -27,6 +27,8 @@ import { authFetch } from '@/lib/apiClient';
 import CustomSelect from '@/components/common/CustomSelect';
 import QuotationsTab from '@/components/quotations/QuotationsTab';
 import CreateQuotationModal from '@/components/quotations/CreateQuotationModal';
+import EditClientRequirementsModal from '@/components/modals/EditClientRequirementsModal';
+import { canSalesEditProject } from '@/lib/permissions';
 
 interface LeadsViewProps {
   leads: any[];
@@ -47,7 +49,7 @@ export default function LeadsView({
   onNavigateTab,
   onRefresh,
 }: LeadsViewProps) {
-  const { role } = useAuth();
+  const { user, role } = useAuth();
   const isAdminOrManager = role === 'admin_manager' || role === 'sales';
 
   const [selectedStage, setSelectedStage] = useState('all');
@@ -55,6 +57,7 @@ export default function LeadsView({
   const [salesSection, setSalesSection] = useState<'leads' | 'quotations'>(initialSection);
   const [selectedLeadForQuote, setSelectedLeadForQuote] = useState<any | null>(null);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [editRequirementsProject, setEditRequirementsProject] = useState<any>(null);
 
   React.useEffect(() => {
     if (initialSection) {
@@ -470,6 +473,37 @@ export default function LeadsView({
                                 </div>
                               </div>
                             )}
+
+                            {/* 5. What Client Wants / Scope notes */}
+                            {linkedProject.clientRequirements ? (
+                              <div className="mt-2.5 p-2 rounded-xl bg-amber-50/80 border border-amber-200/70 text-[11px] space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-extrabold text-[9px] text-amber-900 uppercase tracking-wider flex items-center space-x-1">
+                                    <Sparkles className="w-2.5 h-2.5 text-amber-600" />
+                                    <span>Client Requirements</span>
+                                  </span>
+                                  {canSalesEditProject(user, linkedProject, lead) && (
+                                    <button
+                                      onClick={() => setEditRequirementsProject(linkedProject)}
+                                      className="text-[10px] font-bold text-amber-700 hover:text-amber-900 underline"
+                                    >
+                                      Edit
+                                    </button>
+                                  )}
+                                </div>
+                                <p className="text-slate-700 italic line-clamp-2">
+                                  "{linkedProject.clientRequirements}"
+                                </p>
+                              </div>
+                            ) : canSalesEditProject(user, linkedProject, lead) ? (
+                              <button
+                                onClick={() => setEditRequirementsProject(linkedProject)}
+                                className="mt-2 w-full py-1.5 px-2.5 rounded-xl border border-dashed border-amber-300 bg-amber-50/40 hover:bg-amber-50 text-amber-800 text-[11px] font-bold flex items-center justify-center space-x-1 transition-all"
+                              >
+                                <Sparkles className="w-3 h-3 text-amber-600" />
+                                <span>+ Specify What Client Wants</span>
+                              </button>
+                            ) : null}
                           </>
                         ) : (
                           /* Prompt when Lead is Won but no Project initialized */
@@ -744,6 +778,16 @@ export default function LeadsView({
         leads={leads}
         initialLead={selectedLeadForQuote}
       />
+
+      {/* Edit Client Requirements / Scope Modal */}
+      {editRequirementsProject && (
+        <EditClientRequirementsModal
+          isOpen={!!editRequirementsProject}
+          onClose={() => setEditRequirementsProject(null)}
+          onSuccess={onRefresh}
+          project={editRequirementsProject}
+        />
+      )}
     </div>
   );
 }

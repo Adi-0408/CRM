@@ -12,6 +12,7 @@ interface CreateTaskModalProps {
   projects: Array<{ _id: string; title: string }>;
   employees: Array<any>;
   tasks?: any[];
+  initialProjectId?: string;
 }
 
 export default function CreateTaskModal({
@@ -21,9 +22,10 @@ export default function CreateTaskModal({
   projects,
   employees,
   tasks = [],
+  initialProjectId,
 }: CreateTaskModalProps) {
   const [title, setTitle] = useState('');
-  const [projectId, setProjectId] = useState('');
+  const [projectId, setProjectId] = useState(initialProjectId || '');
   const [assignedTo, setAssignedTo] = useState('');
   const [priority, setPriority] = useState('medium');
   const [status, setStatus] = useState<'new' | 'in_progress' | 'completed'>('new');
@@ -31,6 +33,12 @@ export default function CreateTaskModal({
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  React.useEffect(() => {
+    if (isOpen && initialProjectId) {
+      setProjectId(initialProjectId);
+    }
+  }, [isOpen, initialProjectId]);
 
   if (!isOpen) return null;
 
