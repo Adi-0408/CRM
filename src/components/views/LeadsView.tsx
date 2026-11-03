@@ -21,6 +21,7 @@ import {
   Sparkles,
   ArrowRight,
   FileSpreadsheet,
+  Target,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
@@ -28,12 +29,14 @@ import CustomSelect from '@/components/common/CustomSelect';
 import QuotationsTab from '@/components/quotations/QuotationsTab';
 import CreateQuotationModal from '@/components/quotations/CreateQuotationModal';
 import EditClientRequirementsModal from '@/components/modals/EditClientRequirementsModal';
+import SalesTargetsTab from '@/components/sales/SalesTargetsTab';
 import { canSalesEditProject } from '@/lib/permissions';
 
 interface LeadsViewProps {
   leads: any[];
   projects?: any[];
-  initialSection?: 'leads' | 'quotations';
+  employees?: any[];
+  initialSection?: 'leads' | 'quotations' | 'targets';
   onOpenAddLead: () => void;
   onOpenCreateProject?: (prefill?: { client?: string; budget?: number; title?: string; leadId?: string }) => void;
   onNavigateTab?: (tab: string) => void;
@@ -43,6 +46,7 @@ interface LeadsViewProps {
 export default function LeadsView({
   leads,
   projects = [],
+  employees = [],
   initialSection = 'leads',
   onOpenAddLead,
   onOpenCreateProject,
@@ -54,7 +58,7 @@ export default function LeadsView({
 
   const [selectedStage, setSelectedStage] = useState('all');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-  const [salesSection, setSalesSection] = useState<'leads' | 'quotations'>(initialSection);
+  const [salesSection, setSalesSection] = useState<'leads' | 'quotations' | 'targets'>(initialSection);
   const [selectedLeadForQuote, setSelectedLeadForQuote] = useState<any | null>(null);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [editRequirementsProject, setEditRequirementsProject] = useState<any>(null);
@@ -154,6 +158,17 @@ export default function LeadsView({
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span>Quotations & Commercial Proposals</span>
           </button>
+          <button
+            onClick={() => setSalesSection('targets')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 flex-1 sm:flex-initial ${
+              salesSection === 'targets'
+                ? 'bg-[#635BFF] text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <Target className="w-3.5 h-3.5" />
+            <span>Commission & Target Tracking</span>
+          </button>
         </div>
         <span className="text-[11px] font-bold text-slate-400 mr-2 hidden md:inline-block">
           Sales & Client Engagement Hub
@@ -162,6 +177,13 @@ export default function LeadsView({
 
       {salesSection === 'quotations' ? (
         <QuotationsTab leads={leads} onRefreshParent={onRefresh} />
+      ) : salesSection === 'targets' ? (
+        <SalesTargetsTab
+          leads={leads}
+          employees={employees}
+          projects={projects}
+          onRefreshParent={onRefresh}
+        />
       ) : (
         <>
           {/* 1. Pipeline Stats */}

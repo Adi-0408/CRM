@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Menu,
   Plus,
@@ -14,6 +14,7 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import NotificationDrawer from '@/components/notifications/NotificationDrawer';
 
 interface HeaderProps {
   title: string;
@@ -36,7 +37,25 @@ export default function Header({
 }: HeaderProps) {
   const { user, role, roleConfig, logout } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notifications');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) setNotifications(data);
+      }
+    } catch (e) {
+      console.error('Error fetching notifications:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   const renderRoleActionButtons = () => {
     const primaryBtnClass =
@@ -232,39 +251,18 @@ export default function Header({
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
-              {notifications.length > 0 && (
-                <span className="absolute top-2 right-2 w-2 h-2 bg-[#635BFF] rounded-full ring-2 ring-white" />
+              {notifications.filter((n) => !n.isRead).length > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white animate-pulse" />
               )}
             </button>
 
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white/95 backdrop-blur-2xl rounded-2xl shadow-xl border border-slate-200/60 p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <span className="font-semibold text-xs text-slate-800">Notifications</span>
-                  {notifications.length > 0 && (
-                    <span className="text-[10px] bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full">
-                      {notifications.length} unread
-                    </span>
-                  )}
-                </div>
-                <div className="divide-y divide-slate-50 mt-2 max-h-64 overflow-y-auto">
-                  {notifications.length > 0 ? (
-                    notifications.map((n) => (
-                      <div key={n.id} className="py-2.5 flex items-start space-x-3">
-                        <div className="flex-1">
-                          <p className="text-xs font-semibold text-slate-800">{n.title}</p>
-                          <p className="text-[11px] text-slate-500 leading-tight mt-0.5">{n.desc}</p>
-                          <span className="text-[10px] text-slate-400 mt-1 block">{n.time}</span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-xs text-slate-400 py-6 text-center">
-                      No new notifications
-                    </p>
-                  )}
-                </div>
-              </div>
+              <NotificationDrawer
+                notifications={notifications}
+                onRefresh={fetchNotifications}
+                onNavigateTab={onNavigateTab}
+                onClose={() => setShowNotifications(false)}
+              />
             )}
           </div>
 

@@ -20,6 +20,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
 import AttendanceVerificationModal from './AttendanceVerificationModal';
+import DailyStandupModal from '@/components/modals/DailyStandupModal';
 import { IAttendanceLocation } from '@/models/Attendance';
 import {
   AttendanceSession,
@@ -50,6 +51,7 @@ export default function LiveClockCard({
   const [loading, setLoading] = useState(false);
   const [showSessionsDropdown, setShowSessionsDropdown] = useState(false);
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
+  const [showStandupModal, setShowStandupModal] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [previewPhoto, setPreviewPhoto] = useState<{
@@ -219,13 +221,19 @@ export default function LiveClockCard({
         const cacheKey = `attendance_${user.id}_${todayStr}`;
         localStorage.setItem(cacheKey, JSON.stringify({ sessions: updatedSessions }));
 
+        const wasClockedIn = isClockedIn;
         setSuccessMsg(
-          isClockedIn
+          wasClockedIn
             ? 'Punched out successfully with photo & location verified! Session ended.'
             : 'Punched in successfully with photo & location verified! Have a productive session.'
         );
 
         setIsVerificationModalOpen(false);
+
+        // Prompt Daily EOD Standup digest upon clocking out
+        if (wasClockedIn) {
+          setShowStandupModal(true);
+        }
 
         if (onPunchSuccess) {
           onPunchSuccess();
@@ -285,8 +293,18 @@ export default function LiveClockCard({
             </div>
           </div>
 
-          {/* Primary Action Button (Clock In / Clock Out) */}
-          <div className="w-full sm:w-auto">
+          {/* Primary Action Button (Clock In / Clock Out) & EOD Standup Button */}
+          <div className="w-full sm:w-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowStandupModal(true)}
+              className="px-3.5 py-3 rounded-2xl text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 transition-all active:scale-95 flex items-center justify-center space-x-1.5 shrink-0"
+              title="Submit Daily EOD Standup Digest"
+            >
+              <Clock className="w-3.5 h-3.5 text-violet-600" />
+              <span className="hidden sm:inline">EOD Standup</span>
+            </button>
+
             <button
               onClick={handleToggleClock}
               disabled={loading}
@@ -718,6 +736,11 @@ export default function LiveClockCard({
           </div>
         </div>
       )}
+      {/* 3. Daily EOD Standup Digest Modal */}
+      <DailyStandupModal
+        isOpen={showStandupModal}
+        onClose={() => setShowStandupModal(false)}
+      />
     </div>
   );
 }

@@ -341,6 +341,7 @@ export default function CRMApp() {
                   <LeadsView
                     leads={leads}
                     projects={projects}
+                    employees={employees}
                     initialSection={leadsSection}
                     onOpenAddLead={() => openModal(setShowAddLead)}
                     onOpenCreateProject={(prefill) => {

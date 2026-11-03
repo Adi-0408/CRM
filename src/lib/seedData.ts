@@ -11,6 +11,8 @@ import Payroll from '@/models/Payroll';
 import Branch from '@/models/Branch';
 import Invoice from '@/models/Invoice';
 import Quotation from '@/models/Quotation';
+import Notification from '@/models/Notification';
+import Standup from '@/models/Standup';
 import { DEMO_CREDENTIALS } from '@/types/auth';
 import { invalidatePayrollCache } from '@/lib/payrollEngine';
 
@@ -31,6 +33,8 @@ export async function wipeAndSeedDatabase() {
     Branch.deleteMany({}),
     Invoice.deleteMany({}),
     Quotation.deleteMany({}),
+    Notification.deleteMany({}),
+    Standup.deleteMany({}),
   ]);
 
   try {
@@ -543,6 +547,42 @@ export async function wipeAndSeedDatabase() {
       createdAt: new Date('2026-11-01T00:00:00.000Z'),
     });
   }
+
+  // 12. Seed Sample In-App Notifications
+  await Notification.create({
+    userId: 'all',
+    title: 'Project On Hold: Mobile CRM App v2',
+    message: 'Nexus Health Labs CRM app has been put on hold pending client API integration specs.',
+    type: 'project_status',
+    linkTab: 'projects',
+    isRead: false,
+    createdAt: new Date('2026-11-03T10:00:00.000Z'),
+  });
+
+  await Notification.create({
+    userId: 'all',
+    title: 'Deal Won: Phoenix Logistics',
+    message: 'Aditya Patil closed Enterprise Web Portal deal worth ₹3,50,000!',
+    type: 'lead_won',
+    linkTab: 'leads',
+    isRead: false,
+    createdAt: new Date('2026-11-03T09:30:00.000Z'),
+  });
+
+  // 13. Seed Daily EOD Standups
+  await Standup.create({
+    employeeId: 'emp_web',
+    employeeName: 'Rohan Joshi',
+    employeeEmail: 'rohan.developer@gmail.com',
+    employeeRole: 'Web Developer',
+    employeeAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
+    date: '2026-11-03',
+    completedToday: '• Built glassmorphic navigation header\n• Integrated real-time notification drawer with unread badges',
+    plannedTomorrow: '• Implement Quotation PDF direct export\n• Unit test leave request approvals',
+    hasBlockers: false,
+    blockers: 'None',
+    createdAt: new Date('2026-11-03T16:30:00.000Z'),
+  });
 
   return {
     success: true,
