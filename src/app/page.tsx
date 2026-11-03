@@ -243,7 +243,7 @@ export default function CRMApp() {
       case 'projects':
         return 'Project';
       case 'support':
-        return 'Support';
+        return 'Tech Support';
       case 'attendance':
         return 'Attendance';
       case 'payroll':

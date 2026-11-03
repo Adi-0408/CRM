@@ -90,9 +90,9 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
     badgeBg: 'bg-indigo-50',
     badgeText: 'text-indigo-700',
     badgeBorder: 'border-indigo-200',
-    sidebarTabs: ['dashboard', 'projects', 'tasks', 'attendance', 'leave', 'payroll'],
-    biNavTabs: ['overview', 'projects', 'tasks', 'attendance', 'payroll'],
-    allowedViews: ['overview', 'dashboard', 'projects', 'tasks', 'attendance', 'leave', 'payroll'],
+    sidebarTabs: ['dashboard', 'projects', 'tasks', 'support', 'attendance', 'leave', 'payroll'],
+    biNavTabs: ['overview', 'projects', 'tasks', 'support', 'attendance', 'payroll'],
+    allowedViews: ['overview', 'dashboard', 'projects', 'tasks', 'support', 'attendance', 'leave', 'payroll'],
   },
 
   hr: {
@@ -103,9 +103,9 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
     badgeBg: 'bg-emerald-50',
     badgeText: 'text-emerald-700',
     badgeBorder: 'border-emerald-200',
-    sidebarTabs: ['dashboard', 'employees', 'attendance', 'leave', 'tasks'],
-    biNavTabs: ['overview', 'employees', 'attendance', 'tasks'],
-    allowedViews: ['overview', 'dashboard', 'employees', 'attendance', 'leave', 'tasks'],
+    sidebarTabs: ['dashboard', 'employees', 'support', 'attendance', 'leave', 'tasks'],
+    biNavTabs: ['overview', 'employees', 'support', 'attendance', 'tasks'],
+    allowedViews: ['overview', 'dashboard', 'employees', 'support', 'attendance', 'leave', 'tasks'],
   },
 
   accounts: {
@@ -116,9 +116,9 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
     badgeBg: 'bg-blue-50',
     badgeText: 'text-blue-700',
     badgeBorder: 'border-blue-200',
-    sidebarTabs: ['dashboard', 'payroll', 'attendance', 'leave'],
-    biNavTabs: ['overview', 'payroll', 'attendance'],
-    allowedViews: ['overview', 'dashboard', 'payroll', 'attendance', 'leave'],
+    sidebarTabs: ['dashboard', 'payroll', 'support', 'attendance', 'leave'],
+    biNavTabs: ['overview', 'payroll', 'support', 'attendance'],
+    allowedViews: ['overview', 'dashboard', 'payroll', 'support', 'attendance', 'leave'],
   },
 
   sales: {
@@ -129,9 +129,9 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
     badgeBg: 'bg-amber-50',
     badgeText: 'text-amber-800',
     badgeBorder: 'border-amber-200',
-    sidebarTabs: ['dashboard', 'leads', 'projects', 'tasks', 'attendance', 'leave', 'payroll'],
-    biNavTabs: ['overview', 'leads', 'projects', 'tasks', 'attendance', 'payroll'],
-    allowedViews: ['overview', 'dashboard', 'leads', 'projects', 'tasks', 'attendance', 'leave', 'payroll'],
+    sidebarTabs: ['dashboard', 'leads', 'projects', 'tasks', 'support', 'attendance', 'leave', 'payroll'],
+    biNavTabs: ['overview', 'leads', 'projects', 'tasks', 'support', 'attendance', 'payroll'],
+    allowedViews: ['overview', 'dashboard', 'leads', 'projects', 'tasks', 'support', 'attendance', 'leave', 'payroll'],
   },
 
   web_developer: {
@@ -142,9 +142,9 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
     badgeBg: 'bg-cyan-50',
     badgeText: 'text-cyan-800',
     badgeBorder: 'border-cyan-200',
-    sidebarTabs: ['dashboard', 'projects', 'tasks', 'attendance', 'leave', 'payroll'],
-    biNavTabs: ['overview', 'projects', 'tasks', 'attendance', 'payroll'],
-    allowedViews: ['overview', 'dashboard', 'projects', 'tasks', 'attendance', 'leave', 'payroll'],
+    sidebarTabs: ['dashboard', 'projects', 'tasks', 'support', 'attendance', 'leave', 'payroll'],
+    biNavTabs: ['overview', 'projects', 'tasks', 'support', 'attendance', 'payroll'],
+    allowedViews: ['overview', 'dashboard', 'projects', 'tasks', 'support', 'attendance', 'leave', 'payroll'],
   },
 
   android_developer: {
@@ -155,9 +155,9 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
     badgeBg: 'bg-teal-50',
     badgeText: 'text-teal-800',
     badgeBorder: 'border-teal-200',
-    sidebarTabs: ['dashboard', 'projects', 'tasks', 'attendance', 'leave', 'payroll'],
-    biNavTabs: ['overview', 'projects', 'tasks', 'attendance', 'payroll'],
-    allowedViews: ['overview', 'dashboard', 'projects', 'tasks', 'attendance', 'leave', 'payroll'],
+    sidebarTabs: ['dashboard', 'projects', 'tasks', 'support', 'attendance', 'leave', 'payroll'],
+    biNavTabs: ['overview', 'projects', 'tasks', 'support', 'attendance', 'payroll'],
+    allowedViews: ['overview', 'dashboard', 'projects', 'tasks', 'support', 'attendance', 'leave', 'payroll'],
   },
 
   tech_support: {

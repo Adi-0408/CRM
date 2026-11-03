@@ -18,9 +18,11 @@ import {
   Cpu,
   ShieldAlert,
   Sparkles,
+  X,
 } from 'lucide-react';
 import CustomSelect from '@/components/common/CustomSelect';
 import { TicketCategory } from '@/models/Ticket';
+import { useAuth } from '@/context/AuthContext';
 
 interface SupportViewProps {
   tickets: any[];
@@ -155,17 +157,15 @@ export default function SupportView({
     }
   };
 
-  // Filter technical employees first for assignment
-  const techEmployees = employees.filter((e) => {
-    const r = (e.role || '').toLowerCase();
-    return (
-      r.includes('support') ||
-      r.includes('developer') ||
-      r.includes('lead') ||
-      r.includes('admin')
-    );
+  const { role } = useAuth();
+  const canManageTickets = role === 'admin_manager' || role === 'tech_support';
+
+  // Only Technical Support employees can be assigned to technical support tickets
+  const assignableEmployees = employees.filter((e) => {
+    const r = (e.role || '').toLowerCase().trim();
+    const d = (e.department || '').toLowerCase().trim();
+    return r === 'tech_support' || r.includes('support') || d.includes('support');
   });
-  const assignableEmployees = techEmployees.length > 0 ? techEmployees : employees;
 
   return (
     <div className="space-y-6">
@@ -256,7 +256,9 @@ export default function SupportView({
                       <span className="inline-flex items-center gap-1">
                         • Assigned Engineer:{' '}
                         <strong className="text-indigo-700 font-bold">
-                          {typeof t.assignedTo === 'object' ? t.assignedTo.name : t.assignedTo}
+                          {typeof t.assignedTo === 'object'
+                            ? t.assignedTo.name
+                            : employees.find((e) => (e._id || e.id) === t.assignedTo)?.name || t.assignedTo}
                         </strong>
                       </span>
                     )}
@@ -264,30 +266,46 @@ export default function SupportView({
                 </div>
 
                 <div className="flex items-center space-x-3 self-end md:self-center">
-                  <CustomSelect
-                    value={t.status}
-                    onChange={(val) => updateStatus(t._id, val)}
-                    size="xs"
-                    buttonClassName={`uppercase font-bold ${
-                      t.status === 'resolved' || t.status === 'closed'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                    }`}
-                    options={[
-                      { value: 'open', label: 'OPEN' },
-                      { value: 'in_progress', label: 'IN PROGRESS' },
-                      { value: 'resolved', label: 'RESOLVED' },
-                      { value: 'closed', label: 'CLOSED' },
-                    ]}
-                  />
+                  {canManageTickets ? (
+                    <>
+                      <CustomSelect
+                        value={t.status}
+                        onChange={(val) => updateStatus(t._id, val)}
+                        size="xs"
+                        buttonClassName={`uppercase font-bold ${
+                          t.status === 'resolved' || t.status === 'closed'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                        }`}
+                        options={[
+                          { value: 'open', label: 'OPEN' },
+                          { value: 'in_progress', label: 'IN PROGRESS' },
+                          { value: 'resolved', label: 'RESOLVED' },
+                          { value: 'closed', label: 'CLOSED' },
+                        ]}
+                      />
 
-                  <button
-                    onClick={() => deleteTicket(t._id)}
-                    className="p-2 text-slate-400 hover:text-rose-600 transition-colors rounded-xl hover:bg-rose-50"
-                    title="Delete ticket"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                      <button
+                        onClick={() => deleteTicket(t._id)}
+                        className="p-2 text-slate-400 hover:text-rose-600 transition-colors rounded-xl hover:bg-rose-50"
+                        title="Delete ticket"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <span
+                      className={`text-[11px] font-bold uppercase px-3 py-1.5 rounded-xl border ${
+                        t.status === 'resolved' || t.status === 'closed'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : t.status === 'in_progress'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                      }`}
+                    >
+                      {t.status.replace('_', ' ')}
+                    </span>
+                  )}
                 </div>
               </div>
             );
@@ -307,10 +325,18 @@ export default function SupportView({
 
       {/* Raise Technical Support Ticket Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 md:p-8 relative">
-            <div className="flex items-center space-x-3 pb-4 mb-4 border-b border-slate-100">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-[#635BFF] flex items-center justify-center">
+        <div className="fixed inset-0 z-50 overflow-y-auto flex flex-col items-center justify-start sm:justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="my-auto w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 md:p-8 relative">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center space-x-3 pb-4 mb-4 border-b border-slate-100 pr-8">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-[#635BFF] flex items-center justify-center shrink-0">
                 <Wrench className="w-5 h-5" />
               </div>
               <div>
@@ -406,7 +432,7 @@ export default function SupportView({
                       { value: '', label: '-- Unassigned --' },
                       ...assignableEmployees.map((e) => ({
                         value: e._id || e.id,
-                        label: `${e.name} (${e.role || 'Tech'})`,
+                        label: `${e.name} (Tech Support)`,
                       })),
                     ]}
                   />

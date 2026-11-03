@@ -7,7 +7,7 @@ export interface ITask {
   project?: any;
   assignedTo?: any;
   priority?: 'low' | 'medium' | 'high' | 'urgent';
-  status?: 'new' | 'in_progress' | 'completed' | 'todo';
+  status?: 'new' | 'in_progress' | 'completed' | 'todo' | 'on_hold';
   dueDate?: Date | string;
   description?: string;
   attachmentUrl?: string;
