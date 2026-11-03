@@ -28,11 +28,12 @@ export default function ProjectsView({
 }: ProjectsViewProps) {
   const { user, role } = useAuth();
   const isAdminOrManager = role === 'admin_manager';
+  const canManageProjects = role === 'admin_manager' || role === 'team_lead';
 
   const [filter, setFilter] = useState('all');
 
   const updateStatus = async (id: string, status: string) => {
-    if (!isAdminOrManager) return;
+    if (!canManageProjects) return;
     try {
       await authFetch(`/api/projects/${id}`, {
         method: 'PUT',
@@ -46,7 +47,7 @@ export default function ProjectsView({
   };
 
   const deleteProject = async (id: string) => {
-    if (!isAdminOrManager) return;
+    if (!canManageProjects) return;
     if (!confirm('Are you sure you want to delete this project?')) return;
     try {
       await authFetch(`/api/projects/${id}`, { method: 'DELETE' });
@@ -56,9 +57,9 @@ export default function ProjectsView({
     }
   };
 
-  // Scoping projects for employees
+  // Scoping projects for employees (Admin & Team Lead view all projects)
   const scopedProjects = useMemo(() => {
-    if (isAdminOrManager) return projects;
+    if (canManageProjects) return projects;
     const currentUserId = user?.id || (user as any)?._id;
     const currentUserEmail = user?.email?.toLowerCase();
 
@@ -107,8 +108,8 @@ export default function ProjectsView({
           ))}
         </div>
 
-        {/* Create Project button: only visible to Admin & Manager */}
-        {isAdminOrManager && (
+        {/* Create Project button: visible to Admin, Manager & Team Lead */}
+        {canManageProjects && (
           <button
             onClick={onOpenCreateProject}
             className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm hover:shadow-md hover:shadow-indigo-500/15 active:scale-95 transition-all w-full sm:w-auto"
@@ -148,8 +149,8 @@ export default function ProjectsView({
                       {project.priority} priority
                     </span>
 
-                    {/* Delete Project button: only visible to Admin & Manager */}
-                    {isAdminOrManager && (
+                    {/* Delete Project button: visible to Admin, Manager & Team Lead */}
+                    {canManageProjects && (
                       <button
                         onClick={() => deleteProject(project._id)}
                         className="text-slate-300 hover:text-rose-500 p-1 rounded-lg transition-colors"
@@ -200,8 +201,8 @@ export default function ProjectsView({
                   </div>
 
                   <div className="flex items-center justify-between pt-1">
-                    {/* Status updater for Admin/Manager, read-only pill for Employee */}
-                    {isAdminOrManager ? (
+                    {/* Status updater for Admin/Manager/Team Lead, read-only pill for Employee */}
+                    {canManageProjects ? (
                       <CustomSelect
                         value={project.status === 'planning' ? 'new' : project.status || 'new'}
                         onChange={(val) => updateStatus(project._id, val)}
@@ -249,7 +250,7 @@ export default function ProjectsView({
             <FolderKanban className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <h4 className="text-sm font-bold text-slate-700">No projects found</h4>
             <p className="text-xs text-slate-400 mt-1">
-              {isAdminOrManager
+              {canManageProjects
                 ? 'Click "New Project" above to create one.'
                 : 'No projects currently assigned to your team.'}
             </p>

@@ -52,8 +52,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    // Only Admin (Manager) can create company projects
-    const authResult = await requireRoles(req, ['admin_manager']);
+    // Only Admin (Manager) & Team Lead can create company projects
+    const authResult = await requireRoles(req, ['admin_manager', 'team_lead']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
@@ -70,9 +70,9 @@ export async function POST(req: NextRequest) {
       body.status = 'new';
     }
 
-    // Verify that assigned team members are strictly developers or interns
+    // Verify that assigned team members are developers, interns, or team leads
     if (Array.isArray(body.teamMembers) && body.teamMembers.length > 0) {
-      const allowedRoles = ['web_developer', 'android_developer', 'intern'];
+      const allowedRoles = ['web_developer', 'android_developer', 'intern', 'team_lead'];
       const members = await Promise.all(
         body.teamMembers.map((id: string) => Employee.findById(id))
       );
@@ -81,11 +81,12 @@ export async function POST(req: NextRequest) {
           m &&
           !allowedRoles.includes(String(m.role || '').toLowerCase().trim()) &&
           !String(m.role || '').toLowerCase().includes('developer') &&
-          !String(m.role || '').toLowerCase().includes('intern')
+          !String(m.role || '').toLowerCase().includes('intern') &&
+          !String(m.role || '').toLowerCase().includes('lead')
       );
       if (invalid) {
         return NextResponse.json(
-          { error: `Projects can only be assigned to Developers and Interns. (${invalid.name} has role: ${invalid.role})` },
+          { error: `Projects can only be assigned to Developers, Interns, and Team Leads. (${invalid.name} has role: ${invalid.role})` },
           { status: 400 }
         );
       }

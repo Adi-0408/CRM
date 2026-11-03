@@ -25,7 +25,7 @@ import {
   Legend,
 } from 'recharts';
 import { useAuth } from '@/context/AuthContext';
-import { canManageTasks, canManageLeads, canManageCredentials } from '@/lib/permissions';
+import { canManageTasks, canManageLeads, canManageCredentials, canManageProjects } from '@/lib/permissions';
 import HRDashboardView from '@/components/dashboards/HRDashboardView';
 import ManagerDashboardView from '@/components/dashboards/ManagerDashboardView';
 import EmployeeDashboardView from '@/components/dashboards/EmployeeDashboardView';
@@ -95,6 +95,7 @@ export default function OverviewView({
 }: OverviewViewProps) {
   const { role, user } = useAuth();
   const canCreateTask = canManageTasks(user);
+  const canCreateProject = canManageProjects(user);
   const canAddLead = canManageLeads(user);
   const canAddEmployee = canManageCredentials(user) || role === 'admin_manager' || role === 'hr';
 
@@ -171,6 +172,15 @@ export default function OverviewView({
             >
               <Plus className="w-3.5 h-3.5 text-slate-500 shrink-0" />
               <span>Create Task</span>
+            </button>
+          )}
+          {onOpenCreateProject && canCreateProject && (
+            <button
+              onClick={onOpenCreateProject}
+              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-bold text-slate-700 bg-white/90 hover:bg-white border border-slate-200/90 shadow-[0_4px_14px_-2px_rgba(15,23,42,0.10)] hover:shadow-[0_8px_18px_-2px_rgba(15,23,42,0.15)] active:scale-95 transition-all duration-200 hover:-translate-y-0.5"
+            >
+              <FolderKanban className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+              <span>New Project</span>
             </button>
           )}
           {onOpenAddLead && canAddLead && (

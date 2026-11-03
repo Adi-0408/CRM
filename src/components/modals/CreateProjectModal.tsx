@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { X, FolderKanban, DollarSign, Calendar, Users, Flag } from 'lucide-react';
 import TeamMemberPicker from '@/components/common/TeamMemberPicker';
 import CustomSelect from '@/components/common/CustomSelect';
+import { authFetch } from '@/lib/apiClient';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -48,15 +49,16 @@ export default function CreateProjectModal({
     }
   }, [isOpen, initialClient, initialBudget, initialTitle]);
 
-  // Restrict project assignment exclusively to Developers and Interns
+  // Restrict project assignment to Developers, Interns, and Team Leads
   const assignableEmployees = useMemo(() => {
-    const allowedRoles = ['web_developer', 'android_developer', 'intern'];
+    const allowedRoles = ['web_developer', 'android_developer', 'intern', 'team_lead'];
     return (employees || []).filter((emp) => {
       const r = String(emp.role || '').toLowerCase().trim();
       return (
         allowedRoles.includes(r) ||
         r.includes('developer') ||
-        r.includes('intern')
+        r.includes('intern') ||
+        r.includes('lead')
       );
     });
   }, [employees]);
@@ -79,7 +81,7 @@ export default function CreateProjectModal({
     try {
       setLoading(true);
       setError('');
-      const res = await fetch('/api/projects', {
+      const res = await authFetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

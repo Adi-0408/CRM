@@ -134,11 +134,11 @@ export function canRegularizeAttendance(user: AuthUser | null): boolean {
 }
 
 /**
- * Permission checker for creating & deleting projects
- * - Strictly admin_manager
+ * Permission checker for creating & managing projects
+ * - Strictly admin_manager & team_lead
  */
 export function canManageProjects(user: AuthUser | null): boolean {
-  return user?.role === 'admin_manager';
+  return user?.role === 'admin_manager' || user?.role === 'team_lead';
 }
 
 /**
