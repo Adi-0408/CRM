@@ -8,7 +8,6 @@ import Task from '@/models/Task';
 import Ticket from '@/models/Ticket';
 import Lead from '@/models/Lead';
 import Attendance from '@/models/Attendance';
-import { seedDatabase } from '@/lib/seedData';
 
 export async function GET() {
   try {

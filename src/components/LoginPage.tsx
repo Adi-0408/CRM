@@ -8,8 +8,10 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { DEMO_CREDENTIALS } from '@/types/auth';
 
 interface LoginPageProps {
   onSuccess?: () => void;
@@ -135,8 +137,44 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
           </button>
         </form>
 
+        {/* 1-Click Demo Roles Section */}
+        <div className="mt-5 pt-4 border-t border-slate-100">
+          <div className="flex items-center justify-between mb-2.5">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-[#635BFF]" />
+              Demo Roles (1-Click Fill)
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium">9 Roles</span>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {DEMO_CREDENTIALS.map((cred) => {
+              const isSelected = email.toLowerCase() === cred.email.toLowerCase();
+              return (
+                <button
+                  key={cred.role}
+                  type="button"
+                  onClick={() => {
+                    setEmail(cred.email);
+                    setPassword(cred.password);
+                    setError('');
+                  }}
+                  className={`text-left px-2 py-1.5 rounded-lg border text-[11px] font-medium transition-all ${
+                    isSelected
+                      ? 'border-[#635BFF] bg-[#F0EEFF] text-[#635BFF] shadow-xs'
+                      : 'border-slate-150 bg-slate-50/70 hover:bg-slate-100/80 text-slate-700'
+                  }`}
+                  title={`${cred.name} (${cred.email}) - ${cred.department}`}
+                >
+                  <div className="truncate font-semibold">{cred.roleTitle.split(' ')[0]}</div>
+                  <div className="truncate text-[9.5px] text-slate-400">{cred.role.replace('_', ' ')}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Footer */}
-        <div className="mt-6 text-center">
+        <div className="mt-5 text-center">
           <p className="text-[11px] text-slate-400 font-medium">
             Strict Role-Based Separation of Privileges • PrismCRM v2.0
           </p>
