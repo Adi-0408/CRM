@@ -346,7 +346,7 @@ export default function AttendanceVerificationModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 overflow-hidden animate-in fade-in duration-200 select-none"
+      className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md overflow-y-auto flex flex-col items-center justify-start sm:justify-center p-2 sm:p-4 animate-in fade-in duration-200 select-none"
       onClick={(e) => {
         if (e.target === e.currentTarget && !isLoading && !isCameraLoading && !locationLoading) {
           onClose();
@@ -354,14 +354,14 @@ export default function AttendanceVerificationModal({
       }}
     >
       <div
-        className={`bg-white flex flex-col transition-all duration-200 overflow-hidden ${
+        className={`bg-white flex flex-col transition-all duration-200 my-auto shadow-2xl border border-slate-100 ${
           isFullscreen
-            ? 'fixed inset-0 w-full h-[100dvh] rounded-none z-50 shadow-none'
-            : 'w-full h-[100dvh] sm:h-auto sm:max-h-[min(650px,94vh)] sm:max-w-2xl lg:max-w-3xl sm:rounded-3xl rounded-none shadow-2xl border-0 sm:border border-slate-100'
+            ? 'fixed inset-0 w-full h-[100dvh] rounded-none z-50 overflow-hidden'
+            : 'w-full max-w-2xl lg:max-w-3xl rounded-2xl sm:rounded-3xl max-h-[96vh] overflow-hidden'
         }`}
       >
         {/* Pinned Sticky Header */}
-        <div className="px-4 sm:px-6 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/95 backdrop-blur-sm shrink-0 z-20">
+        <div className="px-4 sm:px-6 py-2.5 sm:py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/95 backdrop-blur-sm shrink-0 z-20">
           <div className="flex items-center space-x-2.5">
             <button
               type="button"
@@ -378,11 +378,11 @@ export default function AttendanceVerificationModal({
 
             <div className="flex items-center space-x-2">
               <div
-                className={`w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-xs ${
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center text-white shadow-xs ${
                   isPunchIn ? 'bg-emerald-600' : 'bg-amber-500'
                 }`}
               >
-                <ShieldCheck className="w-4.5 h-4.5" />
+                <ShieldCheck className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
@@ -425,11 +425,11 @@ export default function AttendanceVerificationModal({
         {/* Scrollable Middle Content Area */}
         <div
           ref={scrollContainerRef}
-          className="p-3.5 sm:p-5 overflow-y-auto flex-1 min-h-0 space-y-4 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-4 items-stretch"
+          className="p-3 sm:p-4 overflow-y-auto flex-1 min-h-0 space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-4 items-stretch"
         >
           {/* Column 1: Live Selfie Capture */}
-          <div className="space-y-2.5 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/80 flex flex-col justify-between shadow-2xs">
-            <div className="space-y-2">
+          <div className="space-y-2 bg-slate-50/80 p-3 rounded-2xl border border-slate-200/80 flex flex-col justify-between shadow-2xs">
+            <div className="space-y-1.5">
               <div className="w-full flex items-center justify-between">
                 <label className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
                   <Camera className="w-3.5 h-3.5 text-[#635BFF]" />
@@ -446,8 +446,8 @@ export default function AttendanceVerificationModal({
                 )}
               </div>
 
-              {/* Viewfinder Frame */}
-              <div className="relative w-full aspect-[4/3] max-w-[240px] sm:max-w-[260px] rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-200 shadow-md flex items-center justify-center mx-auto">
+              {/* Viewfinder Frame (Compact & responsive height) */}
+              <div className="relative w-full aspect-[4/3] max-w-[210px] sm:max-w-[220px] rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-200 shadow-md flex items-center justify-center mx-auto">
                 {capturedPhoto ? (
                   <div className="relative w-full h-full">
                     <img
@@ -490,7 +490,7 @@ export default function AttendanceVerificationModal({
                     />
                     {/* Face Guide Oval */}
                     <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-                      <div className="w-24 h-28 rounded-[48%] border-2 border-dashed border-white/60 shadow-xs flex items-center justify-center" />
+                      <div className="w-20 h-24 sm:w-24 sm:h-28 rounded-[48%] border-2 border-dashed border-white/60 shadow-xs flex items-center justify-center" />
                       <span className="text-[8px] text-white/90 font-medium bg-slate-950/60 px-1.5 py-0.2 rounded-full mt-1 backdrop-blur-xs">
                         Center face
                       </span>
@@ -500,7 +500,7 @@ export default function AttendanceVerificationModal({
                     <button
                       type="button"
                       onClick={handleCapturePhoto}
-                      className="absolute bottom-2.5 inset-x-0 mx-auto w-10 h-10 rounded-full bg-white/95 hover:bg-white p-0.5 shadow-lg flex items-center justify-center cursor-pointer active:scale-90 transition-all border-2 border-[#635BFF]"
+                      className="absolute bottom-2 inset-x-0 mx-auto w-10 h-10 rounded-full bg-white/95 hover:bg-white p-0.5 shadow-lg flex items-center justify-center cursor-pointer active:scale-90 transition-all border-2 border-[#635BFF]"
                       title="Snap Live Selfie"
                     >
                       <div className="w-7 h-7 rounded-full bg-[#635BFF] flex items-center justify-center text-white">
@@ -513,13 +513,13 @@ export default function AttendanceVerificationModal({
             </div>
 
             {/* Action Buttons Below Viewfinder */}
-            <div className="w-full flex flex-col items-center gap-1.5 pt-0.5">
+            <div className="w-full flex flex-col items-center gap-1 pt-0.5">
               {capturedPhoto ? (
                 <button
                   type="button"
                   onClick={handleRetakePhoto}
                   disabled={isLoading}
-                  className="w-full max-w-[240px] py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                  className="w-full max-w-[210px] sm:max-w-[220px] py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                 >
                   <RotateCcw className="w-3 h-3 text-slate-600" />
                   <span>Retake Selfie</span>
@@ -529,7 +529,7 @@ export default function AttendanceVerificationModal({
                   type="button"
                   onClick={handleCapturePhoto}
                   disabled={isCameraLoading || Boolean(cameraError)}
-                  className="w-full max-w-[240px] py-2 rounded-xl bg-gradient-to-r from-[#635BFF] to-[#7B73FF] hover:from-[#5249ea] hover:to-[#685ff8] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                  className="w-full max-w-[210px] sm:max-w-[220px] py-1.5 rounded-xl bg-gradient-to-r from-[#635BFF] to-[#7B73FF] hover:from-[#5249ea] hover:to-[#685ff8] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                 >
                   <Camera className="w-3.5 h-3.5" />
                   <span>Take Live Selfie</span>
@@ -539,8 +539,8 @@ export default function AttendanceVerificationModal({
             <canvas ref={canvasRef} className="hidden" />
           </div>
 
-          {/* Column 2: Office Geofence Verification */}
-          <div className="space-y-2.5 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/80 flex flex-col justify-between shadow-2xs">
+          {/* Column 2: Office Geofence Verification & In-Card Confirm Button */}
+          <div className="space-y-2 bg-slate-50/80 p-3 rounded-2xl border border-slate-200/80 flex flex-col justify-between shadow-2xs">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
@@ -560,7 +560,7 @@ export default function AttendanceVerificationModal({
               </div>
 
               {/* Office Target Card */}
-              <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 text-xs space-y-0.5">
+              <div className="p-2 rounded-xl bg-white border border-slate-200/80 text-xs space-y-0.5">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-800 flex items-center gap-1 text-[11px]">
                     <Navigation className="w-3 h-3 text-[#0D9488]" />
@@ -577,12 +577,12 @@ export default function AttendanceVerificationModal({
 
               {/* Live Location Status Indicator */}
               {locationLoading ? (
-                <div className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-center gap-2 text-xs text-slate-600">
+                <div className="p-2.5 rounded-xl border border-slate-200 bg-white flex items-center justify-center gap-2 text-xs text-slate-600">
                   <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#635BFF]" />
                   <span className="text-[11px] font-medium">Fetching fast GPS coordinates...</span>
                 </div>
               ) : locationError ? (
-                <div className="p-2.5 rounded-xl border border-rose-200 bg-rose-50/80 text-xs text-rose-700 space-y-1.5">
+                <div className="p-2 rounded-xl border border-rose-200 bg-rose-50/80 text-xs text-rose-700 space-y-1">
                   <div className="flex items-start gap-1.5">
                     <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
                     <div className="space-y-0.5">
@@ -596,7 +596,7 @@ export default function AttendanceVerificationModal({
                       onClick={handleSimulateOfficeLocation}
                       className="text-[9px] font-semibold text-rose-800 underline hover:text-rose-950 cursor-pointer"
                     >
-                      Simulate Office GPS (Testing)
+                      Simulate Office GPS
                     </button>
                     <button
                       type="button"
@@ -609,7 +609,7 @@ export default function AttendanceVerificationModal({
                 </div>
               ) : geoResult ? (
                 <div
-                  className={`p-2.5 rounded-xl border transition-all ${
+                  className={`p-2 rounded-xl border transition-all ${
                     isWithinPerimeter
                       ? 'border-emerald-200 bg-emerald-50/80 text-emerald-900'
                       : 'border-rose-200 bg-rose-50/80 text-rose-900'
@@ -618,11 +618,11 @@ export default function AttendanceVerificationModal({
                   <div className="flex items-start justify-between gap-1.5">
                     <div className="flex items-start gap-1.5">
                       {isWithinPerimeter ? (
-                        <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 text-emerald-600 mt-0.5">
+                        <div className="w-4.5 h-4.5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 text-emerald-600 mt-0.5">
                           <CheckCircle2 className="w-3 h-3" />
                         </div>
                       ) : (
-                        <div className="w-5 h-5 rounded-full bg-rose-100 flex items-center justify-center shrink-0 text-rose-600 mt-0.5">
+                        <div className="w-4.5 h-4.5 rounded-full bg-rose-100 flex items-center justify-center shrink-0 text-rose-600 mt-0.5">
                           <Lock className="w-3 h-3" />
                         </div>
                       )}
@@ -650,8 +650,8 @@ export default function AttendanceVerificationModal({
                   </div>
 
                   {!isWithinPerimeter && (
-                    <div className="mt-2 pt-1.5 border-t border-rose-200/60 flex items-center justify-between">
-                      <span className="text-[9px] text-rose-700">Need to test locally?</span>
+                    <div className="mt-1.5 pt-1 border-t border-rose-200/60 flex items-center justify-between">
+                      <span className="text-[9px] text-rose-700">Testing locally?</span>
                       <button
                         type="button"
                         onClick={handleSimulateOfficeLocation}
@@ -663,54 +663,95 @@ export default function AttendanceVerificationModal({
                   )}
 
                   {isSimulated && (
-                    <p className="text-[8px] text-amber-700 italic mt-1 font-mono">
+                    <p className="text-[8px] text-amber-700 italic mt-0.5 font-mono">
                       * Simulation active for local testing
                     </p>
                   )}
                 </div>
               ) : null}
             </div>
+
+            {/* In-Card Primary Submit Button (Right in front of user!) */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!canSubmit}
+                className={`w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                  isPunchIn
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30'
+                    : 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/30'
+                }`}
+              >
+                {isLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Verifying...</span>
+                  </>
+                ) : canSubmit ? (
+                  <>
+                    <ShieldCheck className="w-4.5 h-4.5" />
+                    <span>Confirm &amp; Mark {actionTitle}</span>
+                  </>
+                ) : !capturedPhoto ? (
+                  <>
+                    <Camera className="w-4 h-4 text-slate-300" />
+                    <span>1. Snap Selfie to Mark</span>
+                  </>
+                ) : !isWithinPerimeter ? (
+                  <>
+                    <Lock className="w-4 h-4 text-slate-300" />
+                    <span>2. Geofence Check Needed</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Confirm {actionTitle}</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Pinned Sticky Footer with Action Buttons */}
-        <div className="px-4 sm:px-6 py-3 border-t border-slate-100 bg-slate-50/95 backdrop-blur-md shrink-0 z-20 flex flex-col sm:flex-row items-center justify-between gap-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        {/* Pinned Bottom Footer with Quick Checklist & Bottom Actions */}
+        <div className="px-4 sm:px-6 py-2.5 border-t border-slate-100 bg-slate-50/95 backdrop-blur-md shrink-0 z-20 flex flex-col sm:flex-row items-center justify-between gap-2.5">
           {/* Checklist Status */}
-          <div className="flex items-center gap-2.5 text-xs text-slate-600 w-full sm:w-auto justify-between sm:justify-start">
+          <div className="flex items-center gap-2 text-xs text-slate-600 w-full sm:w-auto justify-between sm:justify-start">
             <div
-              className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${
+              className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full border ${
                 capturedPhoto
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   : 'bg-slate-100 text-slate-500 border-slate-200'
               }`}
             >
               <CheckCircle2
-                className={`w-3.5 h-3.5 ${capturedPhoto ? 'text-emerald-600' : 'text-slate-400'}`}
+                className={`w-3 h-3 ${capturedPhoto ? 'text-emerald-600' : 'text-slate-400'}`}
               />
               <span>Selfie: {capturedPhoto ? 'Ready' : 'Pending'}</span>
             </div>
 
             <div
-              className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${
+              className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full border ${
                 isWithinPerimeter
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   : 'bg-rose-50 text-rose-700 border-rose-200'
               }`}
             >
               <CheckCircle2
-                className={`w-3.5 h-3.5 ${isWithinPerimeter ? 'text-emerald-600' : 'text-rose-400'}`}
+                className={`w-3 h-3 ${isWithinPerimeter ? 'text-emerald-600' : 'text-rose-400'}`}
               />
               <span>Geofence: {isWithinPerimeter ? 'Inside' : 'Outside'}</span>
             </div>
           </div>
 
           {/* Action Buttons: Back + Confirm */}
-          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 active:scale-95"
+              className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer inline-flex items-center justify-center gap-1 active:scale-95"
             >
               <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
               <span>Back</span>
@@ -719,7 +760,7 @@ export default function AttendanceVerificationModal({
               type="button"
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className={`flex-1 sm:flex-initial px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md disabled:opacity-40 disabled:cursor-not-allowed ${
+              className={`flex-1 sm:flex-initial px-5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-md disabled:opacity-40 disabled:cursor-not-allowed ${
                 isPunchIn
                   ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/25'
                   : 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/25'
@@ -727,7 +768,7 @@ export default function AttendanceVerificationModal({
             >
               {isLoading ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                   <span>Verifying...</span>
                 </>
               ) : (
