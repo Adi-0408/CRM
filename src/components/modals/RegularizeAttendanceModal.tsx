@@ -81,6 +81,16 @@ export default function RegularizeAttendanceModal({
   const [successMsg, setSuccessMsg] = useState<string>('');
 
   useEffect(() => {
+    if (isOpen) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     if (initialRecord && Array.isArray(initialRecord.sessions) && initialRecord.sessions.length > 0) {
       setSessions(
         initialRecord.sessions.map((s: AttendanceSession) => ({

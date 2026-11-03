@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Calendar,
   ChevronLeft,
@@ -107,6 +107,17 @@ export default function EmployeeAttendanceCalendar({
     type: 'Clock In' | 'Clock Out';
     location?: any;
   } | null>(null);
+
+  // Prevent background scrolling while preview photo lightbox is active
+  useEffect(() => {
+    if (calendarPreviewPhoto) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [calendarPreviewPhoto]);
 
   const todayStr = useMemo(() => getLocalTodayStr(), []);
 
@@ -995,11 +1006,11 @@ export default function EmployeeAttendanceCalendar({
       {/* Full-Size Verified Selfie Lightbox Modal */}
       {calendarPreviewPhoto && (
         <div
-          className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-hidden animate-in fade-in duration-200"
           onClick={() => setCalendarPreviewPhoto(null)}
         >
           <div
-            className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm sm:max-w-md overflow-hidden relative"
+            className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm sm:max-w-md max-h-[92vh] overflow-y-auto relative"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}

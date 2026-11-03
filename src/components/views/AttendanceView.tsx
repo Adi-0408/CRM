@@ -140,6 +140,17 @@ export default function AttendanceView({
     location?: any;
   } | null>(null);
 
+  // Prevent background scrolling when preview or override modal is open
+  useEffect(() => {
+    if (previewPhoto || isOverrideModalOpen) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [previewPhoto, isOverrideModalOpen]);
+
   const fetchRecords = async () => {
     try {
       setLoading(true);
@@ -1092,11 +1103,11 @@ export default function AttendanceView({
       {/* Neat Full-Size Selfie Lightbox Modal */}
       {previewPhoto && (
         <div
-          className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-hidden animate-in fade-in duration-200"
           onClick={() => setPreviewPhoto(null)}
         >
           <div
-            className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm sm:max-w-md overflow-hidden relative"
+            className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm sm:max-w-md max-h-[92vh] overflow-y-auto relative"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
