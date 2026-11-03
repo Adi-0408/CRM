@@ -84,6 +84,82 @@ function formatDeptName(dept?: string): string {
     .join(' ');
 }
 
+// Concise department tick label for charts to prevent horizontal collisions
+function formatDeptTick(dept?: string): string {
+  if (!dept) return '';
+  const mapping: Record<string, string> = {
+    'Executive Management': 'Exec Mgmt',
+    'Project Management': 'Project Mgmt',
+    'Human Resources': 'HR',
+    'Finance & Accounts': 'Finance',
+    'Sales & Marketing': 'Sales & Mktg',
+    'Web Engineering': 'Web Eng',
+    'Mobile Engineering': 'Mobile Eng',
+    'Customer Support': 'Tech Support',
+    'Training & Development': 'Training',
+  };
+  if (mapping[dept]) return mapping[dept];
+  return dept.length > 12 ? `${dept.slice(0, 11)}…` : dept;
+}
+
+// Format employee name tick label (e.g., "Vikram Malhotra" -> "Vikram M.")
+function formatEmployeeTick(name?: string): string {
+  if (!name) return '';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length > 1) {
+    return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+  }
+  return name.length > 11 ? `${name.slice(0, 10)}…` : name;
+}
+
+// Custom angled tick component for department axis
+const renderDeptAxisTick = (props: any) => {
+  const { x, y, payload } = props;
+  const val = payload?.value || '';
+  const label = formatDeptTick(val);
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        x={0}
+        y={0}
+        dy={10}
+        dx={-4}
+        textAnchor="end"
+        fill="#64748B"
+        fontSize={10.5}
+        fontWeight={600}
+        transform="rotate(-35)"
+      >
+        {label}
+      </text>
+    </g>
+  );
+};
+
+// Custom angled tick component for employee axis
+const renderEmployeeAxisTick = (props: any) => {
+  const { x, y, payload } = props;
+  const val = payload?.value || '';
+  const label = formatEmployeeTick(val);
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        x={0}
+        y={0}
+        dy={10}
+        dx={-4}
+        textAnchor="end"
+        fill="#64748B"
+        fontSize={10.5}
+        fontWeight={600}
+        transform="rotate(-35)"
+      >
+        {label}
+      </text>
+    </g>
+  );
+};
+
 // Calculate adjacent month string by delta (e.g. +1 or -1)
 function getAdjacentMonth(monthStr: string, delta: number): string {
   const [year, month] = monthStr.split('-').map(Number);
@@ -664,7 +740,7 @@ export default function AttendanceAnalyticsChart({
       return (
         <div className="bg-slate-900/95 backdrop-blur-md text-white p-3.5 rounded-2xl shadow-2xl border border-slate-700 text-xs space-y-1.5 min-w-[210px]">
           <div className="flex items-center justify-between border-b border-slate-700/80 pb-1.5">
-            <span className="font-bold text-sm text-slate-100">{label}</span>
+            <span className="font-bold text-sm text-slate-100">{data.department || label}</span>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-500/30 text-indigo-300 border border-indigo-400/30">
               {data.attendanceRate}% Rate
             </span>
@@ -1108,23 +1184,24 @@ export default function AttendanceAnalyticsChart({
                   </span>
                 </div>
 
-                <div className="h-64 w-full">
+                <div className="h-72 sm:h-80 w-full">
                   {departmentData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={departmentData}
-                        margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
+                        margin={{ top: 10, right: 10, left: -20, bottom: 30 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                         <XAxis
                           dataKey="department"
-                          tick={{ fill: '#64748B', fontSize: 11, fontWeight: 600 }}
                           interval={0}
+                          height={55}
+                          tick={renderDeptAxisTick}
                         />
                         <YAxis tick={{ fill: '#94A3B8', fontSize: 11 }} allowDecimals={false} />
                         <Tooltip content={<CustomDeptTooltip />} />
                         <Legend
-                          wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
+                          wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
                           formatter={(value) => (
                             <span className="text-slate-700 font-semibold">{value}</span>
                           )}
@@ -1177,18 +1254,19 @@ export default function AttendanceAnalyticsChart({
                   </span>
                 </div>
 
-                <div className="h-64 w-full">
+                <div className="h-72 sm:h-80 w-full">
                   {filteredEmployees.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={filteredEmployees}
-                        margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
+                        margin={{ top: 10, right: 10, left: -20, bottom: 30 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                         <XAxis
                           dataKey="name"
-                          tick={{ fill: '#64748B', fontSize: 11, fontWeight: 600 }}
                           interval={0}
+                          height={55}
+                          tick={renderEmployeeAxisTick}
                         />
                         <YAxis
                           tick={{ fill: '#94A3B8', fontSize: 11 }}
@@ -1244,16 +1322,18 @@ export default function AttendanceAnalyticsChart({
                   </div>
                 </div>
 
-                <div className="h-80 w-full">
+                <div className="h-80 sm:h-96 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={departmentData}
-                      margin={{ top: 20, right: 20, left: -10, bottom: 25 }}
+                      margin={{ top: 20, right: 20, left: -10, bottom: 35 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                       <XAxis
                         dataKey="department"
-                        tick={{ fill: '#334155', fontSize: 12, fontWeight: 700 }}
+                        interval={0}
+                        height={55}
+                        tick={renderDeptAxisTick}
                       />
                       <YAxis
                         tick={{ fill: '#94A3B8', fontSize: 11 }}
@@ -1399,16 +1479,18 @@ export default function AttendanceAnalyticsChart({
                   </div>
                 </div>
 
-                <div className="h-80 w-full">
+                <div className="h-80 sm:h-96 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={filteredEmployees}
-                      margin={{ top: 20, right: 30, left: -10, bottom: 30 }}
+                      margin={{ top: 20, right: 30, left: -10, bottom: 35 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                       <XAxis
                         dataKey="name"
-                        tick={{ fill: '#1E293B', fontSize: 12, fontWeight: 700 }}
+                        interval={0}
+                        height={55}
+                        tick={renderEmployeeAxisTick}
                       />
                       <YAxis
                         tick={{ fill: '#94A3B8', fontSize: 11 }}
