@@ -43,11 +43,12 @@ export default function SupportView({
   employees,
   onRefresh,
 }: SupportViewProps) {
+  const { user, role } = useAuth();
+  const canManageTickets = role === 'admin_manager' || role === 'tech_support';
+
   const [filter, setFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [title, setTitle] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
   const [category, setCategory] = useState<TicketCategory>('Bug / Defect');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
   const [assignedTo, setAssignedTo] = useState('');
@@ -90,7 +91,7 @@ export default function SupportView({
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !customerName.trim() || !customerEmail.trim()) return;
+    if (!title.trim()) return;
 
     try {
       setSubmitting(true);
@@ -99,8 +100,8 @@ export default function SupportView({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
-          customerName,
-          customerEmail,
+          customerName: user?.name || 'Staff Member',
+          customerEmail: user?.email || 'staff@company.com',
           category,
           priority,
           assignedTo: assignedTo || undefined,
@@ -109,8 +110,6 @@ export default function SupportView({
       });
       setShowModal(false);
       setTitle('');
-      setCustomerName('');
-      setCustomerEmail('');
       setDescription('');
       setCategory('Bug / Defect');
       onRefresh();
@@ -157,8 +156,7 @@ export default function SupportView({
     }
   };
 
-  const { role } = useAuth();
-  const canManageTickets = role === 'admin_manager' || role === 'tech_support';
+
 
   // Only Technical Support employees can be assigned to technical support tickets
   const assignableEmployees = employees.filter((e) => {
@@ -250,7 +248,7 @@ export default function SupportView({
 
                   <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-2.5">
                     <span>
-                      Client: <strong className="text-slate-800">{t.customerName}</strong> ({t.customerEmail})
+                      Reported by: <strong className="text-slate-800">{t.customerName}</strong> ({t.customerEmail})
                     </span>
                     {t.assignedTo && (
                       <span className="inline-flex items-center gap-1">
@@ -362,33 +360,16 @@ export default function SupportView({
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                    Customer / Client Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Phoenix Logistics"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm focus:border-indigo-400 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                    Customer Email *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="e.g. client@company.com"
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm focus:border-indigo-400 outline-none"
-                  />
-                </div>
+              <div className="bg-slate-50 border border-slate-200/60 rounded-xl px-3.5 py-2.5 flex items-center justify-between text-xs text-slate-600">
+                <span className="flex items-center gap-2 font-medium truncate mr-2">
+                  <User className="w-4 h-4 text-slate-400 shrink-0" />
+                  <span className="truncate">
+                    Reported by: <strong className="text-slate-800 font-semibold">{user?.name || 'Staff Member'}</strong> ({user?.email || 'Internal Staff'})
+                  </span>
+                </span>
+                <span className="text-[10px] uppercase font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100 shrink-0">
+                  Staff Member
+                </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
+import { getAuthUser } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 import Ticket from '@/models/Ticket';
@@ -30,10 +31,18 @@ export async function POST(req: NextRequest) {
   try {
     await connectToDatabase();
     const body = await req.json();
+    const authUser = await getAuthUser(req);
 
-    if (!body.title || !body.customerName || !body.customerEmail) {
+    if (!body.customerName) {
+      body.customerName = authUser?.name || 'Staff Member';
+    }
+    if (!body.customerEmail) {
+      body.customerEmail = authUser?.email || 'staff@company.com';
+    }
+
+    if (!body.title) {
       return NextResponse.json(
-        { error: 'Title, customerName and customerEmail are required' },
+        { error: 'Ticket title is required' },
         { status: 400 }
       );
     }
