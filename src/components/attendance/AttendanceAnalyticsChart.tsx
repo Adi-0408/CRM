@@ -1194,8 +1194,10 @@ export default function AttendanceAnalyticsChart({
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                         <XAxis
                           dataKey="department"
-                          interval={0}
+                          interval={departmentData.length > 10 ? 'preserveStartEnd' : 0}
+                          minTickGap={16}
                           height={55}
+                          tickFormatter={formatDeptTick}
                           tick={renderDeptAxisTick}
                         />
                         <YAxis tick={{ fill: '#94A3B8', fontSize: 11 }} allowDecimals={false} />
@@ -1249,9 +1251,16 @@ export default function AttendanceAnalyticsChart({
                       Cumulative hours worked in {formatMonthDisplay(internalMonth)}
                     </p>
                   </div>
-                  <span className="text-xs font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
-                    {filteredEmployees.length} Employees
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
+                      {filteredEmployees.length} Employees
+                    </span>
+                    {filteredEmployees.length > 15 && (
+                      <span className="hidden sm:inline-block text-[10px] text-slate-400 font-medium">
+                        (Auto-thinned axis • Hover any bar)
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="h-72 sm:h-80 w-full">
@@ -1264,8 +1273,10 @@ export default function AttendanceAnalyticsChart({
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                         <XAxis
                           dataKey="name"
-                          interval={0}
+                          interval={filteredEmployees.length > 12 ? 'preserveStartEnd' : 0}
+                          minTickGap={20}
                           height={55}
+                          tickFormatter={formatEmployeeTick}
                           tick={renderEmployeeAxisTick}
                         />
                         <YAxis
@@ -1331,8 +1342,10 @@ export default function AttendanceAnalyticsChart({
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                       <XAxis
                         dataKey="department"
-                        interval={0}
+                        interval={departmentData.length > 10 ? 'preserveStartEnd' : 0}
+                        minTickGap={16}
                         height={55}
+                        tickFormatter={formatDeptTick}
                         tick={renderDeptAxisTick}
                       />
                       <YAxis
@@ -1488,8 +1501,10 @@ export default function AttendanceAnalyticsChart({
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                       <XAxis
                         dataKey="name"
-                        interval={0}
+                        interval={filteredEmployees.length > 12 ? 'preserveStartEnd' : 0}
+                        minTickGap={20}
                         height={55}
+                        tickFormatter={formatEmployeeTick}
                         tick={renderEmployeeAxisTick}
                       />
                       <YAxis
