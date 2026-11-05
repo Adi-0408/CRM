@@ -33,6 +33,7 @@ import AttendanceAnalyticsChart from '@/components/attendance/AttendanceAnalytic
 import EmployeeAttendanceCalendar from '@/components/attendance/EmployeeAttendanceCalendar';
 import DailyStandupsDigestView from '@/components/attendance/DailyStandupsDigestView';
 import DailyStandupModal from '@/components/modals/DailyStandupModal';
+import OperationalComplianceHub from '@/components/compliance/OperationalComplianceHub';
 import CustomSelect from '@/components/common/CustomSelect';
 import {
   evaluateDailyAttendance,
@@ -433,42 +434,21 @@ export default function AttendanceView({
 
   return (
     <div className="space-y-6">
-      {/* 0. Top Attendance Switcher: Live Attendance vs Daily EOD Standups Digest */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-2 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.03)] flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center space-x-1.5 w-full sm:w-auto">
-          <button
-            onClick={() => setAttendanceSection('attendance')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 flex-1 sm:flex-initial ${
-              attendanceSection === 'attendance'
-                ? 'bg-[#635BFF] text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5" />
-            <span>Attendance & Live Geofence</span>
-          </button>
-          <button
-            onClick={() => setAttendanceSection('standups')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 flex-1 sm:flex-initial ${
-              attendanceSection === 'standups'
-                ? 'bg-[#635BFF] text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Daily EOD Standups Digest</span>
-          </button>
-        </div>
-        <span className="text-[11px] font-bold text-slate-400 mr-2 hidden md:inline-block">
-          ITPL Operational Compliance Hub
-        </span>
-      </div>
-
-      {attendanceSection === 'standups' ? (
+      {/* 0. ITPL Operational Compliance Hub: Biometric Face & Live Geofence Verification */}
+      <OperationalComplianceHub
+        activeSection={attendanceSection}
+        onSectionChange={(sec) => setAttendanceSection(sec)}
+        onPunchSuccess={() => {
+          fetchRecords();
+          onRefresh();
+        }}
+      >
         <DailyStandupsDigestView onOpenStandupModal={() => setShowManualStandupModal(true)} />
-      ) : (
+      </OperationalComplianceHub>
+
+      {attendanceSection === 'attendance' && (
         <>
-          {/* 1. Punch-In / Punch-Out Action Card */}
+          {/* 1. Shift Timeline & Working Duration Telemetry */}
           <LiveClockCard
             onPunchSuccess={() => {
               fetchRecords();
