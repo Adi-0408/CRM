@@ -117,10 +117,11 @@ export default function OperationalComplianceHub({
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           const sessions = data[0].sessions || [];
-          const activeSess = sessions.find((s: any) => !s.punchOut);
+          // Active session is one without checkOut
+          const activeSess = sessions.find((s: any) => !s.checkOut);
           if (activeSess) {
             setIsClockedIn(true);
-            setActiveSessionStart(activeSess.punchIn);
+            setActiveSessionStart(activeSess.checkIn ? String(activeSess.checkIn) : null);
           } else {
             setIsClockedIn(false);
             setActiveSessionStart(null);
@@ -447,12 +448,15 @@ export default function OperationalComplianceHub({
         throw new Error(data.error || 'Failed to record attendance verification');
       }
 
-      const wasClockedIn = isClockedIn;
-      setIsClockedIn(!wasClockedIn);
+      const updatedSessions: any[] = data.sessions || [];
+      const activeSess = updatedSessions.find((s: any) => !s.checkOut);
+      const nowClockedIn = Boolean(activeSess);
+      setIsClockedIn(nowClockedIn);
+      setActiveSessionStart(activeSess?.checkIn ? String(activeSess.checkIn) : null);
 
       setPunchFeedback({
         type: 'success',
-        message: wasClockedIn
+        message: action === 'punch_out'
           ? 'Successfully Clocked Out! Biometric selfie & geofence telemetry verified.'
           : 'Successfully Clocked In! Biometric selfie & geofence telemetry verified.',
       });
@@ -462,10 +466,18 @@ export default function OperationalComplianceHub({
       }
 
       // If clocking out, prompt the compact Daily EOD Standup digest modal
-      if (wasClockedIn) {
+      if (action === 'punch_out') {
         setShowStandupModal(true);
       }
     } catch (err: any) {
+      const errMsg = String(err.message || '');
+      if (errMsg.toLowerCase().includes('already clocked out') || errMsg.toLowerCase().includes('no clock-in')) {
+        setIsClockedIn(false);
+        setActiveSessionStart(null);
+      } else if (errMsg.toLowerCase().includes('already clocked in')) {
+        setIsClockedIn(true);
+      }
+
       setPunchFeedback({
         type: 'error',
         message: err.message || 'Error executing biometric clock transaction.',
@@ -558,18 +570,27 @@ export default function OperationalComplianceHub({
               : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border-rose-200 dark:border-rose-800'
           }`}
         >
-          <div className="flex items-center space-x-2.5">
+          <div className="flex items-center space-x-2.5 flex-wrap gap-y-2">
             {punchFeedback.type === 'success' ? (
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
             ) : (
               <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
             )}
             <span>{punchFeedback.message}</span>
+            {punchFeedback.type === 'error' && !isClockedIn && (
+              <button
+                type="button"
+                onClick={() => setPunchFeedback(null)}
+                className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              >
+                Ready to Clock In
+              </button>
+            )}
           </div>
           <button
             type="button"
             onClick={() => setPunchFeedback(null)}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold px-2 py-1 rounded-md"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold px-2 py-1 rounded-md cursor-pointer shrink-0"
           >
             Dismiss
           </button>
@@ -608,11 +629,29 @@ export default function OperationalComplianceHub({
                 </div>
               </div>
 
-              {/* Status Pill Badge */}
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
-                <Radio className="w-3 h-3 text-indigo-500 animate-pulse" />
-                <span>AI Biometric</span>
-              </span>
+              {/* Status Pill Badge & Session State */}
+              <div className="flex items-center space-x-1.5">
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors ${
+                    isClockedIn
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                  }`}
+                  title={isClockedIn ? 'Active work session in progress' : 'Clocked out. Ready to start new session'}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      isClockedIn ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                    }`}
+                  />
+                  <span>{isClockedIn ? 'Active Session' : 'Clocked Out'}</span>
+                </span>
+
+                <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
+                  <Radio className="w-2.5 h-2.5 text-indigo-500 animate-pulse" />
+                  <span>AI Biometric</span>
+                </span>
+              </div>
             </div>
           </div>
 
