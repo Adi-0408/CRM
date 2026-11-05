@@ -62,13 +62,21 @@ export async function POST(req: NextRequest) {
         distributionDate: calculated.distributionDate,
         distributionSchedule: calculated.distributionSchedule,
         approvedLeaves: calculated.approvedLeaves,
+        absentDays: calculated.absentDays,
+        absentDeduction: calculated.absentDeduction,
         unapprovedLeaves: calculated.unapprovedLeaves,
         halfDays: calculated.halfDays,
+        halfDayDeduction: calculated.halfDayDeduction,
+        unpaidLeaveDeduction: calculated.unpaidLeaveDeduction,
         totalDeductions: calculated.totalDeductions,
         netSalary: calculated.netSalary,
         status: 'Paid',
         paidAt: existing?.paidAt || paidAt,
       };
+
+      if (calculated.absentDaysOverride !== undefined) {
+        updateFields.absentDaysOverride = calculated.absentDaysOverride;
+      }
 
       if (calculated.unapprovedLeavesOverride !== undefined) {
         updateFields.unapprovedLeavesOverride = calculated.unapprovedLeavesOverride;

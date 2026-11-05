@@ -22,6 +22,7 @@ import CreateTaskModal from '@/components/modals/CreateTaskModal';
 import AddLeadModal from '@/components/modals/AddLeadModal';
 import CreateProjectModal from '@/components/modals/CreateProjectModal';
 import AddEmployeeModal from '@/components/modals/AddEmployeeModal';
+import MobileBottomDock from '@/components/navigation/MobileBottomDock';
 
 export default function CRMApp() {
   const {
@@ -286,7 +287,7 @@ export default function CRMApp() {
         />
 
         {/* Inner Content Area (Isolated Vertical Scrolling) */}
-        <main className="p-4 sm:p-6 md:p-8 flex-1 min-h-0 overflow-y-auto overflow-x-hidden max-w-7xl w-full mx-auto scroll-smooth focus:outline-none">
+        <main className="p-4 sm:p-6 md:p-8 pb-24 lg:pb-8 flex-1 min-h-0 overflow-y-auto overflow-x-hidden max-w-7xl w-full mx-auto scroll-smooth focus:outline-none">
           {/* Business Intelligence Header & Pill Navigation */}
           <BusinessIntelligenceNav
             activeTab={activeTab}
@@ -435,6 +436,15 @@ export default function CRMApp() {
           )}
         </main>
       </div>
+
+      {/* Floating Mobile Bottom Navigation Dock */}
+      {isAuthenticated && (
+        <MobileBottomDock
+          activeTab={activeTab}
+          onNavigateTab={navigateToTab}
+          onToggleMobileMenu={toggleMobileMenu}
+        />
+      )}
 
       {/* Global Modals for Quick Actions */}
       <CreateTaskModal

@@ -30,6 +30,7 @@ export async function PATCH(req: NextRequest) {
       employeeId,
       month,
       baseSalary,
+      absentDaysOverride,
       unapprovedLeavesOverride,
       halfDaysOverride,
       status,
@@ -100,6 +101,9 @@ export async function PATCH(req: NextRequest) {
     if (baseSalary !== undefined && baseSalary !== null) {
       mergeData.baseSalary = Number(baseSalary);
     }
+    if (absentDaysOverride !== undefined) {
+      mergeData.absentDaysOverride = Number(absentDaysOverride);
+    }
     if (unapprovedLeavesOverride !== undefined) {
       mergeData.unapprovedLeavesOverride = Number(unapprovedLeavesOverride);
     }
@@ -134,13 +138,20 @@ export async function PATCH(req: NextRequest) {
       distributionDate: calculated.distributionDate,
       distributionSchedule: calculated.distributionSchedule,
       approvedLeaves: calculated.approvedLeaves,
+      absentDays: calculated.absentDays,
+      absentDeduction: calculated.absentDeduction,
       unapprovedLeaves: calculated.unapprovedLeaves,
       halfDays: calculated.halfDays,
+      halfDayDeduction: calculated.halfDayDeduction,
+      unpaidLeaveDeduction: calculated.unpaidLeaveDeduction,
       totalDeductions: calculated.totalDeductions,
       netSalary: calculated.netSalary,
       status: mergeData.status || calculated.status,
     };
 
+    if (calculated.absentDaysOverride !== undefined) {
+      updateDoc.absentDaysOverride = calculated.absentDaysOverride;
+    }
     if (calculated.unapprovedLeavesOverride !== undefined) {
       updateDoc.unapprovedLeavesOverride = calculated.unapprovedLeavesOverride;
     }

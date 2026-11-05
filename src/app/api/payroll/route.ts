@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
     const [existingPayrolls, monthAttendance, monthLeaves] = await Promise.all([
       Payroll.find({ month }),
       Attendance.find({ date: { $regex: `^${month}` } }),
-      Leave.find({ status: 'approved' }),
+      Leave.find({}), // Load all leaves to account for approved paid leaves, unapproved leaves, and unpaid leaves
     ]);
 
     const preloaded = {
@@ -151,8 +151,13 @@ export async function POST(req: NextRequest) {
           distributionDate: calculated.distributionDate,
           distributionSchedule: calculated.distributionSchedule,
           approvedLeaves: calculated.approvedLeaves,
+          absentDays: calculated.absentDays,
+          absentDeduction: calculated.absentDeduction,
+          absentDaysOverride: calculated.absentDaysOverride,
           unapprovedLeaves: calculated.unapprovedLeaves,
           halfDays: calculated.halfDays,
+          halfDayDeduction: calculated.halfDayDeduction,
+          unpaidLeaveDeduction: calculated.unpaidLeaveDeduction,
           totalDeductions: calculated.totalDeductions,
           netSalary: calculated.netSalary,
           status: body.status || 'Pending',

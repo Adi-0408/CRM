@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
+import StatusPillSelect from '@/components/common/StatusPillSelect';
 
 interface TasksViewProps {
   tasks: any[];
@@ -224,26 +225,11 @@ export default function TasksView({
                         {task.priority}
                       </span>
 
-                      {/* Status Selector Pill */}
-                      <select
+                      {/* Custom Glassmorphic Status Selector Pill */}
+                      <StatusPillSelect
                         value={effectiveStatus}
-                        onChange={(e) => updateTaskStatus(task, e.target.value)}
-                        className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full border transition-all cursor-pointer focus:outline-none ${
-                          effectiveStatus === 'completed'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : effectiveStatus === 'in_progress'
-                            ? 'bg-amber-50 text-amber-700 border-amber-200'
-                            : effectiveStatus === 'on_hold'
-                            ? 'bg-rose-50 text-rose-700 border-rose-200'
-                            : 'bg-blue-50 text-blue-700 border-blue-200'
-                        }`}
-                        title="Update Task Status (New ➔ In Progress ➔ Completed ➔ On Hold)"
-                      >
-                        <option value="new">New</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="completed">Completed</option>
-                        <option value="on_hold">On Hold</option>
-                      </select>
+                        onChange={(newStatus) => updateTaskStatus(task, newStatus)}
+                      />
                     </div>
                   </div>
                 </div>

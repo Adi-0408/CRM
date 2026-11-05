@@ -162,32 +162,7 @@ export async function calculateEmployeePayroll(
     });
   }
 
-  // If in joining month, do not penalize days before joining as absent!
-  if (isJoiningMonth && joinInfo) {
-    attendanceRecords = attendanceRecords.filter((att: any) => {
-      return !att.date || att.date >= joinInfo.joinDateStr;
-    });
-  }
-
-  let rawHalfDays = 0;
-  let rawAbsentAttendance = 0;
-  const absentDates = new Set<string>();
-
-  for (const att of attendanceRecords) {
-    const isHalfDay =
-      att.status === 'half_day' ||
-      (att.effectiveMinutes > 0 && att.effectiveMinutes < 480 && att.status !== 'present' && att.status !== 'full_day');
-
-    if (isHalfDay) {
-      rawHalfDays += 1;
-    } else if (att.status === 'absent') {
-      rawAbsentAttendance += 1;
-      absentDates.add(att.date);
-    }
-  }
-
   // 2. Query Leaves overlapping with the month (use preloaded data if provided)
-
   let leaveRecords: any[];
   if (preloaded?.leaves) {
     const empIdStr = String(emp._id || emp.id);
@@ -216,30 +191,132 @@ export async function calculateEmployeePayroll(
     });
   }
 
+  // Map attendance records by date for fast O(1) daily lookup
+  const attMapByDate = new Map<string, any>();
+  for (const att of attendanceRecords) {
+    if (att.date) {
+      attMapByDate.set(att.date, att);
+    }
+  }
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonthNum = now.getMonth() + 1;
+  const todayStr = `${currentYear}-${String(currentMonthNum).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const currentHour = now.getHours();
+
+  let rawHalfDays = 0;
+  let rawAbsentDays = 0;
+  const absentDates = new Set<string>();
+
+  // Determine working day attendance & absences for each day of the month
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dayDate = new Date(year, monthIndex, d);
+    const dayOfWeek = dayDate.getDay();
+    const isSunday = dayOfWeek === 0;
+
+    // 1. Weekly Off: Sundays are official corporate holidays (not counted as absent)
+    if (isSunday) continue;
+
+    // 2. Joining Date: Days before the employee joined are not counted as absent
+    if (joinInfo && dateStr < joinInfo.joinDateStr) continue;
+
+    // 3. Future Days: Days after today in current or future months are not absent yet
+    if (dateStr > todayStr) continue;
+
+    const att = attMapByDate.get(dateStr);
+
+    if (dateStr === todayStr) {
+      // Today: If employee has already clocked in
+      if (att) {
+        const isHalfDay =
+          att.status === 'half_day' ||
+          (att.effectiveMinutes > 0 && att.effectiveMinutes < 480 && att.status !== 'present' && att.status !== 'full_day');
+        if (isHalfDay) {
+          rawHalfDays += 1;
+        } else if (att.status === 'absent') {
+          rawAbsentDays += 1;
+          absentDates.add(dateStr);
+        }
+      } else {
+        // If today has ended (after 18:00 / 6 PM) and employee did not clock in
+        if (currentHour >= 18) {
+          const hasApprovedLeave = leaveRecords.some((l: any) => {
+            const isApp = l.status?.toLowerCase() === 'approved';
+            if (!isApp || l.type === 'unpaid') return false;
+            const sStr = String(l.startDate || '').slice(0, 10);
+            const eStr = String(l.endDate || '').slice(0, 10);
+            return dateStr >= sStr && dateStr <= eStr;
+          });
+          if (!hasApprovedLeave) {
+            rawAbsentDays += 1;
+            absentDates.add(dateStr);
+          }
+        }
+        // If during working hours (< 18:00), employee can still clock in, so not penalized as absent yet
+      }
+      continue;
+    }
+
+    // Past working days: dateStr < todayStr
+    if (att) {
+      const isHalfDay =
+        att.status === 'half_day' ||
+        (att.effectiveMinutes > 0 && att.effectiveMinutes < 480 && att.status !== 'present' && att.status !== 'full_day');
+      const isAbsent =
+        att.status === 'absent' ||
+        (att.effectiveMinutes === 0 && (!att.sessions || att.sessions.length === 0));
+
+      if (isHalfDay) {
+        rawHalfDays += 1;
+      } else if (isAbsent) {
+        rawAbsentDays += 1;
+        absentDates.add(dateStr);
+      }
+    } else {
+      // No attendance record found on a past working day!
+      // Check if day was covered by an approved paid leave
+      const hasApprovedLeave = leaveRecords.some((l: any) => {
+        const isApp = l.status?.toLowerCase() === 'approved';
+        if (!isApp || l.type === 'unpaid') return false;
+        const sStr = String(l.startDate || '').slice(0, 10);
+        const eStr = String(l.endDate || '').slice(0, 10);
+        return dateStr >= sStr && dateStr <= eStr;
+      });
+
+      if (!hasApprovedLeave) {
+        rawAbsentDays += 1;
+        absentDates.add(dateStr);
+      }
+    }
+  }
+
   let approvedLeaves = 0;
   let unapprovedLeaveDays = 0;
 
   for (const leave of leaveRecords) {
-    const isApproved =
-      leave.status?.toLowerCase() === 'approved';
+    const isApproved = leave.status?.toLowerCase() === 'approved';
     const isUnapproved =
       leave.status?.toLowerCase() === 'rejected' ||
-      leave.status?.toLowerCase() === 'pending' ||
       leave.type === 'unpaid';
 
     const days = Math.max(1, leave.days || 1);
 
-    if (isApproved) {
+    if (isApproved && leave.type !== 'unpaid') {
       approvedLeaves += days;
     } else if (isUnapproved) {
       unapprovedLeaveDays += days;
     }
   }
 
-  // Total unapproved leaves = absent attendance days + unapproved/unpaid leave requests
-  const rawUnapprovedLeaves = rawAbsentAttendance + unapprovedLeaveDays;
-
   // Check for overrides from existing payroll document
+  const effectiveAbsentDays =
+    existingPayroll?.absentDaysOverride !== undefined &&
+    existingPayroll?.absentDaysOverride !== null
+      ? Number(existingPayroll.absentDaysOverride)
+      : rawAbsentDays;
+
   const effectiveHalfDays =
     existingPayroll?.halfDaysOverride !== undefined &&
     existingPayroll?.halfDaysOverride !== null
@@ -250,18 +327,20 @@ export async function calculateEmployeePayroll(
     existingPayroll?.unapprovedLeavesOverride !== undefined &&
     existingPayroll?.unapprovedLeavesOverride !== null
       ? Number(existingPayroll.unapprovedLeavesOverride)
-      : rawUnapprovedLeaves;
+      : unapprovedLeaveDays;
 
   // Formula per requirements:
   // dailyRate = fullBaseSalary / 30
   // halfDayRate = dailyRate * 0.5
+  // absentDeduction = absentDays * dailyRate (Automatically deducted for missing working days)
   // unpaidLeaveDeduction = unapprovedLeaves * dailyRate
   // halfDayDeduction = halfDays * halfDayRate
-  // Total Deductions = Math.round(unpaidLeaveDeduction + halfDayDeduction)
+  // Total Deductions = Math.round(absentDeduction + unpaidLeaveDeduction + halfDayDeduction)
   // Net Salary = Math.max(0, Base Salary - Total Deductions)
+  const absentDeduction = effectiveAbsentDays * dailyRate;
   const unpaidLeaveDeduction = effectiveUnapprovedLeaves * dailyRate;
   const halfDayDeduction = effectiveHalfDays * halfDayRate;
-  const totalDeductions = Math.round(unpaidLeaveDeduction + halfDayDeduction);
+  const totalDeductions = Math.round(absentDeduction + unpaidLeaveDeduction + halfDayDeduction);
   const netSalary = Math.max(0, Math.round(baseSalary - totalDeductions));
 
   const status =
@@ -297,13 +376,17 @@ export async function calculateEmployeePayroll(
     dailyRate: Math.round(dailyRate),
     halfDayRate: Math.round(halfDayRate),
     approvedLeaves,
+    absentDays: effectiveAbsentDays,
+    rawAbsentDays,
+    absentDaysOverride: existingPayroll?.absentDaysOverride,
+    absentDeduction: Math.round(absentDeduction),
     unapprovedLeaves: effectiveUnapprovedLeaves,
+    rawUnapprovedLeaves: unapprovedLeaveDays,
+    unapprovedLeavesOverride: existingPayroll?.unapprovedLeavesOverride,
+    unpaidLeaveDeduction: Math.round(unpaidLeaveDeduction),
     halfDays: effectiveHalfDays,
     rawHalfDays,
-    rawUnapprovedLeaves,
-    unapprovedLeavesOverride: existingPayroll?.unapprovedLeavesOverride,
     halfDaysOverride: existingPayroll?.halfDaysOverride,
-    unpaidLeaveDeduction: Math.round(unpaidLeaveDeduction),
     halfDayDeduction: Math.round(halfDayDeduction),
     totalDeductions,
     netSalary,

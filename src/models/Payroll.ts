@@ -9,9 +9,14 @@ export interface IPayroll {
   baseSalary: number;
   approvedLeaves?: number;
   unapprovedLeaves?: number;
+  absentDays?: number;
   halfDays?: number;
+  absentDaysOverride?: number;
   unapprovedLeavesOverride?: number;
   halfDaysOverride?: number;
+  absentDeduction?: number;
+  unpaidLeaveDeduction?: number;
+  halfDayDeduction?: number;
   totalDeductions?: number;
   netSalary: number;
   status?: 'Pending' | 'Paid' | 'pending' | 'paid';

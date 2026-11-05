@@ -54,12 +54,16 @@ interface PayrollRecord {
   dailyRate: number;
   halfDayRate: number;
   approvedLeaves: number;
+  absentDays?: number;
   unapprovedLeaves: number;
   halfDays: number;
   rawHalfDays?: number;
+  rawAbsentDays?: number;
   rawUnapprovedLeaves?: number;
+  absentDaysOverride?: number;
   unapprovedLeavesOverride?: number;
   halfDaysOverride?: number;
+  absentDeduction?: number;
   unpaidLeaveDeduction: number;
   halfDayDeduction: number;
   totalDeductions: number;
@@ -252,6 +256,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
               dailyRate,
               halfDayRate,
               approvedLeaves: 0,
+              absentDays: 0,
               unapprovedLeaves: 0,
               halfDays: 0,
               unpaidLeaveDeduction: 0,
@@ -279,18 +284,21 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
   const computeRecalculation = (
     baseSalary: number,
     unapprovedLeaves: number,
-    halfDays: number
+    halfDays: number,
+    absentDays: number = 0
   ) => {
     const dailyRate = baseSalary / 30;
     const halfDayRate = dailyRate * 0.5;
+    const absentDeduction = Math.round(absentDays * dailyRate);
     const unpaidLeaveDeduction = Math.round(unapprovedLeaves * dailyRate);
     const halfDayDeduction = Math.round(halfDays * halfDayRate);
-    const totalDeductions = unpaidLeaveDeduction + halfDayDeduction;
+    const totalDeductions = absentDeduction + unpaidLeaveDeduction + halfDayDeduction;
     const netSalary = Math.max(0, baseSalary - totalDeductions);
 
     return {
       dailyRate: Math.round(dailyRate),
       halfDayRate: Math.round(halfDayRate),
+      absentDeduction,
       unpaidLeaveDeduction,
       halfDayDeduction,
       totalDeductions,
@@ -303,6 +311,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
     employeeId: string;
     month: string;
     baseSalary?: number;
+    absentDaysOverride?: number;
     unapprovedLeavesOverride?: number;
     halfDaysOverride?: number;
     status?: string;
@@ -352,8 +361,9 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
         if (id === empId) {
           const recalcs = computeRecalculation(
             finalSalary,
-            item.unapprovedLeaves,
-            item.halfDays
+            item.unapprovedLeaves || 0,
+            item.halfDays || 0,
+            item.absentDays || 0
           );
           return {
             ...item,
@@ -373,10 +383,10 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
     });
   };
 
-  // 4. Quick adjustment micro-buttons for Half Days and Unapproved Leaves
+  // 4. Quick adjustment micro-buttons for Half Days, Absent Days, and Unapproved Leaves
   const handleAdjustDeduction = async (
     empId: string,
-    field: 'halfDays' | 'unapprovedLeaves',
+    field: 'halfDays' | 'absentDays' | 'unapprovedLeaves',
     delta: number
   ) => {
     if (!isAdminOrHR) return;
@@ -388,14 +398,16 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
         if (id === empId) {
           const curVal = item[field] || 0;
           updatedVal = Math.max(0, curVal + delta);
-          const newHalfDays = field === 'halfDays' ? updatedVal : item.halfDays;
+          const newHalfDays = field === 'halfDays' ? updatedVal : (item.halfDays || 0);
+          const newAbsent = field === 'absentDays' ? updatedVal : (item.absentDays || 0);
           const newUnapproved =
-            field === 'unapprovedLeaves' ? updatedVal : item.unapprovedLeaves;
+            field === 'unapprovedLeaves' ? updatedVal : (item.unapprovedLeaves || 0);
 
           const recalcs = computeRecalculation(
             item.baseSalary,
             newUnapproved,
-            newHalfDays
+            newHalfDays,
+            newAbsent
           );
 
           return {
@@ -414,6 +426,8 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
       month: selectedMonth,
       ...(field === 'halfDays'
         ? { halfDaysOverride: updatedVal }
+        : field === 'absentDays'
+        ? { absentDaysOverride: updatedVal }
         : { unapprovedLeavesOverride: updatedVal }),
     });
   };
@@ -953,7 +967,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                                   handleAdjustDeduction(empId, 'halfDays', -1)
                                 }
                                 disabled={p.halfDays <= 0}
-                                className="w-4 h-4 rounded bg-amber-200/80 hover:bg-amber-300 text-amber-900 flex items-center justify-center font-bold text-[10px] disabled:opacity-30 disabled:pointer-events-none transition"
+                                className="w-4 h-4 rounded bg-amber-200/80 hover:bg-amber-300 text-amber-900 flex items-center justify-center font-bold text-[10px] disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
                               >
                                 -
                               </button>
@@ -961,44 +975,73 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                                 onClick={() =>
                                   handleAdjustDeduction(empId, 'halfDays', 1)
                                 }
-                                className="w-4 h-4 rounded bg-amber-200/80 hover:bg-amber-300 text-amber-900 flex items-center justify-center font-bold text-[10px] transition"
+                                className="w-4 h-4 rounded bg-amber-200/80 hover:bg-amber-300 text-amber-900 flex items-center justify-center font-bold text-[10px] transition cursor-pointer"
                               >
                                 +
                               </button>
                             </div>
 
-                            {/* Unapproved Leaves Pill with - / + micro-buttons */}
+                            {/* Absent Days Pill with - / + micro-buttons */}
                             <div
                               className="inline-flex items-center space-x-1 px-2 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200/80"
-                              title="Unapproved Leaves: 100% daily deduction"
+                              title={`Absent Days: 100% daily deduction (₹${p.dailyRate}/day)`}
                             >
-                              <span>Unapproved: {p.unapprovedLeaves}</span>
+                              <span>Absent: {p.absentDays || 0}</span>
                               <button
                                 onClick={() =>
-                                  handleAdjustDeduction(
-                                    empId,
-                                    'unapprovedLeaves',
-                                    -1
-                                  )
+                                  handleAdjustDeduction(empId, 'absentDays', -1)
                                 }
-                                disabled={p.unapprovedLeaves <= 0}
-                                className="w-4 h-4 rounded bg-rose-200/80 hover:bg-rose-300 text-rose-900 flex items-center justify-center font-bold text-[10px] disabled:opacity-30 disabled:pointer-events-none transition"
+                                disabled={(p.absentDays || 0) <= 0}
+                                className="w-4 h-4 rounded bg-rose-200/80 hover:bg-rose-300 text-rose-900 flex items-center justify-center font-bold text-[10px] disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                                title="Decrease absent day count"
                               >
                                 -
                               </button>
                               <button
                                 onClick={() =>
-                                  handleAdjustDeduction(
-                                    empId,
-                                    'unapprovedLeaves',
-                                    1
-                                  )
+                                  handleAdjustDeduction(empId, 'absentDays', 1)
                                 }
-                                className="w-4 h-4 rounded bg-rose-200/80 hover:bg-rose-300 text-rose-900 flex items-center justify-center font-bold text-[10px] transition"
+                                className="w-4 h-4 rounded bg-rose-200/80 hover:bg-rose-300 text-rose-900 flex items-center justify-center font-bold text-[10px] transition cursor-pointer"
+                                title="Increase absent day count"
                               >
                                 +
                               </button>
                             </div>
+
+                            {/* Unapproved Leaves Pill (if any unapproved leave requests exist) */}
+                            {p.unapprovedLeaves > 0 && (
+                              <div
+                                className="inline-flex items-center space-x-1 px-2 py-1 rounded-full text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-200/80"
+                                title="Unapproved Leaves: 100% daily deduction"
+                              >
+                                <span>Unapproved: {p.unapprovedLeaves}</span>
+                                <button
+                                  onClick={() =>
+                                    handleAdjustDeduction(
+                                      empId,
+                                      'unapprovedLeaves',
+                                      -1
+                                    )
+                                  }
+                                  disabled={p.unapprovedLeaves <= 0}
+                                  className="w-4 h-4 rounded bg-purple-200/80 hover:bg-purple-300 text-purple-900 flex items-center justify-center font-bold text-[10px] disabled:opacity-30 disabled:pointer-events-none transition"
+                                >
+                                  -
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleAdjustDeduction(
+                                      empId,
+                                      'unapprovedLeaves',
+                                      1
+                                    )
+                                  }
+                                  className="w-4 h-4 rounded bg-purple-200/80 hover:bg-purple-300 text-purple-900 flex items-center justify-center font-bold text-[10px] transition"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </td>
 
@@ -1015,12 +1058,23 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                               -₹{(p.totalDeductions || 0).toLocaleString()}
                             </span>
                           </div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">
-                            {p.halfDayDeduction > 0 && `HD: -₹${p.halfDayDeduction}`}
-                            {p.halfDayDeduction > 0 && p.unpaidLeaveDeduction > 0 && ' • '}
-                            {p.unpaidLeaveDeduction > 0 &&
-                              `Unpaid: -₹${p.unpaidLeaveDeduction}`}
-                            {p.totalDeductions === 0 && '0 deductions'}
+                          <div className="text-[10px] text-slate-400 mt-0.5 space-x-1">
+                            {p.absentDeduction && p.absentDeduction > 0 ? (
+                              <span>Absent: -₹{p.absentDeduction.toLocaleString()}</span>
+                            ) : null}
+                            {p.absentDeduction && p.absentDeduction > 0 && (p.halfDayDeduction > 0 || p.unpaidLeaveDeduction > 0) ? (
+                              <span>•</span>
+                            ) : null}
+                            {p.halfDayDeduction > 0 ? (
+                              <span>HD: -₹{p.halfDayDeduction.toLocaleString()}</span>
+                            ) : null}
+                            {p.halfDayDeduction > 0 && p.unpaidLeaveDeduction > 0 ? (
+                              <span>•</span>
+                            ) : null}
+                            {p.unpaidLeaveDeduction > 0 ? (
+                              <span>Unpaid: -₹{p.unpaidLeaveDeduction.toLocaleString()}</span>
+                            ) : null}
+                            {p.totalDeductions === 0 && <span>0 deductions</span>}
                           </div>
                         </td>
 
@@ -1221,6 +1275,16 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                   </div>
 
                   <div className="flex justify-between p-3.5 hover:bg-slate-50/50">
+                    <span className="text-slate-600 font-medium">
+                      Absent Days Deductions ({currentEmployeeRecord.absentDays || 0} Absent Days × ₹
+                      {currentEmployeeRecord.dailyRate})
+                    </span>
+                    <span className="font-mono font-semibold text-rose-500">
+                      -₹{(currentEmployeeRecord.absentDeduction || 0).toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between p-3.5 hover:bg-slate-50/50">
                     <span className="text-slate-600">
                       Half-Day Deductions ({currentEmployeeRecord.halfDays} Half Days × ₹
                       {currentEmployeeRecord.halfDayRate})
@@ -1387,6 +1451,17 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                       </td>
                     </tr>
                     <tr>
+                      <td className="py-2.5 px-4 text-rose-600 font-medium">
+                        Absent Days Deductions (Unworked Working Days)
+                      </td>
+                      <td className="py-2.5 px-4 text-center text-slate-400">
+                        {payslipRecord.absentDays || 0} Days × ₹{payslipRecord.dailyRate}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono font-semibold text-rose-500">
+                        -₹{(payslipRecord.absentDeduction || 0).toLocaleString()}
+                      </td>
+                    </tr>
+                    <tr>
                       <td className="py-2.5 px-4 text-rose-600">
                         Half-Day Deductions (&lt; 8 Hours)
                       </td>
@@ -1399,7 +1474,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                     </tr>
                     <tr>
                       <td className="py-2.5 px-4 text-rose-600">
-                        Unapproved / Absent Leave Deductions
+                        Unapproved / Unpaid Leaves (LOP)
                       </td>
                       <td className="py-2.5 px-4 text-center text-slate-400">
                         {payslipRecord.unapprovedLeaves} Days × ₹
