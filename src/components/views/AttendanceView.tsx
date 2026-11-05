@@ -27,7 +27,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
-import LiveClockCard from '@/components/attendance/LiveClockCard';
 import RegularizeAttendanceModal from '@/components/modals/RegularizeAttendanceModal';
 import AttendanceAnalyticsChart from '@/components/attendance/AttendanceAnalyticsChart';
 import EmployeeAttendanceCalendar from '@/components/attendance/EmployeeAttendanceCalendar';
@@ -448,15 +447,7 @@ export default function AttendanceView({
 
       {attendanceSection === 'attendance' && (
         <>
-          {/* 1. Shift Timeline & Working Duration Telemetry */}
-          <LiveClockCard
-            onPunchSuccess={() => {
-              fetchRecords();
-              onRefresh();
-            }}
-          />
-
-      {/* 2. Admin / HR Executive Attendance & Department Analytics Chart */}
+          {/* 1. Admin / HR Executive Attendance & Department Analytics Chart */}
       {isAdminOrHr && (
         <AttendanceAnalyticsChart
           employees={employees}
