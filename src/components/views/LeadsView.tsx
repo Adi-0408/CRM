@@ -514,7 +514,7 @@ export default function LeadsView({
                                   )}
                                 </div>
                                 <p className="text-slate-700 italic line-clamp-2">
-                                  &ldquo;{linkedProject.clientRequirements}&rdquo;
+                                  "{linkedProject.clientRequirements}"
                                 </p>
                               </div>
                             ) : canSalesEditProject(user, linkedProject, lead) ? (

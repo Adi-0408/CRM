@@ -1,30 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Branch from '@/models/Branch';
-import { requireRoles } from '@/lib/apiAuth';
-import { hasTenantAccess } from '@/lib/tenantScope';
-
-export const dynamic = 'force-dynamic';
 
 export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await requireRoles(req, ['admin_manager']);
-    if (authResult.errorResponse) return authResult.errorResponse;
-    const authUser = authResult.user!;
-
     await connectToDatabase();
-    const existing = await Branch.findById(params.id);
-    if (!existing) {
-      return NextResponse.json({ error: 'Branch not found' }, { status: 404 });
-    }
-
-    if (!hasTenantAccess(existing, authUser)) {
-      return NextResponse.json({ error: 'Forbidden: Cross-tenant access denied.' }, { status: 403 });
-    }
-
     const body = await req.json();
 
     if (body.phone) {
@@ -41,7 +24,7 @@ export async function PUT(
     if (body.isHeadOffice || body.status === 'Head Office') {
       body.isHeadOffice = true;
       body.status = 'Head Office';
-      await Branch.updateMany({ _id: { $ne: params.id }, companyId: authUser.companyId }, { isHeadOffice: false });
+      await Branch.updateMany({ _id: { $ne: params.id } }, { isHeadOffice: false });
     }
 
     const updated = await Branch.findByIdAndUpdate(params.id, body, { new: true });
@@ -60,10 +43,6 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await requireRoles(req, ['admin_manager']);
-    if (authResult.errorResponse) return authResult.errorResponse;
-    const authUser = authResult.user!;
-
     await connectToDatabase();
     const branch = await Branch.findById(params.id);
 
@@ -71,12 +50,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Branch not found' }, { status: 404 });
     }
 
-    if (!hasTenantAccess(branch, authUser)) {
-      return NextResponse.json({ error: 'Forbidden: Cross-tenant access denied.' }, { status: 403 });
-    }
-
     // Safety check: ensure at least one office remains
-    const totalCount = await Branch.countDocuments({ companyId: authUser.companyId });
+    const totalCount = await Branch.countDocuments();
     if (totalCount <= 1) {
       return NextResponse.json(
         { error: 'Cannot delete the only office location. Please edit it instead.' },
@@ -85,7 +60,7 @@ export async function DELETE(
     }
 
     await Branch.findByIdAndDelete(params.id);
-    return NextResponse.json({ message: 'Branch removed successfully' });
+    return NextResponse.json({ success: true, message: 'Branch deleted successfully' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

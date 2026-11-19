@@ -1,21 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { authFetch } from '@/lib/apiClient';
 import {
-  Building2, Users, ArrowLeft, RefreshCw, CheckCircle,
-  Calendar, Mail, Save, ExternalLink
+  Building2, Users, Shield, ArrowLeft, RefreshCw, CheckCircle,
+  AlertTriangle, Ban, Calendar, Globe, Mail, Save
 } from 'lucide-react';
 import Link from 'next/link';
 
-export const dynamic = 'force-dynamic';
-
-export default function CompanyDetailsPage() {
+export default function CompanyDetailsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const routeParams = useParams();
-  const companyId = typeof routeParams?.id === 'string' ? routeParams.id : Array.isArray(routeParams?.id) ? routeParams.id[0] : '';
   const { user } = useAuth();
   const [company, setCompany] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
@@ -31,11 +26,15 @@ export default function CompanyDetailsPage() {
     industry: '',
   });
 
-  const fetchCompanyData = useCallback(async () => {
-    if (!companyId) return;
+  const fetchCompanyData = async () => {
     setLoading(true);
     try {
-      const res = await authFetch(`/api/admin/companies/${companyId}`);
+      const res = await fetch(`/api/admin/companies/${params.id}`, {
+        headers: {
+          'x-user-email': user?.email || '',
+          'x-user-role': user?.role || '',
+        },
+      });
       if (res.ok) {
         const data = await res.json();
         setCompany(data.company);
@@ -55,24 +54,22 @@ export default function CompanyDetailsPage() {
     } finally {
       setLoading(false);
     }
-  }, [companyId]);
+  };
 
   useEffect(() => {
-    if (user && companyId) {
-      fetchCompanyData();
-    }
-  }, [user, companyId, fetchCompanyData]);
+    if (user) fetchCompanyData();
+  }, [user, params.id]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyId) return;
     setSaving(true);
     setMessage(null);
     try {
-      const res = await authFetch(`/api/admin/companies/${companyId}`, {
+      const res = await fetch(`/api/admin/companies/${params.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'x-user-email': user?.email || '',
         },
         body: JSON.stringify(form),
       });
@@ -118,36 +115,21 @@ export default function CompanyDetailsPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Header & Back Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/superadmin/companies"
-            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-slate-900">{company.companyName}</h1>
-              <code className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
-                {company.slug}
-              </code>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">Tenant ID: {company.id || company._id}</p>
+      <div className="flex items-center gap-4">
+        <Link
+          href="/superadmin/companies"
+          className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </Link>
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-slate-900">{company.companyName}</h1>
+            <code className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+              {company.slug}
+            </code>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <a
-            href={`/login?slug=${company.slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-all shadow-xs"
-          >
-            <Building2 className="w-3.5 h-3.5" />
-            <span>Company Login Portal</span>
-            <ExternalLink className="w-3.5 h-3.5 ml-0.5 text-indigo-500" />
-          </a>
+          <p className="text-xs text-slate-400 mt-0.5">Tenant ID: {company.id || company._id}</p>
         </div>
       </div>
 
@@ -252,8 +234,8 @@ export default function CompanyDetailsPage() {
             <h3 className="text-sm font-semibold text-slate-900 mb-3">Tenant Details</h3>
             <div className="space-y-3 text-xs">
               <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-400">Company Code</span>
-                <span className="font-semibold text-slate-700">{company.slug}</span>
+                <span className="text-slate-400">Subdomain</span>
+                <span className="font-semibold text-slate-700">{company.slug}.yourcrm.com</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-100">
                 <span className="text-slate-400">Created On</span>
@@ -281,7 +263,7 @@ export default function CompanyDetailsPage() {
 
         {members.length === 0 ? (
           <div className="p-8 text-center text-slate-400 text-xs">
-            No specific members assigned yet. Add employees through the workspace.
+            No specific members assigned yet. Run migration or add employees through the workspace.
           </div>
         ) : (
           <div className="overflow-x-auto">

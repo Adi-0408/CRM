@@ -14,7 +14,6 @@ import {
 } from '@/lib/payrollEngine';
 import { getAuthUser, requireRoles, isValidDocId } from '@/lib/apiAuth';
 import { triggerAutoClockOutIfDue } from '@/lib/autoClockOutService';
-import { withTenantScope, stampTenantPayload } from '@/lib/tenantScope';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,8 +59,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const scopedEmpQuery = withTenantScope(empQuery, authUser);
-    const allEmployees = await Employee.find(scopedEmpQuery).sort({ name: 1 });
+    const allEmployees = await Employee.find(empQuery).sort({ name: 1 });
 
     // Strict Rule: An employee only appears in payroll from the month they joined onward!
     // If an employee joined in Nov (e.g. 15 Nov), they will not appear in Oct or earlier.
@@ -73,9 +71,9 @@ export async function GET(req: NextRequest) {
 
     // Fetch existing Payroll docs, Month Attendance, and Leaves in parallel
     const [existingPayrolls, monthAttendance, monthLeaves] = await Promise.all([
-      Payroll.find(withTenantScope({ month }, authUser)),
-      Attendance.find(withTenantScope({ date: { $regex: `^${month}` } }, authUser)),
-      Leave.find(withTenantScope({}, authUser)),
+      Payroll.find({ month }),
+      Attendance.find({ date: { $regex: `^${month}` } }),
+      Leave.find({}), // Load all leaves to account for approved paid leaves, unapproved leaves, and unpaid leaves
     ]);
 
     const preloaded = {

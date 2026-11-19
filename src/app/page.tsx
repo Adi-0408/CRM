@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import LoginPage from '@/components/LoginPage';
 import LoadingScreen from '@/components/LoadingScreen';
@@ -215,44 +214,21 @@ export default function CRMApp() {
     }
   }, [role, activeTab]);
 
-  const router = useRouter();
-
-  // If Super Admin, direct exclusively to the Super Admin Platform Dashboard
-  useEffect(() => {
-    const uEmail = user?.email?.toLowerCase() || '';
-    const isSuper = uEmail === 'admin@crm.com' || uEmail === 'admin@gmail.com' || (user as any)?.platformRole === 'super_admin';
-    if (isAuthenticated && isSuper) {
-      router.replace('/superadmin');
-    }
-  }, [isAuthenticated, user, router]);
-
   // 1. Initial Animated Boot or Transitional Authenticating Loader
   if (authLoading || isAuthenticating) {
     return <LoadingScreen message={authMessage} />;
   }
-
-  const uEmail = user?.email?.toLowerCase() || '';
-  const isSuperUser = uEmail === 'admin@crm.com' || uEmail === 'admin@gmail.com' || (user as any)?.platformRole === 'super_admin';
 
   // 2. Unauthenticated Gate: Clean Centered Floating Card Login Page
   if (!isAuthenticated) {
     return (
       <LoginPage
         onSuccess={() => {
-          if (isSuperUser) {
-            router.replace('/superadmin');
-          } else {
-            setActiveTab('overview');
-            fetchData();
-          }
+          setActiveTab('overview');
+          fetchData();
         }}
       />
     );
-  }
-
-  // Super Admin view gate
-  if (isSuperUser) {
-    return <LoadingScreen message="Opening Super Admin Dashboard..." />;
   }
 
   // Map active navigation title

@@ -10,11 +10,3 @@ export * from './Branch';
 export * from './User';
 export * from './Invoice';
 export * from './Quotation';
-// SaaS multi-tenant models
-export * from './Company';
-export * from './CompanyMember';
-export * from './CompanyDomain';
-export * from './Plan';
-export * from './Subscription';
-export * from './Payment';
-export * from './AuditLog';

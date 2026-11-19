@@ -1,12 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { authFetch } from '@/lib/apiClient';
 import { Building2, Plus, Search, RefreshCw, ExternalLink, AlertTriangle, CheckCircle, Clock, Ban, ChevronDown } from 'lucide-react';
-
-export const dynamic = 'force-dynamic';
 
 export default function CompaniesPage() {
   const { user } = useAuth();
@@ -26,7 +22,9 @@ export default function CompaniesPage() {
   const fetchCompanies = async () => {
     try {
       setLoading(true);
-      const res = await authFetch('/api/admin/companies');
+      const res = await fetch('/api/admin/companies', {
+        headers: { 'x-user-email': user?.email || '', 'x-user-role': user?.role || '' },
+      });
       if (res.ok) {
         const data = await res.json();
         setCompanies(data.companies || []);
@@ -50,10 +48,12 @@ export default function CompaniesPage() {
     if (!form.companyName || !form.slug || !form.adminEmail) return;
     setCreating(true);
     try {
-      const res = await authFetch('/api/admin/companies', {
+      const res = await fetch('/api/admin/companies', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-user-email': user?.email || '',
+          'x-user-role': user?.role || '',
         },
         body: JSON.stringify(form),
       });
@@ -74,16 +74,17 @@ export default function CompaniesPage() {
 
   const handleSuspend = async (id: string, name: string) => {
     if (!confirm(`Suspend "${name}"? Their employees will lose access.`)) return;
-    await authFetch(`/api/admin/companies/${id}`, {
+    await fetch(`/api/admin/companies/${id}`, {
       method: 'DELETE',
+      headers: { 'x-user-email': user?.email || '' },
     });
     await fetchCompanies();
   };
 
   const handleReactivate = async (id: string) => {
-    await authFetch(`/api/admin/companies/${id}`, {
+    await fetch(`/api/admin/companies/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-user-email': user?.email || '' },
       body: JSON.stringify({ status: 'active', subscriptionStatus: 'trial' }),
     });
     await fetchCompanies();
@@ -94,8 +95,9 @@ export default function CompaniesPage() {
     setRunningMigration(true);
     setMigrationResult(null);
     try {
-      const res = await authFetch('/api/admin/migrate', {
+      const res = await fetch('/api/admin/migrate', {
         method: 'POST',
+        headers: { 'x-user-email': user?.email || '' },
       });
       const data = await res.json();
       setMigrationResult(data.results || [data.error || 'Unknown error']);
@@ -194,12 +196,7 @@ export default function CompaniesPage() {
                             {company.companyName?.charAt(0) || 'C'}
                           </div>
                           <div>
-                            <Link
-                              href={`/superadmin/companies/${id}`}
-                              className="font-semibold text-slate-900 text-sm hover:text-indigo-600 transition-colors"
-                            >
-                              {company.companyName}
-                            </Link>
+                            <p className="font-medium text-slate-900 text-sm">{company.companyName}</p>
                             {company.industry && <p className="text-xs text-slate-400">{company.industry}</p>}
                           </div>
                         </div>
@@ -234,23 +231,7 @@ export default function CompaniesPage() {
                         {company.createdAt ? new Date(company.createdAt).toLocaleDateString('en-IN') : '—'}
                       </td>
                       <td className="px-5 py-4">
-                        <div className="flex items-center gap-2.5">
-                          <Link
-                            href={`/superadmin/companies/${id}`}
-                            className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
-                          >
-                            Manage
-                          </Link>
-                          <a
-                            href={`/login?slug=${company.slug}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs font-medium text-slate-600 hover:text-slate-900 flex items-center gap-1 bg-slate-50 border border-slate-200/80 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors"
-                            title="Open company workspace login"
-                          >
-                            <span>Workspace</span>
-                            <ExternalLink className="w-3 h-3 text-slate-400" />
-                          </a>
+                        <div className="flex items-center gap-2">
                           {isSuspended ? (
                             <button
                               onClick={() => handleReactivate(id)}
@@ -301,7 +282,7 @@ export default function CompaniesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Company Code * (Identifier)</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Slug * (URL identifier)</label>
                   <input
                     required value={form.slug}
                     onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}

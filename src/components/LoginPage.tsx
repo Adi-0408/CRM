@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
+import React, { useState } from 'react';
 import {
   Lock,
   Mail,
@@ -9,20 +8,13 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  Building2,
-  Shield,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { DEMO_CREDENTIALS } from '@/types/auth';
 
 interface LoginPageProps {
   onSuccess?: () => void;
-}
-
-interface TenantInfo {
-  companyName: string;
-  slug: string;
-  primaryColor?: string;
-  logo?: string;
 }
 
 export default function LoginPage({ onSuccess }: LoginPageProps) {
@@ -32,26 +24,6 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [tenant, setTenant] = useState<TenantInfo | null>(null);
-
-  // Optional company branding via explicit ?slug= query param on single address
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const slug = params.get('slug');
-
-      if (slug) {
-        fetch(`/api/tenant?slug=${slug}`)
-          .then((r) => r.json())
-          .then((d) => {
-            if (d.success && d.tenant) {
-              setTenant(d.tenant);
-            }
-          })
-          .catch(() => {});
-      }
-    }
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,12 +37,6 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
       setError('');
       const res = await login(email.trim(), password.trim());
       if (res.success) {
-        const uEmail = res.user?.email?.toLowerCase() || '';
-        const isSuper = uEmail === 'admin@crm.com' || uEmail === 'admin@gmail.com' || (res.user as any)?.platformRole === 'super_admin';
-        if (isSuper) {
-          window.location.href = '/superadmin';
-          return;
-        }
         if (onSuccess) onSuccess();
       } else {
         setError(res.error || 'Invalid credentials. Please verify your email & password.');
@@ -93,23 +59,14 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
       <div className="relative z-10 bg-white/95 backdrop-blur-xl rounded-3xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 sm:p-8 max-w-md w-full animate-in fade-in zoom-in-95 duration-200">
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div
-            className="inline-flex items-center justify-center w-12 h-12 rounded-2xl text-white font-extrabold text-xl shadow-md mb-3.5"
-            style={{ backgroundColor: tenant?.primaryColor || '#635BFF' }}
-          >
-            {tenant ? tenant.companyName.charAt(0) : 'P'}
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#635BFF] text-white font-extrabold text-xl shadow-md shadow-indigo-500/20 mb-3.5">
+            P
           </div>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-            {tenant ? (
-              <span>{tenant.companyName}</span>
-            ) : (
-              <>
-                Prism<span className="text-[#635BFF]">CRM</span>
-              </>
-            )}
+            Prism<span className="text-[#635BFF]">CRM</span>
           </h2>
           <p className="text-xs text-slate-400 font-medium mt-1">
-            {tenant ? `Sign in to ${tenant.companyName} Workspace` : 'Sign in to access your workspace'}
+            Sign in to access your workspace
           </p>
         </div>
 
@@ -180,37 +137,46 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
           </button>
         </form>
 
-        {/* Super Admin Quick Sign-In */}
+        {/* 1-Click Demo Roles Section */}
         <div className="mt-5 pt-4 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={() => {
-              setEmail('admin@crm.com');
-              setPassword('pass123');
-              setError('');
-            }}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100/80 text-indigo-700 text-xs font-semibold transition-all"
-          >
-            <Shield className="w-4 h-4 text-indigo-600" />
-            <span>Super Admin (admin@crm.com)</span>
-          </button>
-        </div>
-
-        {/* Register Company Link */}
-        <div className="mt-4 text-center border-t border-slate-100 pt-3">
-          <Link
-            href="/register"
-            className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center justify-center gap-1.5 transition-colors"
-          >
-            <Building2 className="w-3.5 h-3.5" />
-            <span>Create new company workspace →</span>
-          </Link>
+          <div className="flex items-center justify-between mb-2.5">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-[#635BFF]" />
+              Demo Roles (1-Click Fill)
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium">9 Roles</span>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {DEMO_CREDENTIALS.map((cred) => {
+              const isSelected = email.toLowerCase() === cred.email.toLowerCase();
+              return (
+                <button
+                  key={cred.role}
+                  type="button"
+                  onClick={() => {
+                    setEmail(cred.email);
+                    setPassword(cred.password);
+                    setError('');
+                  }}
+                  className={`text-left px-2 py-1.5 rounded-lg border text-[11px] font-medium transition-all ${
+                    isSelected
+                      ? 'border-[#635BFF] bg-[#F0EEFF] text-[#635BFF] shadow-xs'
+                      : 'border-slate-150 bg-slate-50/70 hover:bg-slate-100/80 text-slate-700'
+                  }`}
+                  title={`${cred.name} (${cred.email}) - ${cred.department}`}
+                >
+                  <div className="truncate font-semibold">{cred.roleTitle.split(' ')[0]}</div>
+                  <div className="truncate text-[9.5px] text-slate-400">{cred.role.replace('_', ' ')}</div>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Footer */}
-        <div className="mt-4 text-center">
+        <div className="mt-5 text-center">
           <p className="text-[11px] text-slate-400 font-medium">
-            Strict Role-Based Separation of Privileges • Multi-Tenant Enterprise Edition
+            Strict Role-Based Separation of Privileges • PrismCRM v2.0
           </p>
         </div>
       </div>

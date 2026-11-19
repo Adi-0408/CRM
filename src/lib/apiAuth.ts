@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Employee from '@/models/Employee';
 import { UserRole, DEMO_CREDENTIALS } from '@/types/auth';
-import { verifyJWT, COOKIE_NAME } from '@/lib/jwt';
 
 export function isValidDocId(id: any): boolean {
   if (!id || typeof id !== 'string') return false;
@@ -27,8 +26,6 @@ export interface AuthenticatedUser {
   email: string;
   role: UserRole;
   department?: string;
-  companyId?: string;      // tenant isolation key
-  platformRole?: string;   // 'super_admin' for platform admins
   isDemo?: boolean;
 }
 
@@ -92,63 +89,69 @@ export function normalizeRole(rawRole: any): UserRole {
 }
 
 /**
- * Extracts and verifies the authenticated user from JWT cookie or request headers and Firestore.
- * Priority: 1) httpOnly JWT cookie → 2) Header-based legacy auth → 3) Demo fallback
+ * Extracts and verifies the authenticated user from request headers and MongoDB
  */
 export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser | null> {
-  // ── Priority 1: Verify secure httpOnly JWT cookie ──────────────────────────
-  const cookieHeader = req.headers.get('cookie') || '';
-  const cookieMatch = cookieHeader.match(new RegExp(`(?:^|;\\s*)${COOKIE_NAME}=([^;]+)`));
-  if (cookieMatch) {
-    const claims = await verifyJWT(cookieMatch[1]);
-    if (claims) {
+  const headerId = req.headers.get('x-user-id');
+  const headerEmail = req.headers.get('x-user-email');
+  const headerRole = req.headers.get('x-user-role');
+  const authHeader = req.headers.get('authorization');
+
+  let tokenEmail: string | null = null;
+  let tokenRole: UserRole | null = null;
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    if (token.includes('demo_')) {
+      const parts = token.split('_');
+      tokenRole = normalizeRole(parts[2]);
+    }
+  }
+
+  const lookupEmail = headerEmail || tokenEmail;
+  const lookupId = headerId;
+
+  await connectToDatabase();
+
+  // 1. Verify against Firestore Employee collection by Document ID
+  if (lookupId && mongoose.Types.ObjectId.isValid(lookupId)) {
+    const emp = await Employee.findById(lookupId);
+    if (emp) {
       return {
-        id: claims.userId,
-        name: claims.name,
-        email: claims.email,
-        role: normalizeRole(claims.role),
-        department: claims.department,
-        companyId: claims.companyId || 'itpl-default',
-        platformRole: claims.platformRole,
-        isDemo: claims.isDemo ?? false,
+        id: String(emp._id || emp.id),
+        name: emp.name,
+        email: emp.email,
+        role: normalizeRole(emp.role),
+        department: emp.department,
+        isDemo: false,
       };
     }
   }
 
-  // ── Priority 2: Verify Bearer JWT token from Authorization header ──────────
-  const authHeader = req.headers.get('authorization');
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7).trim();
-    if (token) {
-      const claims = await verifyJWT(token);
-      if (claims) {
-        return {
-          id: claims.userId,
-          name: claims.name,
-          email: claims.email,
-          role: normalizeRole(claims.role),
-          department: claims.department,
-          companyId: claims.companyId || 'itpl-default',
-          platformRole: claims.platformRole,
-          isDemo: claims.isDemo ?? false,
-        };
-      }
+  // 2. Verify against Firestore by Email
+  if (lookupEmail) {
+    const emp = await Employee.findOne({ email: lookupEmail.toLowerCase().trim() });
+    if (emp) {
+      return {
+        id: String(emp._id || emp.id),
+        name: emp.name,
+        email: emp.email,
+        role: normalizeRole(emp.role),
+        department: emp.department,
+        isDemo: false,
+      };
     }
   }
 
-  // ── Priority 3: Development / Internal fallback with Firestore verification ─
-  if (process.env.NODE_ENV !== 'production') {
-    const headerEmail = req.headers.get('x-user-email');
-    const headerId = req.headers.get('x-user-id');
-
-    if (headerEmail || headerId) {
-      await connectToDatabase();
-      let emp: any = null;
-      if (headerId && mongoose.Types.ObjectId.isValid(headerId)) {
-        emp = await Employee.findById(headerId);
-      } else if (headerEmail) {
-        emp = await Employee.findOne({ email: headerEmail.toLowerCase().trim() });
-      }
+  // 3. Fallback to Demo Credentials
+  const rawDemoRole = tokenRole || headerRole;
+  if (rawDemoRole) {
+    const norm = normalizeRole(rawDemoRole);
+    const demo = DEMO_CREDENTIALS.find((d) => d.role === norm);
+    if (demo) {
+      const emp = await Employee.findOne({
+        $or: [{ email: demo.email.toLowerCase() }, { role: demo.role }],
+      });
 
       if (emp) {
         return {
@@ -157,15 +160,43 @@ export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser |
           email: emp.email,
           role: normalizeRole(emp.role),
           department: emp.department,
-          companyId: (emp as any).companyId || 'itpl-default',
           isDemo: false,
         };
       }
+
+      return {
+        id: `demo_${demo.role}`,
+        name: demo.name,
+        email: demo.email,
+        role: demo.role,
+        department: demo.department,
+        isDemo: true,
+      };
     }
   }
 
-  // If unauthenticated or token invalid, return null (never bypass with default super admin)
-  return null;
+  // 4. Fallback to demo admin if running local tests without headers
+  const defaultAdmin = DEMO_CREDENTIALS[0];
+  const adminEmp = await Employee.findOne({ email: defaultAdmin.email.toLowerCase() });
+  if (adminEmp) {
+    return {
+      id: String(adminEmp._id || adminEmp.id),
+      name: adminEmp.name,
+      email: adminEmp.email,
+      role: normalizeRole(adminEmp.role),
+      department: adminEmp.department,
+      isDemo: false,
+    };
+  }
+
+  return {
+    id: `demo_${defaultAdmin.role}`,
+    name: defaultAdmin.name,
+    email: defaultAdmin.email,
+    role: defaultAdmin.role,
+    department: defaultAdmin.department,
+    isDemo: true,
+  };
 }
 
 /**

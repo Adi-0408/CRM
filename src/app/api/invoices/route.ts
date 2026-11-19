@@ -2,13 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Invoice from '@/models/Invoice';
 import { getAuthUser, requireRoles } from '@/lib/apiAuth';
-import { withTenantScope, stampTenantPayload } from '@/lib/tenantScope';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
-    const authUser = await getAuthUser(req);
     await connectToDatabase();
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
@@ -18,8 +16,7 @@ export async function GET(req: NextRequest) {
     if (status && status !== 'all') query.status = status;
     if (projectId) query.projectId = projectId;
 
-    const scopedQuery = withTenantScope(query, authUser);
-    const invoices = await Invoice.find(scopedQuery).sort({ createdAt: -1 });
+    const invoices = await Invoice.find(query).sort({ createdAt: -1 });
     return NextResponse.json(invoices);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -31,7 +28,6 @@ export async function POST(req: NextRequest) {
     // Only Admin (Manager) and Accounts can generate invoices
     const authResult = await requireRoles(req, ['admin_manager', 'accounts']);
     if (authResult.errorResponse) return authResult.errorResponse;
-    const authUser = authResult.user!;
 
     await connectToDatabase();
     const body = await req.json();
@@ -53,7 +49,6 @@ export async function POST(req: NextRequest) {
       issueDate: body.issueDate ? new Date(body.issueDate) : new Date(),
       dueDate: body.dueDate ? new Date(body.dueDate) : new Date(Date.now() + 15 * 86400000),
       createdAt: new Date(),
-      companyId: authUser.companyId || 'itpl-default',
     });
 
     return NextResponse.json(newInvoice, { status: 201 });

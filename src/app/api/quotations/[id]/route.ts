@@ -3,7 +3,6 @@ import { connectToDatabase } from '@/lib/db';
 import Quotation from '@/models/Quotation';
 import Lead from '@/models/Lead';
 import { requireRoles } from '@/lib/apiAuth';
-import { hasTenantAccess } from '@/lib/tenantScope';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,19 +13,14 @@ export async function PUT(
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'sales']);
     if (authResult.errorResponse) return authResult.errorResponse;
-    const authUser = authResult.user!;
 
     await connectToDatabase();
+    const body = await req.json();
+
     const existing = await Quotation.findById(params.id);
     if (!existing) {
       return NextResponse.json({ error: 'Quotation not found' }, { status: 404 });
     }
-
-    if (!hasTenantAccess(existing, authUser)) {
-      return NextResponse.json({ error: 'Forbidden: Cross-tenant access denied.' }, { status: 403 });
-    }
-
-    const body = await req.json();
 
     const updated = await Quotation.findByIdAndUpdate(params.id, body, {
       new: true,
@@ -65,22 +59,13 @@ export async function DELETE(
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'sales']);
     if (authResult.errorResponse) return authResult.errorResponse;
-    const authUser = authResult.user!;
 
     await connectToDatabase();
-    const existing = await Quotation.findById(params.id);
-    if (!existing) {
-      return NextResponse.json({ error: 'Quotation not found' }, { status: 404 });
-    }
-
-    if (!hasTenantAccess(existing, authUser)) {
-      return NextResponse.json({ error: 'Forbidden: Cross-tenant access denied.' }, { status: 403 });
-    }
-
     const deleted = await Quotation.findByIdAndDelete(params.id);
     if (!deleted) {
       return NextResponse.json({ error: 'Quotation not found' }, { status: 404 });
     }
+
     return NextResponse.json({ message: 'Quotation deleted successfully' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

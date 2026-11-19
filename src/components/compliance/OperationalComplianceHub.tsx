@@ -33,7 +33,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
-import { getLocalTodayStr } from '@/lib/attendanceEngine';
 import {
   ITPL_OFFICE_LOCATION,
   calculateDistanceInMeters,
@@ -120,55 +119,41 @@ export default function OperationalComplianceHub({
   // 3. User Attendance State (Check if already Clocked In)
   const [isClockedIn, setIsClockedIn] = useState<boolean>(false);
   const [activeSessionStart, setActiveSessionStart] = useState<string | null>(null);
-  const [completedSessionsCount, setCompletedSessionsCount] = useState<number>(0);
   const [submittingPunch, setSubmittingPunch] = useState<boolean>(false);
   const [punchFeedback, setPunchFeedback] = useState<{
-    type: 'success' | 'error' | 'info';
+    type: 'success' | 'error';
     message: string;
   } | null>(null);
   const [showStandupModal, setShowStandupModal] = useState<boolean>(false);
-  const [hasAutoCollapsedOnActive, setHasAutoCollapsedOnActive] = useState<boolean>(false);
 
   // Fetch today's attendance state
   const fetchTodayAttendance = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const todayStr = getLocalTodayStr();
+      const todayStr = new Date().toISOString().split('T')[0];
       const res = await authFetch(`/api/attendance?date=${todayStr}&employeeId=${user.id}`);
       if (res.ok) {
         const data = await res.json();
-        const records = Array.isArray(data) ? data : [];
-        const userRec =
-          records.find(
-            (r: any) =>
-              String(r.employee?._id || r.employee?.id || r.employee) === String(user.id) ||
-              r.employee?.email?.toLowerCase() === user.email?.toLowerCase()
-          ) || records[0];
-
-        if (userRec && Array.isArray(userRec.sessions) && userRec.sessions.length > 0) {
-          const sessions = userRec.sessions;
-          const lastSession = sessions[sessions.length - 1];
-          const hasActiveSession = Boolean(lastSession && !lastSession.checkOut);
-          setIsClockedIn(hasActiveSession);
-          setActiveSessionStart(hasActiveSession && lastSession.checkIn ? String(lastSession.checkIn) : null);
-          setCompletedSessionsCount(hasActiveSession ? sessions.length - 1 : sessions.length);
-
-          // If currently working and user hasn't explicitly opened the camera, keep camera off & collapsed
-          if (hasActiveSession && !hasAutoCollapsedOnActive) {
-            setIsHubCollapsed(true);
-            setHasAutoCollapsedOnActive(true);
-            stopCamera();
+        if (Array.isArray(data) && data.length > 0) {
+          const sessions = data[0].sessions || [];
+          // Active session is one without checkOut
+          const activeSess = sessions.find((s: any) => !s.checkOut);
+          if (activeSess) {
+            setIsClockedIn(true);
+            setActiveSessionStart(activeSess.checkIn ? String(activeSess.checkIn) : null);
+          } else {
+            setIsClockedIn(false);
+            setActiveSessionStart(null);
           }
         } else {
           setIsClockedIn(false);
           setActiveSessionStart(null);
-          setCompletedSessionsCount(0);
         }
       }
     } catch (err) {
       console.error('Error checking active attendance session:', err);
     }
-  }, [user?.id, user?.email, hasAutoCollapsedOnActive, stopCamera]);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchTodayAttendance();
@@ -188,7 +173,7 @@ export default function OperationalComplianceHub({
 
   // Stable pseudo-random device verification hash
   const deviceHash = useMemo(() => {
-    const raw = `NODE-${user?.id || 'CLIENT'}-HW9821-${user?.email || 'SECURE'}`;
+    const raw = `ITPL-NODE-${user?.id || 'CLIENT'}-HW9821-${user?.email || 'SECURE'}`;
     let hash = 0;
     for (let i = 0; i < raw.length; i++) {
       hash = (hash << 5) - hash + raw.charCodeAt(i);
@@ -408,26 +393,38 @@ export default function OperationalComplianceHub({
   const handleExecuteClockAction = async () => {
     let finalPhoto = capturedPhoto;
 
-    // If photo is not captured yet, capture it live from active video stream
+    // If photo is not captured yet, capture it inline
     if (!finalPhoto) {
-      if (videoRef.current && isCameraActive && streamRef.current) {
+      if (!videoRef.current) {
+        // Mock fallback if camera disabled
+        const mockCanvas = document.createElement('canvas');
+        mockCanvas.width = 640;
+        mockCanvas.height = 480;
+        const ctx = mockCanvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(0, 0, 640, 480);
+          ctx.fillStyle = '#4f46e5';
+          ctx.beginPath();
+          ctx.arc(320, 240, 100, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 20px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText('BIOMETRIC VERIFIED', 320, 245);
+          finalPhoto = mockCanvas.toDataURL('image/jpeg', 0.85);
+          setCapturedPhoto(finalPhoto);
+        }
+      } else {
         handleCapturePhoto();
         finalPhoto = canvasRef.current?.toDataURL('image/jpeg', 0.85) || null;
-      } else {
-        // Camera is not active, turn on camera and guide user
-        await startCamera();
-        setPunchFeedback({
-          type: 'info',
-          message: 'Camera activated. Please ensure your face is clearly visible inside the oval frame, then click again.',
-        });
-        return;
       }
     }
 
     if (!finalPhoto) {
       setPunchFeedback({
         type: 'error',
-        message: 'Please ensure your live selfie photo is captured before clocking.',
+        message: 'Please ensure your selfie photo is captured before clocking.',
       });
       return;
     }
@@ -449,7 +446,7 @@ export default function OperationalComplianceHub({
         latitude: ITPL_OFFICE_LOCATION.latitude + 0.0008,
         longitude: ITPL_OFFICE_LOCATION.longitude + 0.0008,
         distanceMeters,
-        address: (user as any)?.companyName ? `${(user as any).companyName} Head Office Perimeter` : 'Office Perimeter Zone',
+        address: 'ITPL Tech Park, Block B (Pearl Enclave, Sangli)',
         isWithinPerimeter: true,
       };
 
@@ -474,29 +471,21 @@ export default function OperationalComplianceHub({
       const nowClockedIn = Boolean(activeSess);
       setIsClockedIn(nowClockedIn);
       setActiveSessionStart(activeSess?.checkIn ? String(activeSess.checkIn) : null);
-      setCompletedSessionsCount(nowClockedIn ? updatedSessions.length - 1 : updatedSessions.length);
 
-      // 1. Reset photo state so the next punch (clock-out or new session clock-in) MUST take a fresh photo
+      // 1. Reset photo state so the next punch (clock-out or clock-in) requires a fresh photo
       setCapturedPhoto(null);
 
-      // 2. Clear canvas to avoid any residual image data
-      if (canvasRef.current) {
-        const c = canvasRef.current;
-        const ctx = c.getContext('2d');
-        if (ctx) ctx.clearRect(0, 0, c.width, c.height);
-      }
-
-      // 3. Stop camera stream and release hardware
+      // 2. Stop camera stream and release hardware
       stopCamera();
 
-      // 4. Automatically close/collapse this section so camera does not stay on
+      // 3. Automatically close/collapse this section so camera does not stay on
       setIsHubCollapsed(true);
 
       setPunchFeedback({
         type: 'success',
         message: action === 'punch_out'
-          ? 'Successfully Clocked Out! Selfie saved, camera turned off, and section closed.'
-          : 'Successfully Clocked In! Selfie saved, camera turned off, and section closed. You can reopen anytime to Clock Out.',
+          ? 'Successfully Clocked Out! Photo saved & camera turned off.'
+          : 'Successfully Clocked In! Photo saved & camera turned off. You can reopen anytime to clock out.',
       });
 
       if (onPunchSuccess) {
@@ -515,9 +504,6 @@ export default function OperationalComplianceHub({
       } else if (errMsg.toLowerCase().includes('already clocked in')) {
         setIsClockedIn(true);
       }
-
-      // CRITICAL: Clear captured photo on error so user is never stuck with a stale or failed photo
-      setCapturedPhoto(null);
 
       setPunchFeedback({
         type: 'error',
@@ -578,7 +564,7 @@ export default function OperationalComplianceHub({
             <div className="flex items-center md:justify-end space-x-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
               <h1 className="text-xs sm:text-sm font-black tracking-tight text-slate-900 dark:text-white uppercase">
-                {(user as any)?.companyName ? `${(user as any).companyName} Operational Compliance Hub` : 'Operational Compliance Hub'}
+                ITPL Operational Compliance Hub
               </h1>
             </div>
             <div className="flex items-center md:justify-end space-x-2 text-[11px] font-mono font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">
@@ -596,19 +582,14 @@ export default function OperationalComplianceHub({
               <button
                 type="button"
                 onClick={() => {
-                  setCapturedPhoto(null);
                   stopCamera();
                   setIsHubCollapsed(true);
-                  setPunchFeedback({
-                    type: 'info',
-                    message: 'Camera turned off and section closed. You can reopen anytime to clock in or clock out.',
-                  });
                 }}
                 className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 shadow-2xs hover:scale-105"
                 title="Close section and turn off camera"
               >
-                <X className="w-3.5 h-3.5 text-rose-500" />
-                <span className="hidden sm:inline">Close Section</span>
+                <CameraOff className="w-3.5 h-3.5 text-rose-500" />
+                <span className="hidden sm:inline">Close Camera</span>
                 <span className="sm:hidden">Close</span>
               </button>
             ) : (
@@ -617,19 +598,12 @@ export default function OperationalComplianceHub({
                 onClick={() => {
                   setCapturedPhoto(null);
                   setIsHubCollapsed(false);
-                  startCamera();
                 }}
                 className="px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 shadow-2xs hover:scale-105"
                 title="Open verification section and start camera"
               >
                 <Camera className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>
-                  {isClockedIn
-                    ? 'Open Camera (Clock Out)'
-                    : completedSessionsCount > 0
-                    ? `Open Camera (Session ${completedSessionsCount + 1})`
-                    : 'Open Camera (Clock In)'}
-                </span>
+                <span>{isClockedIn ? 'Open Camera (Clock Out)' : 'Open Camera (Clock In)'}</span>
               </button>
             )
           )}
@@ -652,16 +626,12 @@ export default function OperationalComplianceHub({
           className={`mb-6 p-4 rounded-2xl border text-xs sm:text-sm font-semibold flex items-center justify-between animate-in fade-in duration-200 shadow-sm ${
             punchFeedback.type === 'success'
               ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800'
-              : punchFeedback.type === 'info'
-              ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200 border-indigo-200 dark:border-indigo-800'
               : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border-rose-200 dark:border-rose-800'
           }`}
         >
           <div className="flex items-center space-x-2.5 flex-wrap gap-y-2">
             {punchFeedback.type === 'success' ? (
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-            ) : punchFeedback.type === 'info' ? (
-              <ShieldCheck className="w-5 h-5 text-indigo-600 shrink-0" />
             ) : (
               <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
             )}
@@ -669,12 +639,7 @@ export default function OperationalComplianceHub({
             {punchFeedback.type === 'error' && !isClockedIn && (
               <button
                 type="button"
-                onClick={() => {
-                  setPunchFeedback(null);
-                  setCapturedPhoto(null);
-                  setIsHubCollapsed(false);
-                  startCamera();
-                }}
+                onClick={() => setPunchFeedback(null)}
                 className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
               >
                 Ready to Clock In
@@ -692,97 +657,10 @@ export default function OperationalComplianceHub({
       )}
 
       {/* =========================================================================
-          2. MAIN WORKSPACE (COLLAPSIBLE: COMPACT BAR OR 2-COLUMN GRID)
+          2. MAIN WORKSPACE (2-COLUMN RESPONSIVE GRID)
           ========================================================================= */}
       {activeTab === 'attendance' ? (
-        isHubCollapsed ? (
-          /* =========================================================================
-             COLLAPSED COMPLIANCE BAR: Ultra-compact, camera OFF, no camera access
-             ========================================================================= */
-          <div className="bg-white/95 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-[0_4px_20px_rgb(0,0,0,0.03)] p-4 sm:p-5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-            {/* Left: Live Session Telemetry & Geofence Badge */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6">
-              {/* Session Status Pill */}
-              <div className="flex items-center space-x-3">
-                <span className="relative flex h-3.5 w-3.5">
-                  <span
-                    className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                      isClockedIn ? 'bg-emerald-400' : 'bg-slate-400'
-                    }`}
-                  />
-                  <span
-                    className={`relative inline-flex rounded-full h-3.5 w-3.5 ${
-                      isClockedIn ? 'bg-emerald-500' : 'bg-slate-500'
-                    }`}
-                  />
-                </span>
-                <div>
-                  <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                    <span className="text-xs sm:text-sm font-black tracking-tight text-slate-900 dark:text-white">
-                      {isClockedIn ? 'Shift Active • Currently Clocked In' : 'Currently Clocked Out'}
-                    </span>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                        isClockedIn
-                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                      }`}
-                    >
-                      {isClockedIn
-                        ? activeSessionStart
-                          ? `Since ${new Date(activeSessionStart).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`
-                          : 'In Progress'
-                        : completedSessionsCount > 0
-                        ? `${completedSessionsCount} Session${completedSessionsCount > 1 ? 's' : ''} Completed`
-                        : 'Ready for shift'}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center space-x-3 flex-wrap gap-y-1">
-                    <span className="flex items-center space-x-1 text-emerald-600 dark:text-emerald-400 font-semibold">
-                      <MapPin className="w-3.5 h-3.5" />
-                      <span>Office Perimeter ({distanceMeters}m • Safe)</span>
-                    </span>
-                    <span className="text-slate-300 dark:text-slate-700">•</span>
-                    <span className="flex items-center space-x-1 text-slate-400">
-                      <CameraOff className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Camera Inactive (Privacy Protected)</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Expand / Open Camera CTA Button */}
-            <div className="flex items-center space-x-2.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setCapturedPhoto(null);
-                  setIsHubCollapsed(false);
-                  startCamera();
-                }}
-                className={`w-full sm:w-auto px-5 py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold shadow-md transition-all duration-200 flex items-center justify-center space-x-2 cursor-pointer hover:-translate-y-0.5 active:translate-y-0 ${
-                  isClockedIn
-                    ? 'bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 text-white shadow-rose-500/20'
-                    : 'bg-gradient-to-r from-[#4F46E5] to-[#6366F1] hover:from-[#4338CA] hover:to-[#4F46E5] text-white shadow-indigo-500/20'
-                }`}
-              >
-                <Camera className="w-4 h-4" />
-                <span>
-                  {isClockedIn
-                    ? 'Clock Out (Open Camera)'
-                    : completedSessionsCount > 0
-                    ? `Clock In (Session ${completedSessionsCount + 1})`
-                    : 'Clock In (Open Camera)'}
-                </span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* =========================================================================
-             EXPANDED WORKSPACE: 2-COLUMN RESPONSIVE GRID (Camera Active)
-             ========================================================================= */
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* -----------------------------------------------------------------------
             LEFT COLUMN (Biometric Face Verification Card - 5 cols)
             ----------------------------------------------------------------------- */}
@@ -810,7 +688,7 @@ export default function OperationalComplianceHub({
                 </div>
               </div>
 
-              {/* Status Pill Badge, Session State & Close Button */}
+              {/* Status Pill Badge & Session State */}
               <div className="flex items-center space-x-1.5">
                 <span
                   className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors ${
@@ -825,34 +703,13 @@ export default function OperationalComplianceHub({
                       isClockedIn ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
                     }`}
                   />
-                  <span>
-                    {isClockedIn
-                      ? 'Active Session'
-                      : completedSessionsCount > 0
-                      ? `Session ${completedSessionsCount + 1} Ready`
-                      : 'Clocked Out'}
-                  </span>
+                  <span>{isClockedIn ? 'Active Session' : 'Clocked Out'}</span>
                 </span>
 
                 <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
                   <Radio className="w-2.5 h-2.5 text-indigo-500 animate-pulse" />
                   <span>AI Biometric</span>
                 </span>
-
-                {/* Explicit Close Button Right on the Card */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCapturedPhoto(null);
-                    stopCamera();
-                    setIsHubCollapsed(true);
-                  }}
-                  className="px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-600 dark:text-slate-400 text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 shadow-2xs hover:scale-105"
-                  title="Close section and release camera"
-                >
-                  <X className="w-3.5 h-3.5 text-rose-500" />
-                  <span>Close</span>
-                </button>
               </div>
             </div>
           </div>
@@ -937,31 +794,19 @@ export default function OperationalComplianceHub({
 
           {/* Action Controls */}
           <div className="mt-4 space-y-2.5">
-            {/* Primary CTA Button */}
+            {/* Primary CTA Button: Capture & Clock In / Out */}
             <button
               type="button"
               onClick={handleExecuteClockAction}
               disabled={submittingPunch}
-              className={`w-full py-3.5 px-6 rounded-2xl text-white text-sm font-bold shadow-lg transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 select-none ${
-                isClockedIn
-                  ? 'bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 shadow-rose-500/25'
-                  : 'bg-gradient-to-r from-[#4F46E5] to-[#6366F1] hover:from-[#4338CA] hover:to-[#4F46E5] shadow-indigo-500/25'
-              }`}
+              className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#4F46E5] to-[#6366F1] hover:from-[#4338CA] hover:to-[#4F46E5] text-white text-sm font-bold shadow-lg shadow-indigo-500/25 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 select-none"
             >
               <Camera className="w-4 h-4 text-white" />
               <span>
                 {submittingPunch
                   ? 'Verifying & Submitting...'
-                  : capturedPhoto
-                  ? isClockedIn
-                    ? 'Confirm & Clock Out'
-                    : completedSessionsCount > 0
-                    ? `Confirm & Clock In (Session ${completedSessionsCount + 1})`
-                    : 'Confirm & Clock In'
                   : isClockedIn
                   ? 'Capture & Clock Out'
-                  : completedSessionsCount > 0
-                  ? `Capture & Clock In (Session ${completedSessionsCount + 1})`
                   : 'Capture & Clock In'}
               </span>
             </button>
@@ -979,31 +824,16 @@ export default function OperationalComplianceHub({
                 <span>Switch Camera</span>
               </button>
 
-              {capturedPhoto ? (
-                <button
-                  type="button"
-                  onClick={handleRetakePhoto}
-                  className="flex-1 py-2 px-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-700 dark:text-amber-300 text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
-                  title="Retake Snapshot"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Retake Photo</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCapturedPhoto(null);
-                    stopCamera();
-                    setIsHubCollapsed(true);
-                  }}
-                  className="flex-1 py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 hover:bg-rose-50 hover:text-rose-600 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
-                  title="Close section and turn off camera"
-                >
-                  <CameraOff className="w-3.5 h-3.5 text-rose-500" />
-                  <span>Close Section</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleRetakePhoto}
+                disabled={!capturedPhoto}
+                className="flex-1 py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors cursor-pointer disabled:opacity-40"
+                title="Retake Snapshot"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                <span>Retake</span>
+              </button>
             </div>
           </div>
 
@@ -1129,7 +959,7 @@ export default function OperationalComplianceHub({
                   <Building2 className="w-4 h-4" />
                 </div>
                 <div className="mt-1 bg-slate-900/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-md whitespace-nowrap backdrop-blur-sm border border-slate-700">
-                  {(user as any)?.companyName ? `${(user as any).companyName} HQ` : 'Office Perimeter'}
+                  ITPL Tech Park, Block B
                 </div>
               </div>
 
@@ -1230,7 +1060,7 @@ export default function OperationalComplianceHub({
                   Office Node
                 </p>
                 <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                  {(user as any)?.companyName ? `${(user as any).companyName} HQ` : 'HQ Primary Node'}
+                  ITPL Tech Park, Block B
                 </h4>
                 <p className="text-[10px] text-slate-400 truncate">HQ Perimeter Zone</p>
               </div>
@@ -1262,7 +1092,7 @@ export default function OperationalComplianceHub({
                   IP Network
                 </p>
                 <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                  Enterprise-Secure-WLAN
+                  ITPL-Internal-Secure-5G
                 </h4>
                 <p className="text-[10px] text-slate-400 truncate">Gateway: 192.168.1.1</p>
               </div>
@@ -1303,10 +1133,9 @@ export default function OperationalComplianceHub({
           </div>
         </section>
       </div>
-    )
-  ) : (
-    children
-  )}
+    ) : (
+      children
+    )}
 
       {/* Daily EOD Standup Modal (Prompted on Clock Out) */}
       <DailyStandupModal

@@ -3,7 +3,6 @@ import { connectToDatabase } from '@/lib/db';
 import Attendance from '@/models/Attendance';
 import Employee from '@/models/Employee';
 import { getAuthUser } from '@/lib/apiAuth';
-import { withTenantScope, stampTenantPayload } from '@/lib/tenantScope';
 import {
   evaluateDailyAttendance,
   getLocalTodayStr,
@@ -46,20 +45,10 @@ export async function GET(req: NextRequest) {
     if (!isAdminOrHR && authUser) {
       query.employee = authUser.id;
     } else if (employeeId) {
-      const found = await Employee.findOne({
-        $or: [
-          { _id: employeeId },
-          { id: employeeId },
-          { email: employeeId },
-          { name: employeeId },
-        ],
-      });
-      const resolvedId = found ? String(found._id || found.id) : employeeId;
-      query.employee = resolvedId === employeeId ? employeeId : { $in: [employeeId, resolvedId] };
+      query.employee = employeeId;
     }
 
-    const scopedQuery = withTenantScope(query, authUser);
-    const records = await Attendance.find(scopedQuery)
+    const records = await Attendance.find(query)
       .populate('employee', 'name email role department avatar')
       .populate('overriddenBy', 'name email')
       .sort({ date: -1, updatedAt: -1 });
@@ -143,8 +132,6 @@ export async function POST(req: NextRequest) {
     } else {
       const found = await Employee.findOne({
         $or: [
-          { _id: employeeId },
-          { id: employeeId },
           { email: employeeId },
           { name: employeeId },
           ...(typeof employeeId === 'string' && employeeId.startsWith('demo_') ? [{ role: employeeId.replace('demo_', '') }] : []),
@@ -196,7 +183,6 @@ export async function POST(req: NextRequest) {
         record = new Attendance({
           employee: targetEmployeeId,
           date: todayStr,
-          companyId: authUser?.companyId || 'itpl-default',
         });
       }
 
@@ -226,11 +212,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. CLOCK IN / OUT FLOW
-    const candidateEmployeeIds = Array.from(new Set([targetEmployeeId, employeeId, authUser?.id].filter(Boolean)));
-    let record = await Attendance.findOne({
-      employee: candidateEmployeeIds.length === 1 ? candidateEmployeeIds[0] : { $in: candidateEmployeeIds },
-      date: todayStr,
-    });
+    let record = await Attendance.findOne({ employee: targetEmployeeId, date: todayStr });
 
     if (action === 'clock_out' || action === 'punch_out') {
       if (!record || !record.sessions || record.sessions.length === 0) {
@@ -445,7 +427,6 @@ export async function POST(req: NextRequest) {
           employee: targetEmployeeId,
           date: todayStr,
           sessions: [],
-          companyId: authUser?.companyId || 'itpl-default',
         });
       }
 

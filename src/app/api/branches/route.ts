@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Branch from '@/models/Branch';
-import { getAuthUser } from '@/lib/apiAuth';
-import { withTenantScope, stampTenantPayload } from '@/lib/tenantScope';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const authUser = await getAuthUser(req);
     await connectToDatabase();
-    const scopedQuery = withTenantScope({}, authUser);
-    let branches = await Branch.find(scopedQuery).sort({ isHeadOffice: -1, createdAt: 1 });
+    let branches = await Branch.find({}).sort({ isHeadOffice: -1, createdAt: 1 });
 
     // Seed default Sangli Head Office if none exist
     if (branches.length === 0) {
@@ -35,7 +31,6 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const authUser = await getAuthUser(req);
     await connectToDatabase();
     const body = await req.json();
 
@@ -64,8 +59,7 @@ export async function POST(req: NextRequest) {
       await Branch.updateMany({}, { isHeadOffice: false });
     }
 
-    const payload = stampTenantPayload(body, authUser);
-    const newBranch = await Branch.create(payload);
+    const newBranch = await Branch.create(body);
     return NextResponse.json(newBranch, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -5,7 +5,6 @@ import Task from '@/models/Task';
 import Employee from '@/models/Employee';
 import Lead from '@/models/Lead';
 import { requireRoles } from '@/lib/apiAuth';
-import { hasTenantAccess } from '@/lib/tenantScope';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,10 +28,6 @@ export async function PUT(
     const currentProject = await Project.findById(params.id);
     if (!currentProject) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-    }
-
-    if (!hasTenantAccess(currentProject, authUser)) {
-      return NextResponse.json({ error: 'Forbidden: Cross-tenant access denied.' }, { status: 403 });
     }
 
     const body = await req.json();
@@ -172,18 +167,8 @@ export async function DELETE(
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'team_lead']);
     if (authResult.errorResponse) return authResult.errorResponse;
-    const authUser = authResult.user!;
 
     await connectToDatabase();
-    const existing = await Project.findById(params.id);
-    if (!existing) {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-    }
-
-    if (!hasTenantAccess(existing, authUser)) {
-      return NextResponse.json({ error: 'Forbidden: Cross-tenant access denied.' }, { status: 403 });
-    }
-
     const deleted = await Project.findByIdAndDelete(params.id);
     if (!deleted) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });

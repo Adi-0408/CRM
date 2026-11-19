@@ -144,13 +144,6 @@ export function matchesFilter(docData: any, filter?: any): boolean {
       continue;
     }
 
-    // Handle $and: [...]
-    if (key === '$and' && Array.isArray(filterVal)) {
-      const andMatched = filterVal.every((subFilter) => matchesFilter(docData, subFilter));
-      if (!andMatched) return false;
-      continue;
-    }
-
     const docVal = docData[key];
 
     // Handle regex match { field: { $regex: 'pattern', $options: 'i' } }
@@ -518,24 +511,8 @@ export class FirestoreQuery<T = any> implements PromiseLike<T> {
     if (this.directId) {
       try {
         const snap = await getDoc(doc(db, this.collectionName, String(this.directId)));
-        let resultDoc: any = null;
-        if (snap.exists()) {
-          resultDoc = snapshotToDoc(snap, this.collectionName);
-        } else {
-          // Secondary fallback: lookup by 'id' or 'slug' field
-          const colRef = collection(db, this.collectionName);
-          const fallbackSnap = await getDocs(query(colRef, where('id', '==', String(this.directId)), firestoreLimit(1)));
-          if (!fallbackSnap.empty) {
-            resultDoc = snapshotToDoc(fallbackSnap.docs[0], this.collectionName);
-          } else {
-            const slugSnap = await getDocs(query(colRef, where('slug', '==', String(this.directId)), firestoreLimit(1)));
-            if (!slugSnap.empty) {
-              resultDoc = snapshotToDoc(slugSnap.docs[0], this.collectionName);
-            }
-          }
-        }
-        if (!resultDoc) return null as any;
-
+        if (!snap.exists()) return null as any;
+        let resultDoc = snapshotToDoc(snap, this.collectionName);
         if (this.options.populates && this.options.populates.length > 0) {
           const populated = await populateDocs([resultDoc], this.options.populates);
           resultDoc = populated[0];
@@ -554,24 +531,17 @@ export class FirestoreQuery<T = any> implements PromiseLike<T> {
       const constraints = buildQueryConstraints(this.filter);
       if (constraints.length > 0) {
         // Native Firestore query pushes filters to the database engine
-        const finalConstraints = [...constraints];
-        if (this.options.limit && this.options.limit > 0) {
-          finalConstraints.push(firestoreLimit(this.options.limit));
-        }
-        const q = query(colRef, ...finalConstraints);
+        const q = query(colRef, ...constraints);
         snap = await getDocs(q);
       } else if (this.options.limit && (!this.filter || Object.keys(this.filter).length === 0)) {
         const q = query(colRef, firestoreLimit(this.options.limit));
         snap = await getDocs(q);
       } else {
-        // Safe cap on unbounded queries to prevent accidental read explosions
-        const safeLimit = firestoreLimit(1000);
-        snap = await getDocs(query(colRef, safeLimit));
+        snap = await getDocs(colRef);
       }
     } catch (err: any) {
-      console.warn(`[FirestoreQuery] Index/constraint fallback for ${this.collectionName}:`, err?.message || err);
-      const safeFallbackLimit = this.options.limit ? firestoreLimit(Math.min(this.options.limit * 2, 500)) : firestoreLimit(500);
-      snap = await getDocs(query(colRef, safeFallbackLimit));
+      // Graceful fallback to collection scan if an index or composite constraint is unconfigured
+      snap = await getDocs(colRef);
     }
 
     let results: any[] = [];
@@ -717,27 +687,11 @@ export function createFirestoreModel<T = any>(collectionName: string) {
 
     static async findByIdAndUpdate(id: any, update: any, options: any = {}): Promise<any> {
       if (!id) return null;
-      let docRef = doc(db, collectionName, String(id));
-      let snap = await getDoc(docRef);
-      if (!snap.exists()) {
-        // Fallback: search by 'id' or 'slug' field
-        const colRef = collection(db, collectionName);
-        const fallbackSnap = await getDocs(query(colRef, where('id', '==', String(id)), firestoreLimit(1)));
-        if (!fallbackSnap.empty) {
-          snap = fallbackSnap.docs[0];
-          docRef = doc(db, collectionName, snap.id);
-        } else {
-          const slugSnap = await getDocs(query(colRef, where('slug', '==', String(id)), firestoreLimit(1)));
-          if (!slugSnap.empty) {
-            snap = slugSnap.docs[0];
-            docRef = doc(db, collectionName, snap.id);
-          } else {
-            return null;
-          }
-        }
-      }
+      const docRef = doc(db, collectionName, String(id));
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) return null;
 
-      const current: any = snap.data() || {};
+      const current = snap.data();
       const rawPayload: any = { ...update, updatedAt: new Date().toISOString() };
 
       // Handle $inc
@@ -761,8 +715,7 @@ export function createFirestoreModel<T = any>(collectionName: string) {
 
       await setDoc(docRef, payload, { merge: true });
       invalidatePopulateCache(collectionName, String(id));
-      invalidatePopulateCache(collectionName, snap.id);
-      return createDocumentWrapper({ ...current, ...payload, _id: snap.id, id: snap.id }, collectionName);
+      return createDocumentWrapper({ ...current, ...payload, _id: String(id), id: String(id) }, collectionName);
     }
 
     static async findOneAndUpdate(filter: any, update: any, options: any = {}): Promise<any> {
@@ -788,28 +741,12 @@ export function createFirestoreModel<T = any>(collectionName: string) {
 
     static async findByIdAndDelete(id: any): Promise<any> {
       if (!id) return null;
-      let docRef = doc(db, collectionName, String(id));
-      let snap = await getDoc(docRef);
-      if (!snap.exists()) {
-        const colRef = collection(db, collectionName);
-        const fallbackSnap = await getDocs(query(colRef, where('id', '==', String(id)), firestoreLimit(1)));
-        if (!fallbackSnap.empty) {
-          snap = fallbackSnap.docs[0];
-          docRef = doc(db, collectionName, snap.id);
-        } else {
-          const slugSnap = await getDocs(query(colRef, where('slug', '==', String(id)), firestoreLimit(1)));
-          if (!slugSnap.empty) {
-            snap = slugSnap.docs[0];
-            docRef = doc(db, collectionName, snap.id);
-          } else {
-            return null;
-          }
-        }
-      }
+      const docRef = doc(db, collectionName, String(id));
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) return null;
       const deletedDoc = snapshotToDoc(snap, collectionName);
       await deleteDoc(docRef);
       invalidatePopulateCache(collectionName, String(id));
-      invalidatePopulateCache(collectionName, snap.id);
       return deletedDoc;
     }
 

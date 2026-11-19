@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Employee from '@/models/Employee';
 import { getAuthUser, requireRoles } from '@/lib/apiAuth';
-import { hasTenantAccess } from '@/lib/tenantScope';
-import { hashPassword } from '@/lib/password';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,24 +11,10 @@ export async function PUT(
 ) {
   try {
     const authUser = await getAuthUser(req);
-    if (!authUser) {
-      return NextResponse.json({ error: 'Unauthorized: Session required' }, { status: 401 });
-    }
-
-    await connectToDatabase();
-    const existing = await Employee.findById(params.id);
-    if (!existing) {
-      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
-    }
-
-    if (!hasTenantAccess(existing, authUser)) {
-      return NextResponse.json({ error: 'Forbidden: Cross-tenant access denied.' }, { status: 403 });
-    }
-
     const body = await req.json();
 
-    const isSelf = authUser.id === params.id || authUser.email === body.email;
-    const isAdminOrHR = authUser.role === 'admin_manager' || authUser.role === 'hr';
+    const isSelf = authUser && (authUser.id === params.id || authUser.email === body.email);
+    const isAdminOrHR = authUser?.role === 'admin_manager' || authUser?.role === 'hr';
 
     // If updating sensitive fields (role, status, salary, baseSalary, password), must be admin or hr
     const hasSensitiveFields =
@@ -51,10 +35,6 @@ export async function PUT(
       body.phone = cleanPhone;
     }
 
-    if (body.password) {
-      body.password = hashPassword(String(body.password).trim());
-    }
-
     if (hasSensitiveFields && !isAdminOrHR) {
       return NextResponse.json(
         { error: 'Forbidden: Only HR and Admin (Manager) can update employee credentials, status, and role.' },
@@ -69,6 +49,7 @@ export async function PUT(
       );
     }
 
+    await connectToDatabase();
     const updated = await Employee.findByIdAndUpdate(params.id, body, {
       new: true,
       runValidators: true,
@@ -92,18 +73,8 @@ export async function DELETE(
     // Only Admin (Manager) can delete an employee account
     const authResult = await requireRoles(req, ['admin_manager']);
     if (authResult.errorResponse) return authResult.errorResponse;
-    const authUser = authResult.user!;
 
     await connectToDatabase();
-    const existing = await Employee.findById(params.id);
-    if (!existing) {
-      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
-    }
-
-    if (!hasTenantAccess(existing, authUser)) {
-      return NextResponse.json({ error: 'Forbidden: Cross-tenant access denied.' }, { status: 403 });
-    }
-
     const deleted = await Employee.findByIdAndDelete(params.id);
     if (!deleted) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });

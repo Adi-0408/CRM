@@ -5,7 +5,6 @@ import Employee from '@/models/Employee';
 import Project from '@/models/Project';
 import { getAuthUser, requireRoles, isValidDocId } from '@/lib/apiAuth';
 import { recalculateProjectProgress } from '@/lib/projectEngine';
-import { withTenantScope, stampTenantPayload } from '@/lib/tenantScope';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,8 +36,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const scopedQuery = withTenantScope(query, authUser);
-    const tasks = await Task.find(scopedQuery)
+    const tasks = await Task.find(query)
       .sort({ dueDate: 1, createdAt: -1 })
       .populate('assignedTo', 'name email avatar role')
       .populate('project', 'title client status');
@@ -68,7 +66,6 @@ export async function POST(req: NextRequest) {
     // Admin (Manager) and Team Leads can create and delegate tasks
     const authResult = await requireRoles(req, ['admin_manager', 'team_lead']);
     if (authResult.errorResponse) return authResult.errorResponse;
-    const authUser = authResult.user!;
 
     await connectToDatabase();
     const body = await req.json();
@@ -93,8 +90,7 @@ export async function POST(req: NextRequest) {
       body.completedAt = new Date();
     }
 
-    const payload = stampTenantPayload(body, authUser);
-    const newTask = await Task.create(payload);
+    const newTask = await Task.create(body);
 
     if (body.status === 'completed' && body.assignedTo) {
       await Employee.findByIdAndUpdate(body.assignedTo, {

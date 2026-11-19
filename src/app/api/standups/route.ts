@@ -3,13 +3,11 @@ import { connectToDatabase } from '@/lib/db';
 import Standup from '@/models/Standup';
 import Notification from '@/models/Notification';
 import { getAuthUser } from '@/lib/apiAuth';
-import { withTenantScope, stampTenantPayload } from '@/lib/tenantScope';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
-    const authUser = await getAuthUser(req);
     await connectToDatabase();
     const { searchParams } = new URL(req.url);
     const date = searchParams.get('date');
@@ -23,8 +21,7 @@ export async function GET(req: NextRequest) {
       query.employeeId = employeeId;
     }
 
-    const scopedQuery = withTenantScope(query, authUser);
-    const standups = await Standup.find(scopedQuery).sort({ createdAt: -1 });
+    const standups = await Standup.find(query).sort({ createdAt: -1 });
     return NextResponse.json(standups);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -85,7 +82,6 @@ export async function POST(req: NextRequest) {
         blockers: body.blockers || '',
         hasBlockers: Boolean(body.hasBlockers),
         createdAt: new Date(),
-        companyId: authUser?.companyId || 'itpl-default',
       });
     }
 
@@ -103,7 +99,6 @@ export async function POST(req: NextRequest) {
         linkTab: 'attendance',
         isRead: false,
         createdAt: new Date(),
-        companyId: authUser?.companyId || 'itpl-default',
       });
     } catch (notifErr) {
       console.error('Failed to create standup notification:', notifErr);

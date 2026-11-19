@@ -4,7 +4,6 @@ import Project from '@/models/Project';
 import Employee from '@/models/Employee';
 import Lead from '@/models/Lead';
 import { getAuthUser, requireRoles, isValidDocId } from '@/lib/apiAuth';
-import { withTenantScope, stampTenantPayload } from '@/lib/tenantScope';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,8 +34,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const scopedQuery = withTenantScope(query, authUser);
-    const projects = await Project.find(scopedQuery)
+    const projects = await Project.find(query)
       .sort({ deadline: 1 })
       .populate('teamMembers', 'name email avatar role')
       .populate('salesRep', 'name email avatar role');
@@ -108,8 +106,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const payload = stampTenantPayload(body, authResult.user!);
-    const newProject = await Project.create(payload);
+    const newProject = await Project.create(body);
     const populated = await Project.findById(newProject._id)
       .populate('teamMembers', 'name email avatar role')
       .populate('salesRep', 'name email avatar role');
