@@ -219,7 +219,9 @@ export default function CRMApp() {
 
   // If Super Admin, direct exclusively to the Super Admin Platform Dashboard
   useEffect(() => {
-    if (isAuthenticated && (user?.email === 'admin@crm.com' || (user as any)?.platformRole === 'super_admin')) {
+    const uEmail = user?.email?.toLowerCase() || '';
+    const isSuper = uEmail === 'admin@crm.com' || uEmail === 'admin@gmail.com' || (user as any)?.platformRole === 'super_admin';
+    if (isAuthenticated && isSuper) {
       router.replace('/superadmin');
     }
   }, [isAuthenticated, user, router]);
@@ -229,12 +231,15 @@ export default function CRMApp() {
     return <LoadingScreen message={authMessage} />;
   }
 
+  const uEmail = user?.email?.toLowerCase() || '';
+  const isSuperUser = uEmail === 'admin@crm.com' || uEmail === 'admin@gmail.com' || (user as any)?.platformRole === 'super_admin';
+
   // 2. Unauthenticated Gate: Clean Centered Floating Card Login Page
   if (!isAuthenticated) {
     return (
       <LoginPage
         onSuccess={() => {
-          if (user?.email === 'admin@crm.com' || (user as any)?.platformRole === 'super_admin') {
+          if (isSuperUser) {
             router.replace('/superadmin');
           } else {
             setActiveTab('overview');
@@ -246,7 +251,7 @@ export default function CRMApp() {
   }
 
   // Super Admin view gate
-  if (user?.email === 'admin@crm.com' || (user as any)?.platformRole === 'super_admin') {
+  if (isSuperUser) {
     return <LoadingScreen message="Opening Super Admin Dashboard..." />;
   }
 

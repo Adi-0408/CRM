@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Building2, CreditCard, FileText, Settings,
-  Users, LogOut, Shield, ChevronRight, Bell, Menu, X
+  Users, LogOut, Shield, ChevronRight, Bell, Menu, X, RefreshCw
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -16,24 +16,44 @@ const NAV_ITEMS = [
 ];
 
 const SUPER_ADMIN_EMAILS = [
-  process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'admin@crm.com',
+  (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'admin@crm.com').toLowerCase(),
+  'admin@gmail.com',
 ];
 
 export default function SuperAdminLayout({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const isSuperAdmin = user && SUPER_ADMIN_EMAILS.includes(user.email);
+  const isSuperAdmin = Boolean(
+    user && (
+      SUPER_ADMIN_EMAILS.includes(user.email?.toLowerCase()) ||
+      (user as any)?.platformRole === 'super_admin'
+    )
+  );
 
   useEffect(() => {
+    // Crucial: Wait for initial session restore before deciding to redirect!
+    if (loading) return;
+
     if (!user) {
       router.replace('/login');
     } else if (!isSuperAdmin) {
       router.replace('/');
     }
-  }, [user, isSuperAdmin, router]);
+  }, [loading, user, isSuperAdmin, router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-white text-center">
+          <RefreshCw className="w-8 h-8 mx-auto mb-3 text-indigo-400 animate-spin" />
+          <p className="text-sm font-medium text-slate-300">Loading Super Admin Workspace...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user || !isSuperAdmin) {
     return (

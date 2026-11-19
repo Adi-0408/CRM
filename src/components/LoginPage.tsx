@@ -62,7 +62,9 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
       setError('');
       const res = await login(email.trim(), password.trim());
       if (res.success) {
-        if (res.user?.email === 'admin@crm.com' || (res.user as any)?.platformRole === 'super_admin') {
+        const uEmail = res.user?.email?.toLowerCase() || '';
+        const isSuper = uEmail === 'admin@crm.com' || uEmail === 'admin@gmail.com' || (res.user as any)?.platformRole === 'super_admin';
+        if (isSuper) {
           window.location.href = '/superadmin';
           return;
         }

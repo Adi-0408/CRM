@@ -10,9 +10,12 @@ import { connectToDatabase } from '@/lib/db';
 export const dynamic = 'force-dynamic';
 
 function isSuperAdmin(user: any): boolean {
+  const email = (user?.email || '').toLowerCase().trim();
+  const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'admin@crm.com').toLowerCase().trim();
   return (
     user?.platformRole === 'super_admin' ||
-    user?.email === (process.env.SUPER_ADMIN_EMAIL || 'admin@crm.com')
+    email === superAdminEmail ||
+    email === 'admin@gmail.com'
   );
 }
 
