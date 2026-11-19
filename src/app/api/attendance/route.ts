@@ -46,7 +46,16 @@ export async function GET(req: NextRequest) {
     if (!isAdminOrHR && authUser) {
       query.employee = authUser.id;
     } else if (employeeId) {
-      query.employee = employeeId;
+      const found = await Employee.findOne({
+        $or: [
+          { _id: employeeId },
+          { id: employeeId },
+          { email: employeeId },
+          { name: employeeId },
+        ],
+      });
+      const resolvedId = found ? String(found._id || found.id) : employeeId;
+      query.employee = resolvedId === employeeId ? employeeId : { $in: [employeeId, resolvedId] };
     }
 
     const scopedQuery = withTenantScope(query, authUser);
@@ -134,6 +143,8 @@ export async function POST(req: NextRequest) {
     } else {
       const found = await Employee.findOne({
         $or: [
+          { _id: employeeId },
+          { id: employeeId },
           { email: employeeId },
           { name: employeeId },
           ...(typeof employeeId === 'string' && employeeId.startsWith('demo_') ? [{ role: employeeId.replace('demo_', '') }] : []),
@@ -215,7 +226,11 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. CLOCK IN / OUT FLOW
-    let record = await Attendance.findOne({ employee: targetEmployeeId, date: todayStr });
+    const candidateEmployeeIds = Array.from(new Set([targetEmployeeId, employeeId, authUser?.id].filter(Boolean)));
+    let record = await Attendance.findOne({
+      employee: candidateEmployeeIds.length === 1 ? candidateEmployeeIds[0] : { $in: candidateEmployeeIds },
+      date: todayStr,
+    });
 
     if (action === 'clock_out' || action === 'punch_out') {
       if (!record || !record.sessions || record.sessions.length === 0) {
