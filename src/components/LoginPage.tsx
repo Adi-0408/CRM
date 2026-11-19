@@ -34,35 +34,22 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
   const [error, setError] = useState('');
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
 
-  // Check if tenant context exists via query param OR subdomain hostname
+  // Optional company branding via explicit ?slug= query param on single address
   useEffect(() => {
-    let slug: string | null = null;
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      slug = params.get('slug');
+      const slug = params.get('slug');
 
-      if (!slug) {
-        const host = window.location.hostname.split(':')[0];
-        if (host.endsWith('.localhost')) {
-          slug = host.replace('.localhost', '');
-        } else {
-          const parts = host.split('.');
-          if (parts.length >= 3 && !['www', 'admin', 'api', 'app'].includes(parts[0])) {
-            slug = parts[0];
-          }
-        }
+      if (slug) {
+        fetch(`/api/tenant?slug=${slug}`)
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.success && d.tenant) {
+              setTenant(d.tenant);
+            }
+          })
+          .catch(() => {});
       }
-    }
-
-    if (slug) {
-      fetch(`/api/tenant?slug=${slug}`)
-        .then((r) => r.json())
-        .then((d) => {
-          if (d.success && d.tenant) {
-            setTenant(d.tenant);
-          }
-        })
-        .catch(() => {});
     }
   }, []);
 

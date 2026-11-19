@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     if (cleanSlug.length < 3) {
       return NextResponse.json(
-        { error: 'Subdomain slug must be at least 3 characters.' },
+        { error: 'Company code must be at least 3 characters.' },
         { status: 400 }
       );
     }
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     const reserved = ['admin', 'superadmin', 'api', 'www', 'mail', 'support', 'help', 'app'];
     if (reserved.includes(cleanSlug)) {
       return NextResponse.json(
-        { error: `Slug "${cleanSlug}" is reserved. Please pick another one.` },
+        { error: `Company code "${cleanSlug}" is reserved. Please pick another one.` },
         { status: 400 }
       );
     }
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     const existingCompany = await Company.findOne({ slug: cleanSlug });
     if (existingCompany) {
       return NextResponse.json(
-        { error: `Company subdomain "${cleanSlug}" is already taken.` },
+        { error: `Company code "${cleanSlug}" is already taken.` },
         { status: 409 }
       );
     }

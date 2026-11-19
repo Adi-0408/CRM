@@ -37,7 +37,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
-    const members = await CompanyMember.find({ companyId: params.id });
+    const identifiers = Array.from(new Set([params.id, company.id, company._id].filter(Boolean)));
+    const members = await CompanyMember.find({ companyId: { $in: identifiers } });
 
     return NextResponse.json({ success: true, company, members: members || [] });
   } catch (error: any) {

@@ -3,7 +3,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { authFetch } from '@/lib/apiClient';
 import { Building2, Plus, Search, RefreshCw, ExternalLink, AlertTriangle, CheckCircle, Clock, Ban, ChevronDown } from 'lucide-react';
+
+export const dynamic = 'force-dynamic';
 
 export default function CompaniesPage() {
   const { user } = useAuth();
@@ -23,9 +26,7 @@ export default function CompaniesPage() {
   const fetchCompanies = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/companies', {
-        headers: { 'x-user-email': user?.email || '', 'x-user-role': user?.role || '' },
-      });
+      const res = await authFetch('/api/admin/companies');
       if (res.ok) {
         const data = await res.json();
         setCompanies(data.companies || []);
@@ -49,12 +50,10 @@ export default function CompaniesPage() {
     if (!form.companyName || !form.slug || !form.adminEmail) return;
     setCreating(true);
     try {
-      const res = await fetch('/api/admin/companies', {
+      const res = await authFetch('/api/admin/companies', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-email': user?.email || '',
-          'x-user-role': user?.role || '',
         },
         body: JSON.stringify(form),
       });
@@ -75,17 +74,16 @@ export default function CompaniesPage() {
 
   const handleSuspend = async (id: string, name: string) => {
     if (!confirm(`Suspend "${name}"? Their employees will lose access.`)) return;
-    await fetch(`/api/admin/companies/${id}`, {
+    await authFetch(`/api/admin/companies/${id}`, {
       method: 'DELETE',
-      headers: { 'x-user-email': user?.email || '' },
     });
     await fetchCompanies();
   };
 
   const handleReactivate = async (id: string) => {
-    await fetch(`/api/admin/companies/${id}`, {
+    await authFetch(`/api/admin/companies/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'x-user-email': user?.email || '' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'active', subscriptionStatus: 'trial' }),
     });
     await fetchCompanies();
@@ -96,9 +94,8 @@ export default function CompaniesPage() {
     setRunningMigration(true);
     setMigrationResult(null);
     try {
-      const res = await fetch('/api/admin/migrate', {
+      const res = await authFetch('/api/admin/migrate', {
         method: 'POST',
-        headers: { 'x-user-email': user?.email || '' },
       });
       const data = await res.json();
       setMigrationResult(data.results || [data.error || 'Unknown error']);
@@ -304,7 +301,7 @@ export default function CompaniesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Slug * (URL identifier)</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Company Code * (Identifier)</label>
                   <input
                     required value={form.slug}
                     onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}

@@ -1,16 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { authFetch } from '@/lib/apiClient';
 import {
-  Building2, Users, Shield, ArrowLeft, RefreshCw, CheckCircle,
-  AlertTriangle, Ban, Calendar, Globe, Mail, Save, ExternalLink
+  Building2, Users, ArrowLeft, RefreshCw, CheckCircle,
+  Calendar, Mail, Save, ExternalLink
 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function CompanyDetailsPage({ params }: { params: { id: string } }) {
+export const dynamic = 'force-dynamic';
+
+export default function CompanyDetailsPage() {
   const router = useRouter();
+  const routeParams = useParams();
+  const companyId = typeof routeParams?.id === 'string' ? routeParams.id : Array.isArray(routeParams?.id) ? routeParams.id[0] : '';
   const { user } = useAuth();
   const [company, setCompany] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
@@ -26,15 +31,11 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
     industry: '',
   });
 
-  const fetchCompanyData = async () => {
+  const fetchCompanyData = useCallback(async () => {
+    if (!companyId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/companies/${params.id}`, {
-        headers: {
-          'x-user-email': user?.email || '',
-          'x-user-role': user?.role || '',
-        },
-      });
+      const res = await authFetch(`/api/admin/companies/${companyId}`);
       if (res.ok) {
         const data = await res.json();
         setCompany(data.company);
@@ -54,22 +55,24 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
     } finally {
       setLoading(false);
     }
-  };
+  }, [companyId]);
 
   useEffect(() => {
-    if (user) fetchCompanyData();
-  }, [user, params.id]);
+    if (user && companyId) {
+      fetchCompanyData();
+    }
+  }, [user, companyId, fetchCompanyData]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!companyId) return;
     setSaving(true);
     setMessage(null);
     try {
-      const res = await fetch(`/api/admin/companies/${params.id}`, {
+      const res = await authFetch(`/api/admin/companies/${companyId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-email': user?.email || '',
         },
         body: JSON.stringify(form),
       });
@@ -141,8 +144,8 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-all shadow-xs"
           >
-            <Globe className="w-3.5 h-3.5" />
-            <span>Open Company Workspace</span>
+            <Building2 className="w-3.5 h-3.5" />
+            <span>Company Login Portal</span>
             <ExternalLink className="w-3.5 h-3.5 ml-0.5 text-indigo-500" />
           </a>
         </div>
@@ -249,8 +252,8 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
             <h3 className="text-sm font-semibold text-slate-900 mb-3">Tenant Details</h3>
             <div className="space-y-3 text-xs">
               <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-400">Subdomain</span>
-                <span className="font-semibold text-slate-700">{company.slug}.yourcrm.com</span>
+                <span className="text-slate-400">Company Code</span>
+                <span className="font-semibold text-slate-700">{company.slug}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-100">
                 <span className="text-slate-400">Created On</span>
@@ -278,7 +281,7 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
 
         {members.length === 0 ? (
           <div className="p-8 text-center text-slate-400 text-xs">
-            No specific members assigned yet. Run migration or add employees through the workspace.
+            No specific members assigned yet. Add employees through the workspace.
           </div>
         ) : (
           <div className="overflow-x-auto">
