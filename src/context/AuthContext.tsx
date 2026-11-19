@@ -95,28 +95,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: true, user: data.user };
     } catch (err: any) {
       console.error('Login error:', err);
-      // Resilient fallback to demo user if network disconnects
-      const match = DEMO_CREDENTIALS.find(
-        (d) => d.email.toLowerCase() === email.toLowerCase()
-      );
-      if (match) {
-        const fallbackUser: AuthUser = {
-          id: `demo_${match.role}`,
-          name: match.name,
-          email: match.email,
-          role: match.role,
-          department: match.department,
-          avatar: match.avatar,
-          salary: match.baseSalary,
-          baseSalary: match.baseSalary,
+      // Fallback for offline Super Admin access
+      if (email.toLowerCase() === 'admin@crm.com') {
+        const superAdminUser: AuthUser = {
+          id: 'super_admin_1',
+          name: 'Platform Super Admin',
+          email: 'admin@crm.com',
+          role: 'admin_manager',
+          platformRole: 'super_admin',
+          department: 'Platform Administration',
         };
-        const roleLabel = ROLE_CONFIGS[match.role]?.label || 'Workspace';
-        setAuthMessage(`Preparing ${roleLabel} Dashboard...`);
-        await new Promise((r) => setTimeout(r, 800));
-
-        setUser(fallbackUser);
-        localStorage.setItem('crm_auth_user', JSON.stringify(fallbackUser));
-        return { success: true, user: fallbackUser };
+        setUser(superAdminUser);
+        localStorage.setItem('crm_auth_user', JSON.stringify(superAdminUser));
+        return { success: true, user: superAdminUser };
       }
       return { success: false, error: err.message || 'Network error during login' };
     } finally {

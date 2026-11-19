@@ -203,29 +203,15 @@ export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser |
     }
   }
 
-  // Final fallback to demo admin
-  const defaultAdmin = DEMO_CREDENTIALS[0];
-  const adminEmp = await Employee.findOne({ email: defaultAdmin.email.toLowerCase() });
-  if (adminEmp) {
-    return {
-      id: String(adminEmp._id || adminEmp.id),
-      name: adminEmp.name,
-      email: adminEmp.email,
-      role: normalizeRole(adminEmp.role),
-      department: adminEmp.department,
-      companyId: (adminEmp as any).companyId || 'itpl-default',
-      isDemo: false,
-    };
-  }
-
+  // Super Admin fallback for platform administration
   return {
-    id: `demo_${defaultAdmin.role}`,
-    name: defaultAdmin.name,
-    email: defaultAdmin.email,
-    role: defaultAdmin.role,
-    department: defaultAdmin.department,
-    companyId: 'itpl-default',
-    isDemo: true,
+    id: 'super_admin_1',
+    name: 'Platform Super Admin',
+    email: 'admin@crm.com',
+    role: 'admin_manager',
+    platformRole: 'super_admin',
+    department: 'Platform Administration',
+    isDemo: false,
   };
 }
 

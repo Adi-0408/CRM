@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import LoginPage from '@/components/LoginPage';
 import LoadingScreen from '@/components/LoadingScreen';
@@ -214,6 +215,15 @@ export default function CRMApp() {
     }
   }, [role, activeTab]);
 
+  const router = useRouter();
+
+  // If Super Admin, direct exclusively to the Super Admin Platform Dashboard
+  useEffect(() => {
+    if (isAuthenticated && (user?.email === 'admin@crm.com' || (user as any)?.platformRole === 'super_admin')) {
+      router.replace('/superadmin');
+    }
+  }, [isAuthenticated, user, router]);
+
   // 1. Initial Animated Boot or Transitional Authenticating Loader
   if (authLoading || isAuthenticating) {
     return <LoadingScreen message={authMessage} />;
@@ -224,11 +234,20 @@ export default function CRMApp() {
     return (
       <LoginPage
         onSuccess={() => {
-          setActiveTab('overview');
-          fetchData();
+          if (user?.email === 'admin@crm.com' || (user as any)?.platformRole === 'super_admin') {
+            router.replace('/superadmin');
+          } else {
+            setActiveTab('overview');
+            fetchData();
+          }
         }}
       />
     );
+  }
+
+  // Super Admin view gate
+  if (user?.email === 'admin@crm.com' || (user as any)?.platformRole === 'super_admin') {
+    return <LoadingScreen message="Opening Super Admin Dashboard..." />;
   }
 
   // Map active navigation title

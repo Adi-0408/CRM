@@ -9,11 +9,10 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  Sparkles,
   Building2,
+  Shield,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { DEMO_CREDENTIALS } from '@/types/auth';
 
 interface LoginPageProps {
   onSuccess?: () => void;
@@ -63,6 +62,10 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
       setError('');
       const res = await login(email.trim(), password.trim());
       if (res.success) {
+        if (res.user?.email === 'admin@crm.com' || (res.user as any)?.platformRole === 'super_admin') {
+          window.location.href = '/superadmin';
+          return;
+        }
         if (onSuccess) onSuccess();
       } else {
         setError(res.error || 'Invalid credentials. Please verify your email & password.');
@@ -172,40 +175,20 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
           </button>
         </form>
 
-        {/* 1-Click Demo Roles Section */}
+        {/* Super Admin Quick Sign-In */}
         <div className="mt-5 pt-4 border-t border-slate-100">
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-[#635BFF]" />
-              Demo Roles (1-Click Fill)
-            </span>
-            <span className="text-[10px] text-slate-400 font-medium">9 Roles</span>
-          </div>
-          <div className="grid grid-cols-3 gap-1.5">
-            {DEMO_CREDENTIALS.map((cred) => {
-              const isSelected = email.toLowerCase() === cred.email.toLowerCase();
-              return (
-                <button
-                  key={cred.role}
-                  type="button"
-                  onClick={() => {
-                    setEmail(cred.email);
-                    setPassword(cred.password);
-                    setError('');
-                  }}
-                  className={`text-left px-2 py-1.5 rounded-lg border text-[11px] font-medium transition-all ${
-                    isSelected
-                      ? 'border-[#635BFF] bg-[#F0EEFF] text-[#635BFF] shadow-xs'
-                      : 'border-slate-150 bg-slate-50/70 hover:bg-slate-100/80 text-slate-700'
-                  }`}
-                  title={`${cred.name} (${cred.email}) - ${cred.department}`}
-                >
-                  <div className="truncate font-semibold">{cred.roleTitle.split(' ')[0]}</div>
-                  <div className="truncate text-[9.5px] text-slate-400">{cred.role.replace('_', ' ')}</div>
-                </button>
-              );
-            })}
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setEmail('admin@crm.com');
+              setPassword('pass123');
+              setError('');
+            }}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100/80 text-indigo-700 text-xs font-semibold transition-all"
+          >
+            <Shield className="w-4 h-4 text-indigo-600" />
+            <span>Super Admin (admin@crm.com)</span>
+          </button>
         </div>
 
         {/* Register Company Link */}

@@ -30,24 +30,43 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanEmail = String(email).trim().toLowerCase();
+    const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'admin@crm.com').toLowerCase();
 
-    // 1. Check if matching demo credentials
-    const demoMatch = DEMO_CREDENTIALS.find(
-      (d: any) =>
-        (d.email.toLowerCase() === cleanEmail || (d.altEmail && d.altEmail.toLowerCase() === cleanEmail)) &&
-        (d.password === password || password === 'pass123')
-    );
+    // 1. Super Admin Authentication (Platform Level)
+    if (cleanEmail === superAdminEmail && (password === 'pass123' || password === process.env.SUPER_ADMIN_PASSWORD)) {
+      const jwtToken = await signJWT({
+        userId: 'super_admin_1',
+        email: cleanEmail,
+        name: 'Platform Super Admin',
+        role: 'admin_manager',
+        platformRole: 'super_admin',
+        department: 'Platform Administration',
+        isDemo: false,
+      });
+
+      const sessionCookie = buildSessionCookie(jwtToken);
+      const res = NextResponse.json({
+        success: true,
+        token: `token_super_admin_${Date.now()}`,
+        user: {
+          id: 'super_admin_1',
+          name: 'Platform Super Admin',
+          email: cleanEmail,
+          role: 'admin_manager',
+          platformRole: 'super_admin',
+          department: 'Platform Administration',
+          status: 'active',
+        },
+      });
+
+      res.headers.set('Set-Cookie', sessionCookie);
+      return res;
+    }
 
     await connectToDatabase();
 
-    // 2. Query employee collection
-    const employee = await Employee.findOne({
-      $or: [
-        { email: cleanEmail },
-        ...(demoMatch?.email ? [{ email: demoMatch.email.toLowerCase() }] : []),
-        ...((demoMatch as any)?.altEmail ? [{ email: (demoMatch as any).altEmail.toLowerCase() }] : []),
-      ],
-    });
+    // 2. Query employee collection for real registered employees
+    const employee = await Employee.findOne({ email: cleanEmail });
 
     if (employee) {
       // Check if account is suspended
@@ -61,10 +80,7 @@ export async function POST(req: NextRequest) {
 
       // Validate password
       const storedPassword = (employee as any).password || 'pass123';
-      const isMatch =
-        password === storedPassword ||
-        password === 'pass123' ||
-        (demoMatch && demoMatch.password === password);
+      const isMatch = password === storedPassword || password === 'pass123';
 
       if (!isMatch) {
         return NextResponse.json(
@@ -129,43 +145,8 @@ export async function POST(req: NextRequest) {
       return res;
     }
 
-    // 3. Fallback to demo credentials if employee doc not yet in DB
-    if (demoMatch) {
-      const jwtToken = await signJWT({
-        userId: `demo_${demoMatch.role}`,
-        email: demoMatch.email,
-        name: demoMatch.name,
-        role: demoMatch.role,
-        companyId: 'itpl-default',
-        department: demoMatch.department,
-        isDemo: true,
-      });
-
-      const sessionCookie = buildSessionCookie(jwtToken);
-
-      const res = NextResponse.json({
-        success: true,
-        token: `token_demo_${demoMatch.role}_${Date.now()}`,
-        user: {
-          id: `demo_${demoMatch.role}`,
-          name: demoMatch.name,
-          email: demoMatch.email,
-          role: demoMatch.role,
-          department: demoMatch.department,
-          avatar: demoMatch.avatar,
-          salary: demoMatch.baseSalary,
-          baseSalary: demoMatch.baseSalary,
-          status: 'active',
-          companyId: 'itpl-default',
-        },
-      });
-
-      res.headers.set('Set-Cookie', sessionCookie);
-      return res;
-    }
-
     return NextResponse.json(
-      { error: 'Invalid email or password. Please check with HR/Admin.' },
+      { error: 'Invalid email or password. Please verify your credentials.' },
       { status: 401 }
     );
   } catch (error: any) {
