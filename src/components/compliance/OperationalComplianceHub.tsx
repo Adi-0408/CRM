@@ -27,6 +27,9 @@ import {
   SwitchCamera,
   ChevronRight,
   ExternalLink,
+  CameraOff,
+  X,
+  Minimize2,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
@@ -87,12 +90,28 @@ export default function OperationalComplianceHub({
   // 2. Active Tab & Dark Mode States
   const [activeTab, setActiveTab] = useState<'attendance' | 'standups'>(activeSection);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+  // Close / Collapse state: Allows closing this section so camera hardware does NOT stay on all the time
+  const [isHubCollapsed, setIsHubCollapsed] = useState<boolean>(false);
 
   useEffect(() => {
     setActiveTab(activeSection);
   }, [activeSection]);
 
+  // Stop Camera Stream and release hardware access immediately
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setStream(null);
+    setIsCameraActive(false);
+    setIsCameraLoading(false);
+  }, []);
+
   const handleTabSelect = (tab: 'attendance' | 'standups') => {
+    if (tab === 'standups') {
+      stopCamera();
+    }
     setActiveTab(tab);
     if (onSectionChange) onSectionChange(tab);
   };
@@ -226,18 +245,17 @@ export default function OperationalComplianceHub({
     }
   }, [facingMode]);
 
-  // Initialize camera on mount when on attendance tab
+  // Initialize or stop camera based on tab, collapse state, and captured photo
   useEffect(() => {
-    if (activeTab === 'attendance' && !capturedPhoto) {
+    if (activeTab === 'attendance' && !isHubCollapsed && !capturedPhoto) {
       startCamera();
+    } else {
+      stopCamera();
     }
     return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
+      stopCamera();
     };
-  }, [activeTab, startCamera, capturedPhoto]);
+  }, [activeTab, isHubCollapsed, startCamera, stopCamera, capturedPhoto]);
 
   // Connect video element to stream when stream changes
   useEffect(() => {
@@ -454,11 +472,20 @@ export default function OperationalComplianceHub({
       setIsClockedIn(nowClockedIn);
       setActiveSessionStart(activeSess?.checkIn ? String(activeSess.checkIn) : null);
 
+      // 1. Reset photo state so the next punch (clock-out or clock-in) requires a fresh photo
+      setCapturedPhoto(null);
+
+      // 2. Stop camera stream and release hardware
+      stopCamera();
+
+      // 3. Automatically close/collapse this section so camera does not stay on
+      setIsHubCollapsed(true);
+
       setPunchFeedback({
         type: 'success',
         message: action === 'punch_out'
-          ? 'Successfully Clocked Out! Biometric selfie & geofence telemetry verified.'
-          : 'Successfully Clocked In! Biometric selfie & geofence telemetry verified.',
+          ? 'Successfully Clocked Out! Photo saved & camera turned off.'
+          : 'Successfully Clocked In! Photo saved & camera turned off. You can reopen anytime to clock out.',
       });
 
       if (onPunchSuccess) {
@@ -548,6 +575,38 @@ export default function OperationalComplianceHub({
               </span>
             </div>
           </div>
+
+          {/* Close Section / Open Camera Controls */}
+          {activeTab === 'attendance' && (
+            !isHubCollapsed ? (
+              <button
+                type="button"
+                onClick={() => {
+                  stopCamera();
+                  setIsHubCollapsed(true);
+                }}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 shadow-2xs hover:scale-105"
+                title="Close section and turn off camera"
+              >
+                <CameraOff className="w-3.5 h-3.5 text-rose-500" />
+                <span className="hidden sm:inline">Close Camera</span>
+                <span className="sm:hidden">Close</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setCapturedPhoto(null);
+                  setIsHubCollapsed(false);
+                }}
+                className="px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 shadow-2xs hover:scale-105"
+                title="Open verification section and start camera"
+              >
+                <Camera className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                <span>{isClockedIn ? 'Open Camera (Clock Out)' : 'Open Camera (Clock In)'}</span>
+              </button>
+            )
+          )}
 
           {/* Theme Toggle (Light / Dark) */}
           <button
