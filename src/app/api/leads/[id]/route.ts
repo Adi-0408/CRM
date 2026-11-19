@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/db';
 import Lead from '@/models/Lead';
 import Project from '@/models/Project';
 import { requireRoles } from '@/lib/apiAuth';
+import { hasTenantAccess } from '@/lib/tenantScope';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,8 +14,18 @@ export async function PUT(
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'sales']);
     if (authResult.errorResponse) return authResult.errorResponse;
+    const authUser = authResult.user!;
 
     await connectToDatabase();
+    const existing = await Lead.findById(params.id);
+    if (!existing) {
+      return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
+    }
+
+    if (!hasTenantAccess(existing, authUser)) {
+      return NextResponse.json({ error: 'Forbidden: Cross-tenant access denied.' }, { status: 403 });
+    }
+
     const body = await req.json();
     const updated = await Lead.findByIdAndUpdate(params.id, body, {
       new: true,
@@ -78,8 +89,18 @@ export async function DELETE(
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'sales']);
     if (authResult.errorResponse) return authResult.errorResponse;
+    const authUser = authResult.user!;
 
     await connectToDatabase();
+    const existing = await Lead.findById(params.id);
+    if (!existing) {
+      return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
+    }
+
+    if (!hasTenantAccess(existing, authUser)) {
+      return NextResponse.json({ error: 'Forbidden: Cross-tenant access denied.' }, { status: 403 });
+    }
+
     const deleted = await Lead.findByIdAndDelete(params.id);
     if (!deleted) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 });

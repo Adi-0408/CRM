@@ -116,7 +116,7 @@ export default function RegisterCompanyPage() {
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-slate-400">
-                  Unique subdomain for your company's CRM portal.
+                  Unique subdomain for your company&apos;s CRM portal.
                 </p>
               </div>
 

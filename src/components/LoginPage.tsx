@@ -34,10 +34,26 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
   const [error, setError] = useState('');
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
 
-  // Check if tenant context exists
+  // Check if tenant context exists via query param OR subdomain hostname
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const slug = params.get('slug');
+    let slug: string | null = null;
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      slug = params.get('slug');
+
+      if (!slug) {
+        const host = window.location.hostname.split(':')[0];
+        if (host.endsWith('.localhost')) {
+          slug = host.replace('.localhost', '');
+        } else {
+          const parts = host.split('.');
+          if (parts.length >= 3 && !['www', 'admin', 'api', 'app'].includes(parts[0])) {
+            slug = parts[0];
+          }
+        }
+      }
+    }
+
     if (slug) {
       fetch(`/api/tenant?slug=${slug}`)
         .then((r) => r.json())

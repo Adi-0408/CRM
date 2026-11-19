@@ -22,6 +22,7 @@ import { AuditLog } from '@/models/AuditLog';
 import Employee from '@/models/Employee';
 import { connectToDatabase } from '@/lib/db';
 import { signJWT, buildSessionCookie } from '@/lib/jwt';
+import { hashPassword } from '@/lib/password';
 
 export const dynamic = 'force-dynamic';
 
@@ -126,7 +127,7 @@ export async function POST(req: NextRequest) {
     const employee = await Employee.create({
       name: adminName.trim(),
       email: cleanEmail,
-      password: String(password).trim(),
+      password: hashPassword(String(password).trim()),
       phone: phone || '',
       role: 'admin_manager',
       department: 'Executive Management',

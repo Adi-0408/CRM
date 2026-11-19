@@ -115,69 +115,40 @@ export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser |
     }
   }
 
-  // ── Priority 2: Legacy header-based auth (backward compat) ─────────────────
-  const headerId = req.headers.get('x-user-id');
-  const headerEmail = req.headers.get('x-user-email');
-  const headerRole = req.headers.get('x-user-role');
+  // ── Priority 2: Verify Bearer JWT token from Authorization header ──────────
   const authHeader = req.headers.get('authorization');
-
-  let tokenEmail: string | null = null;
-  let tokenRole: UserRole | null = null;
-
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    if (token.includes('demo_')) {
-      const parts = token.split('_');
-      tokenRole = normalizeRole(parts[2]);
+    const token = authHeader.substring(7).trim();
+    if (token) {
+      const claims = await verifyJWT(token);
+      if (claims) {
+        return {
+          id: claims.userId,
+          name: claims.name,
+          email: claims.email,
+          role: normalizeRole(claims.role),
+          department: claims.department,
+          companyId: claims.companyId || 'itpl-default',
+          platformRole: claims.platformRole,
+          isDemo: claims.isDemo ?? false,
+        };
+      }
     }
   }
 
-  const lookupEmail = headerEmail || tokenEmail;
-  const lookupId = headerId;
+  // ── Priority 3: Development / Internal fallback with Firestore verification ─
+  if (process.env.NODE_ENV !== 'production') {
+    const headerEmail = req.headers.get('x-user-email');
+    const headerId = req.headers.get('x-user-id');
 
-  await connectToDatabase();
-
-  // Verify against Firestore Employee collection by Document ID
-  if (lookupId && mongoose.Types.ObjectId.isValid(lookupId)) {
-    const emp = await Employee.findById(lookupId);
-    if (emp) {
-      return {
-        id: String(emp._id || emp.id),
-        name: emp.name,
-        email: emp.email,
-        role: normalizeRole(emp.role),
-        department: emp.department,
-        companyId: (emp as any).companyId || 'itpl-default',
-        isDemo: false,
-      };
-    }
-  }
-
-  // Verify against Firestore by Email
-  if (lookupEmail) {
-    const emp = await Employee.findOne({ email: lookupEmail.toLowerCase().trim() });
-    if (emp) {
-      return {
-        id: String(emp._id || emp.id),
-        name: emp.name,
-        email: emp.email,
-        role: normalizeRole(emp.role),
-        department: emp.department,
-        companyId: (emp as any).companyId || 'itpl-default',
-        isDemo: false,
-      };
-    }
-  }
-
-  // Fallback to Demo Credentials
-  const rawDemoRole = tokenRole || headerRole;
-  if (rawDemoRole) {
-    const norm = normalizeRole(rawDemoRole);
-    const demo = DEMO_CREDENTIALS.find((d) => d.role === norm);
-    if (demo) {
-      const emp = await Employee.findOne({
-        $or: [{ email: demo.email.toLowerCase() }, { role: demo.role }],
-      });
+    if (headerEmail || headerId) {
+      await connectToDatabase();
+      let emp: any = null;
+      if (headerId && mongoose.Types.ObjectId.isValid(headerId)) {
+        emp = await Employee.findById(headerId);
+      } else if (headerEmail) {
+        emp = await Employee.findOne({ email: headerEmail.toLowerCase().trim() });
+      }
 
       if (emp) {
         return {
@@ -190,29 +161,11 @@ export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser |
           isDemo: false,
         };
       }
-
-      return {
-        id: `demo_${demo.role}`,
-        name: demo.name,
-        email: demo.email,
-        role: demo.role,
-        department: demo.department,
-        companyId: 'itpl-default',
-        isDemo: true,
-      };
     }
   }
 
-  // Super Admin fallback for platform administration
-  return {
-    id: 'super_admin_1',
-    name: 'Platform Super Admin',
-    email: 'admin@crm.com',
-    role: 'admin_manager',
-    platformRole: 'super_admin',
-    department: 'Platform Administration',
-    isDemo: false,
-  };
+  // If unauthenticated or token invalid, return null (never bypass with default super admin)
+  return null;
 }
 
 /**

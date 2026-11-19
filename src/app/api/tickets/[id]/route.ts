@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Ticket from '@/models/Ticket';
 import { requireRoles } from '@/lib/apiAuth';
+import { hasTenantAccess } from '@/lib/tenantScope';
+
+export const dynamic = 'force-dynamic';
 
 export async function PUT(
   req: NextRequest,
@@ -10,8 +13,18 @@ export async function PUT(
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'tech_support']);
     if (authResult.errorResponse) return authResult.errorResponse;
+    const authUser = authResult.user!;
 
     await connectToDatabase();
+    const existing = await Ticket.findById(params.id);
+    if (!existing) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    if (!hasTenantAccess(existing, authUser)) {
+      return NextResponse.json({ error: 'Forbidden: Cross-tenant access denied.' }, { status: 403 });
+    }
+
     const body = await req.json();
     const updated = await Ticket.findByIdAndUpdate(params.id, body, {
       new: true,
@@ -35,8 +48,18 @@ export async function DELETE(
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'tech_support']);
     if (authResult.errorResponse) return authResult.errorResponse;
+    const authUser = authResult.user!;
 
     await connectToDatabase();
+    const existing = await Ticket.findById(params.id);
+    if (!existing) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    if (!hasTenantAccess(existing, authUser)) {
+      return NextResponse.json({ error: 'Forbidden: Cross-tenant access denied.' }, { status: 403 });
+    }
+
     const deleted = await Ticket.findByIdAndDelete(params.id);
     if (!deleted) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });

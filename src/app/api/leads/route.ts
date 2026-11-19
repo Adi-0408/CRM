@@ -4,6 +4,7 @@ import Lead from '@/models/Lead';
 import Employee from '@/models/Employee';
 import { requireRoles, getAuthUser } from '@/lib/apiAuth';
 import { withTenantScope, stampTenantPayload } from '@/lib/tenantScope';
+import { checkPlanLimit } from '@/lib/subscriptionGating';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +59,16 @@ export async function POST(req: NextRequest) {
 
     if (body.value !== undefined) {
       body.value = Number(String(body.value).replace(/\D/g, '')) || 0;
+    }
+
+    // Check Plan Limits (maxLeads)
+    const currentLeadCount = await Lead.countDocuments(withTenantScope({}, authUser));
+    const limitCheck = await checkPlanLimit(authUser, 'leads', currentLeadCount);
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        { error: limitCheck.error || 'Lead limit reached for your subscription plan.' },
+        { status: 403 }
+      );
     }
 
     const payload = stampTenantPayload(body, authUser);

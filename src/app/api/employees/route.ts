@@ -4,6 +4,8 @@ import Employee from '@/models/Employee';
 import { requireRoles, getAuthUser } from '@/lib/apiAuth';
 import { withTenantScope, stampTenantPayload } from '@/lib/tenantScope';
 import { CompanyMember } from '@/models/CompanyMember';
+import { checkPlanLimit } from '@/lib/subscriptionGating';
+import { hashPassword } from '@/lib/password';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,6 +63,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         { error: 'An employee account with this email address already exists.' },
         { status: 400 }
       );
+    }
+
+    // Check Plan Limits (maxUsers)
+    const currentEmpCount = await Employee.countDocuments(withTenantScope({}, authUser));
+    const limitCheck = await checkPlanLimit(authUser, 'users', currentEmpCount);
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        { error: limitCheck.error || 'User limit reached for your subscription plan.' },
+        { status: 403 }
+      );
+    }
+
+    if (body.password) {
+      body.password = hashPassword(String(body.password).trim());
+    } else {
+      body.password = hashPassword('pass123');
     }
 
     body.email = cleanEmail;

@@ -284,7 +284,7 @@ export default function SalesTargetsTab({
 
         <div className="flex items-center space-x-2 text-xs text-slate-500 font-medium self-end sm:self-center">
           <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span>Closed/Won deals automatically credit to the lead's owner</span>
+          <span>Closed/Won deals automatically credit to the lead&apos;s owner</span>
         </div>
       </div>
 

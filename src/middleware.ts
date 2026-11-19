@@ -70,14 +70,24 @@ export function middleware(req: NextRequest) {
   const hostname = req.headers.get('host') || req.headers.get('x-forwarded-host') || 'localhost';
   const slug = extractSlug(hostname);
 
-  const response = NextResponse.next();
+  const requestHeaders = new Headers(req.headers);
+  if (slug) {
+    requestHeaders.set('x-tenant-slug', slug);
+    requestHeaders.set('x-tenant-hostname', hostname);
+  } else {
+    requestHeaders.set('x-tenant-slug', '');
+  }
+
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 
   if (slug) {
-    // Inject tenant slug as header for API routes and pages
     response.headers.set('x-tenant-slug', slug);
     response.headers.set('x-tenant-hostname', hostname);
   } else {
-    // No subdomain — main domain or localhost
     response.headers.set('x-tenant-slug', '');
   }
 

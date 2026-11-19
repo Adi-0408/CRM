@@ -4,6 +4,7 @@ import Task from '@/models/Task';
 import Employee from '@/models/Employee';
 import { getAuthUser, requireRoles } from '@/lib/apiAuth';
 import { recalculateProjectProgress } from '@/lib/projectEngine';
+import { hasTenantAccess } from '@/lib/tenantScope';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,10 @@ export async function PUT(
 ) {
   try {
     const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized: Session required' }, { status: 401 });
+    }
+
     await connectToDatabase();
     const body = await req.json();
     if (body.status === 'todo') {
@@ -22,6 +27,10 @@ export async function PUT(
     const oldTask = await Task.findById(params.id);
     if (!oldTask) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
+
+    if (!hasTenantAccess(oldTask, authUser)) {
+      return NextResponse.json({ error: 'Forbidden: Cross-tenant access denied.' }, { status: 403 });
     }
 
     // Role check: Non-admin & Non-TeamLead users can ONLY update status on their assigned task
@@ -99,11 +108,16 @@ export async function DELETE(
     // Admin (Manager) and Team Leads can delete tasks
     const authResult = await requireRoles(req, ['admin_manager', 'team_lead']);
     if (authResult.errorResponse) return authResult.errorResponse;
+    const authUser = authResult.user!;
 
     await connectToDatabase();
     const task = await Task.findById(params.id);
     if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
+
+    if (!hasTenantAccess(task, authUser)) {
+      return NextResponse.json({ error: 'Forbidden: Cross-tenant access denied.' }, { status: 403 });
     }
 
     if (task.status === 'completed' && task.assignedTo) {

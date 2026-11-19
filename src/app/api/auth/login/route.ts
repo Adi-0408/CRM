@@ -5,6 +5,7 @@ import { DEMO_CREDENTIALS, UserRole } from '@/types/auth';
 import { normalizeRole } from '@/lib/apiAuth';
 import { signJWT, buildSessionCookie } from '@/lib/jwt';
 import { CompanyMember } from '@/models/CompanyMember';
+import { verifyPassword, hashPassword } from '@/lib/password';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
       const sessionCookie = buildSessionCookie(jwtToken);
       const res = NextResponse.json({
         success: true,
-        token: `token_super_admin_${Date.now()}`,
+        token: jwtToken,
         user: {
           id: 'super_admin_1',
           name: 'Platform Super Admin',
@@ -78,15 +79,24 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Validate password
-      const storedPassword = (employee as any).password || 'pass123';
-      const isMatch = password === storedPassword || password === 'pass123';
+      // Validate password securely via scrypt hash verification
+      const storedPassword = (employee as any).password;
+      const isMatch = verifyPassword(password, storedPassword);
 
       if (!isMatch) {
         return NextResponse.json(
-          { error: 'Invalid email or password. Please check with HR/Admin.' },
+          { error: 'Invalid email or password. Please verify your credentials.' },
           { status: 401 }
         );
+      }
+
+      // If legacy unhashed password was stored, automatically upgrade it to scrypt hash
+      if (storedPassword && !storedPassword.includes(':')) {
+        try {
+          await Employee.findByIdAndUpdate(employee._id || employee.id, {
+            password: hashPassword(password),
+          });
+        } catch (_) {}
       }
 
       const role: UserRole = normalizeRole(employee.role);
@@ -124,7 +134,7 @@ export async function POST(req: NextRequest) {
 
       const res = NextResponse.json({
         success: true,
-        token: legacyToken,  // Keep for backward compat with localStorage auth
+        token: jwtToken,
         user: {
           id: userId,
           name: employee.name,

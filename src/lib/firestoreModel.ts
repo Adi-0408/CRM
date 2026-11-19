@@ -538,17 +538,24 @@ export class FirestoreQuery<T = any> implements PromiseLike<T> {
       const constraints = buildQueryConstraints(this.filter);
       if (constraints.length > 0) {
         // Native Firestore query pushes filters to the database engine
-        const q = query(colRef, ...constraints);
+        const finalConstraints = [...constraints];
+        if (this.options.limit && this.options.limit > 0) {
+          finalConstraints.push(firestoreLimit(this.options.limit));
+        }
+        const q = query(colRef, ...finalConstraints);
         snap = await getDocs(q);
       } else if (this.options.limit && (!this.filter || Object.keys(this.filter).length === 0)) {
         const q = query(colRef, firestoreLimit(this.options.limit));
         snap = await getDocs(q);
       } else {
-        snap = await getDocs(colRef);
+        // Safe cap on unbounded queries to prevent accidental read explosions
+        const safeLimit = firestoreLimit(1000);
+        snap = await getDocs(query(colRef, safeLimit));
       }
     } catch (err: any) {
-      // Graceful fallback to collection scan if an index or composite constraint is unconfigured
-      snap = await getDocs(colRef);
+      console.warn(`[FirestoreQuery] Index/constraint fallback for ${this.collectionName}:`, err?.message || err);
+      const safeFallbackLimit = this.options.limit ? firestoreLimit(Math.min(this.options.limit * 2, 500)) : firestoreLimit(500);
+      snap = await getDocs(query(colRef, safeFallbackLimit));
     }
 
     let results: any[] = [];

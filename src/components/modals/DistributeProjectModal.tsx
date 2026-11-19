@@ -120,7 +120,7 @@ export default function DistributeProjectModal({
             <div className="mt-2 pt-2 border-t border-slate-200/60 text-xs text-slate-600">
               <span className="font-bold text-indigo-700 block mb-0.5">What the Client Wants:</span>
               <p className="italic line-clamp-2 bg-white/70 p-2 rounded-xl border border-slate-100">
-                "{project.clientRequirements}"
+                &ldquo;{project.clientRequirements}&rdquo;
               </p>
             </div>
           )}

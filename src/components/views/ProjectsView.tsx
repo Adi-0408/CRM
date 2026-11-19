@@ -261,7 +261,7 @@ export default function ProjectsView({
                         )}
                       </div>
                       <p className="text-slate-700 leading-relaxed italic line-clamp-3">
-                        "{project.clientRequirements}"
+                        &ldquo;{project.clientRequirements}&rdquo;
                       </p>
                     </div>
                   ) : canEditRequirements ? (

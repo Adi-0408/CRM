@@ -88,3 +88,23 @@ export function stampTenantPayload(payload: any, user: AuthenticatedUser | null)
     companyId,
   };
 }
+
+/**
+ * Verifies that a specific document belongs to the authenticated user's company.
+ * Returns true if user is super admin OR resource belongs to the user's company.
+ */
+export function hasTenantAccess(resource: any, user: AuthenticatedUser | null): boolean {
+  if (!user || !resource) return false;
+  if (user.platformRole === 'super_admin') return true;
+
+  const userCompanyId = user.companyId || DEFAULT_COMPANY_ID;
+  const docCompanyId = resource.companyId;
+
+  if (userCompanyId === DEFAULT_COMPANY_ID) {
+    // For default company, allow records explicitly assigned to default or unassigned legacy
+    return !docCompanyId || docCompanyId === DEFAULT_COMPANY_ID;
+  }
+
+  return docCompanyId === userCompanyId;
+}
+
