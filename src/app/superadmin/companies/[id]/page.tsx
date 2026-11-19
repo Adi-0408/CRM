@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
   Building2, Users, Shield, ArrowLeft, RefreshCw, CheckCircle,
-  AlertTriangle, Ban, Calendar, Globe, Mail, Save
+  AlertTriangle, Ban, Calendar, Globe, Mail, Save, ExternalLink
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -115,21 +115,36 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Header & Back Button */}
-      <div className="flex items-center gap-4">
-        <Link
-          href="/superadmin/companies"
-          className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </Link>
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900">{company.companyName}</h1>
-            <code className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
-              {company.slug}
-            </code>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/superadmin/companies"
+            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-slate-900">{company.companyName}</h1>
+              <code className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                {company.slug}
+              </code>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">Tenant ID: {company.id || company._id}</p>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">Tenant ID: {company.id || company._id}</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <a
+            href={`/login?slug=${company.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-all shadow-xs"
+          >
+            <Globe className="w-3.5 h-3.5" />
+            <span>Open Company Workspace</span>
+            <ExternalLink className="w-3.5 h-3.5 ml-0.5 text-indigo-500" />
+          </a>
         </div>
       </div>
 

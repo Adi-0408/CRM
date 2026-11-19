@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { Building2, Plus, Search, RefreshCw, ExternalLink, AlertTriangle, CheckCircle, Clock, Ban, ChevronDown } from 'lucide-react';
 
@@ -196,7 +197,12 @@ export default function CompaniesPage() {
                             {company.companyName?.charAt(0) || 'C'}
                           </div>
                           <div>
-                            <p className="font-medium text-slate-900 text-sm">{company.companyName}</p>
+                            <Link
+                              href={`/superadmin/companies/${id}`}
+                              className="font-semibold text-slate-900 text-sm hover:text-indigo-600 transition-colors"
+                            >
+                              {company.companyName}
+                            </Link>
                             {company.industry && <p className="text-xs text-slate-400">{company.industry}</p>}
                           </div>
                         </div>
@@ -231,7 +237,23 @@ export default function CompaniesPage() {
                         {company.createdAt ? new Date(company.createdAt).toLocaleDateString('en-IN') : '—'}
                       </td>
                       <td className="px-5 py-4">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <Link
+                            href={`/superadmin/companies/${id}`}
+                            className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                          >
+                            Manage
+                          </Link>
+                          <a
+                            href={`/login?slug=${company.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-medium text-slate-600 hover:text-slate-900 flex items-center gap-1 bg-slate-50 border border-slate-200/80 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors"
+                            title="Open company workspace login"
+                          >
+                            <span>Workspace</span>
+                            <ExternalLink className="w-3 h-3 text-slate-400" />
+                          </a>
                           {isSuspended ? (
                             <button
                               onClick={() => handleReactivate(id)}
