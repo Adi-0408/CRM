@@ -173,7 +173,7 @@ export default function OperationalComplianceHub({
 
   // Stable pseudo-random device verification hash
   const deviceHash = useMemo(() => {
-    const raw = `ITPL-NODE-${user?.id || 'CLIENT'}-HW9821-${user?.email || 'SECURE'}`;
+    const raw = `NODE-${user?.id || 'CLIENT'}-HW9821-${user?.email || 'SECURE'}`;
     let hash = 0;
     for (let i = 0; i < raw.length; i++) {
       hash = (hash << 5) - hash + raw.charCodeAt(i);
@@ -446,7 +446,7 @@ export default function OperationalComplianceHub({
         latitude: ITPL_OFFICE_LOCATION.latitude + 0.0008,
         longitude: ITPL_OFFICE_LOCATION.longitude + 0.0008,
         distanceMeters,
-        address: 'ITPL Tech Park, Block B (Pearl Enclave, Sangli)',
+        address: (user as any)?.companyName ? `${(user as any).companyName} Head Office Perimeter` : 'Office Perimeter Zone',
         isWithinPerimeter: true,
       };
 
@@ -564,7 +564,7 @@ export default function OperationalComplianceHub({
             <div className="flex items-center md:justify-end space-x-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
               <h1 className="text-xs sm:text-sm font-black tracking-tight text-slate-900 dark:text-white uppercase">
-                ITPL Operational Compliance Hub
+                {(user as any)?.companyName ? `${(user as any).companyName} Operational Compliance Hub` : 'Operational Compliance Hub'}
               </h1>
             </div>
             <div className="flex items-center md:justify-end space-x-2 text-[11px] font-mono font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">
@@ -959,7 +959,7 @@ export default function OperationalComplianceHub({
                   <Building2 className="w-4 h-4" />
                 </div>
                 <div className="mt-1 bg-slate-900/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-md whitespace-nowrap backdrop-blur-sm border border-slate-700">
-                  ITPL Tech Park, Block B
+                  {(user as any)?.companyName ? `${(user as any).companyName} HQ` : 'Office Perimeter'}
                 </div>
               </div>
 
@@ -1060,7 +1060,7 @@ export default function OperationalComplianceHub({
                   Office Node
                 </p>
                 <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                  ITPL Tech Park, Block B
+                  {(user as any)?.companyName ? `${(user as any).companyName} HQ` : 'HQ Primary Node'}
                 </h4>
                 <p className="text-[10px] text-slate-400 truncate">HQ Perimeter Zone</p>
               </div>
@@ -1092,7 +1092,7 @@ export default function OperationalComplianceHub({
                   IP Network
                 </p>
                 <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                  ITPL-Internal-Secure-5G
+                  Enterprise-Secure-WLAN
                 </h4>
                 <p className="text-[10px] text-slate-400 truncate">Gateway: 192.168.1.1</p>
               </div>

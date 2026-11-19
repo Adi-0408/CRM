@@ -564,7 +564,7 @@ export default function AttendanceVerificationModal({
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-800 flex items-center gap-1 text-[11px]">
                     <Navigation className="w-3 h-3 text-[#0D9488]" />
-                    ITPL Sangli Office
+                    Head Office Perimeter
                   </span>
                   <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold bg-teal-50 text-teal-700 border border-teal-200">
                     &le; {ITPL_OFFICE_LOCATION.allowedRadiusMeters}m Zone

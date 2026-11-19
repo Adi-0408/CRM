@@ -41,6 +41,13 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
+    let body: any = {};
+    try { body = await req.json(); } catch {}
+
+    const targetCompanyName = body.companyName?.trim() || 'Primary Enterprise';
+    const targetSlug = (body.slug?.trim() || 'primary').toLowerCase().replace(/[^a-z0-9-]/g, '-');
+    const targetCompanyId = `company-${targetSlug}`;
+
     const results: string[] = [];
 
     // ── Step 1: Create default Plan ───────────────────────────────────────────
@@ -69,44 +76,44 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Step 2: Create default Company ────────────────────────────────────────
-    const existingCompany = await Company.findById(DEFAULT_COMPANY_ID);
+    const existingCompany = await Company.findById(targetCompanyId);
     if (!existingCompany) {
       await Company.create({
-        _id: DEFAULT_COMPANY_ID,
-        companyName: 'ITPL Technologies',
-        slug: DEFAULT_COMPANY_SLUG,
+        _id: targetCompanyId,
+        companyName: targetCompanyName,
+        slug: targetSlug,
         ownerUid: user.id,
         status: 'active',
         planId: 'plan-enterprise',
         subscriptionStatus: 'active',
         primaryColor: '#4F46E5',
       });
-      results.push('✅ Created default ITPL company.');
+      results.push(`✅ Created company "${targetCompanyName}".`);
     } else {
-      results.push('⏭️ Default ITPL company already exists.');
+      results.push(`⏭️ Company "${targetCompanyName}" already exists.`);
     }
 
     // ── Step 3: Create CompanyDomain record ───────────────────────────────────
-    const existingDomain = await CompanyDomain.findOne({ slug: DEFAULT_COMPANY_SLUG });
+    const existingDomain = await CompanyDomain.findOne({ slug: targetSlug });
     if (!existingDomain) {
       await CompanyDomain.create({
-        companyId: DEFAULT_COMPANY_ID,
-        slug: DEFAULT_COMPANY_SLUG,
+        companyId: targetCompanyId,
+        slug: targetSlug,
         isActive: true,
       });
-      results.push('✅ Created CompanyDomain for slug "itpl".');
+      results.push(`✅ Created CompanyDomain for slug "${targetSlug}".`);
     } else {
-      results.push('⏭️ CompanyDomain "itpl" already exists.');
+      results.push(`⏭️ CompanyDomain "${targetSlug}" already exists.`);
     }
 
     // ── Step 4: Create default Subscription ──────────────────────────────────
-    const existingSub = await Subscription.findOne({ companyId: DEFAULT_COMPANY_ID });
+    const existingSub = await Subscription.findOne({ companyId: targetCompanyId });
     if (!existingSub) {
       const start = new Date();
       const end = new Date(start);
       end.setFullYear(end.getFullYear() + 10); // 10-year "lifetime" plan for internal use
       await Subscription.create({
-        companyId: DEFAULT_COMPANY_ID,
+        companyId: targetCompanyId,
         planId: 'plan-enterprise',
         status: 'active',
         startDate: start.toISOString(),
@@ -114,9 +121,9 @@ export async function POST(req: NextRequest) {
         paymentStatus: 'paid',
         autoRenew: false,
       });
-      results.push('✅ Created default active subscription for ITPL.');
+      results.push(`✅ Created active subscription for "${targetCompanyName}".`);
     } else {
-      results.push('⏭️ Subscription already exists for ITPL.');
+      results.push(`⏭️ Subscription already exists for "${targetCompanyName}".`);
     }
 
     // ── Step 5: Assign all existing employees to the default company ──────────
@@ -134,13 +141,13 @@ export async function POST(req: NextRequest) {
       }
 
       // Add companyId to the employee document
-      await Employee.findByIdAndUpdate(empId, { companyId: DEFAULT_COMPANY_ID });
+      await Employee.findByIdAndUpdate(empId, { companyId: targetCompanyId });
 
       // Create CompanyMember record if not exists
       const existingMember = await CompanyMember.findOne({ employeeId: empId });
       if (!existingMember) {
         await CompanyMember.create({
-          companyId: DEFAULT_COMPANY_ID,
+          companyId: targetCompanyId,
           uid: empId,
           employeeId: empId,
           role: emp.role || 'intern',
@@ -153,7 +160,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    results.push(`✅ Migrated ${migratedCount} employees to ITPL company. ${skippedCount} already migrated.`);
+    results.push(`✅ Migrated ${migratedCount} employees to "${targetCompanyName}". ${skippedCount} already migrated.`);
 
     return NextResponse.json({
       success: true,

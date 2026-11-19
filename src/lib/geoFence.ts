@@ -14,14 +14,17 @@ export interface OfficeLocation {
   allowedRadiusMeters: number;
 }
 
-export const ITPL_OFFICE_LOCATION: OfficeLocation = {
-  name: 'ITPL Head Office (Pearl Enclave)',
+export const DEFAULT_OFFICE_LOCATION: OfficeLocation = {
+  name: 'Head Office Perimeter',
   address:
     'Pearl Enclave, MSEB Rd, near Walchand college, Viya Nagar, Vishrambag, Sangli Miraj Kupwad, Maharashtra 416415',
   latitude: 16.84582,
   longitude: 74.60055,
   allowedRadiusMeters: 250, // 250m perimeter (accommodates indoor building GPS & WiFi triangulation drift)
 };
+
+// Backwards compatibility alias
+export const ITPL_OFFICE_LOCATION = DEFAULT_OFFICE_LOCATION;
 
 /**
  * Calculates the great-circle distance between two GPS coordinates using the Haversine formula
