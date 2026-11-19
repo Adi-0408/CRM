@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/db';
 import Attendance from '@/models/Attendance';
 import Employee from '@/models/Employee';
 import { getAuthUser } from '@/lib/apiAuth';
+import { withTenantScope, stampTenantPayload } from '@/lib/tenantScope';
 import {
   evaluateDailyAttendance,
   getLocalTodayStr,
@@ -48,7 +49,8 @@ export async function GET(req: NextRequest) {
       query.employee = employeeId;
     }
 
-    const records = await Attendance.find(query)
+    const scopedQuery = withTenantScope(query, authUser);
+    const records = await Attendance.find(scopedQuery)
       .populate('employee', 'name email role department avatar')
       .populate('overriddenBy', 'name email')
       .sort({ date: -1, updatedAt: -1 });
@@ -183,6 +185,7 @@ export async function POST(req: NextRequest) {
         record = new Attendance({
           employee: targetEmployeeId,
           date: todayStr,
+          companyId: authUser?.companyId || 'itpl-default',
         });
       }
 
@@ -427,6 +430,7 @@ export async function POST(req: NextRequest) {
           employee: targetEmployeeId,
           date: todayStr,
           sessions: [],
+          companyId: authUser?.companyId || 'itpl-default',
         });
       }
 

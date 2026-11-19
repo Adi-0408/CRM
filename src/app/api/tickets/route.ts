@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import { getAuthUser } from '@/lib/apiAuth';
+import { withTenantScope, stampTenantPayload } from '@/lib/tenantScope';
 
 export const dynamic = 'force-dynamic';
 import Ticket from '@/models/Ticket';
@@ -8,6 +9,7 @@ import Employee from '@/models/Employee';
 
 export async function GET(req: NextRequest) {
   try {
+    const authUser = await getAuthUser(req);
     await connectToDatabase();
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
@@ -17,7 +19,8 @@ export async function GET(req: NextRequest) {
     if (status && status !== 'all') query.status = status;
     if (priority && priority !== 'all') query.priority = priority;
 
-    const tickets = await Ticket.find(query)
+    const scopedQuery = withTenantScope(query, authUser);
+    const tickets = await Ticket.find(scopedQuery)
       .sort({ createdAt: -1 })
       .populate('assignedTo', 'name email avatar role');
 
@@ -47,7 +50,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const newTicket = await Ticket.create(body);
+    const payload = stampTenantPayload(body, authUser);
+    const newTicket = await Ticket.create(payload);
     const populated = await Ticket.findById(newTicket._id).populate(
       'assignedTo',
       'name email avatar role'

@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/db';
 import Leave from '@/models/Leave';
 import Employee from '@/models/Employee';
 import { getAuthUser, isValidDocId } from '@/lib/apiAuth';
+import { withTenantScope, stampTenantPayload } from '@/lib/tenantScope';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +33,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const leaves = await Leave.find(query)
+    const scopedQuery = withTenantScope(query, authUser);
+    const leaves = await Leave.find(scopedQuery)
       .populate('employee', 'name email role department avatar')
       .populate('approvedBy', 'name email role')
       .sort({ createdAt: -1 });
@@ -102,6 +104,7 @@ export async function POST(req: NextRequest) {
       days: body.days || days,
       reason: body.reason,
       status: 'pending', // FORCED
+      companyId: authUser?.companyId || 'itpl-default',
     });
 
     const populated = await Leave.findById(newLeave._id).populate(

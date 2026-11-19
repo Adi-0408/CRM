@@ -1,0 +1,268 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // HELPER FUNCTIONS
+    // ──────────────────────────────────────────────────────────────────────────
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user is platform super admin (via custom claims or platform collection)
+    function isSuperAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.platformRole == 'super_admin' ||
+        request.auth.token.email == 'admin@crm.com'
+      );
+    }
+
+    // User's assigned company ID from JWT custom claims
+    function userCompanyId() {
+      return request.auth.token.companyId;
+    }
+
+    // Check if document belongs to user's company
+    function belongsToUserCompany(data) {
+      return isSuperAdmin() || (
+        isAuthenticated() &&
+        (data.companyId == userCompanyId() || data.companyId == 'itpl-default')
+      );
+    }
+
+    // Check if current user is admin of the company
+    function isCompanyAdmin() {
+      return isAuthenticated() && (
+        isSuperAdmin() ||
+        request.auth.token.role == 'admin_manager' ||
+        request.auth.token.role == 'company_admin'
+      );
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // PLATFORM-LEVEL COLLECTIONS
+    // ──────────────────────────────────────────────────────────────────────────
+
+    // Public plans catalog
+    match /plans/{planId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // Domain registry used for subdomain resolution
+    match /companyDomains/{domainSlug} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // Subscriptions
+    match /subscriptions/{subscriptionId} {
+      allow read: if isSuperAdmin() || (isAuthenticated() && resource.data.companyId == userCompanyId());
+      allow write: if isSuperAdmin();
+    }
+
+    // Payments
+    match /payments/{paymentId} {
+      allow read: if isSuperAdmin() || (isAuthenticated() && resource.data.companyId == userCompanyId());
+      allow write: if isSuperAdmin();
+    }
+
+    // Audit logs
+    match /auditLogs/{logId} {
+      allow read: if isSuperAdmin() || (isAuthenticated() && resource.data.companyId == userCompanyId());
+      allow create: if isAuthenticated();
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // Platform global settings
+    match /platformSettings/{settingId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // Platform user profiles
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // TENANT COMPANIES & MEMBERSHIP
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /companies/{companyId} {
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
+        userCompanyId() == companyId ||
+        resource.data.ownerUid == request.auth.uid
+      );
+      allow create: if isSuperAdmin() || isAuthenticated();
+      allow update: if isSuperAdmin() || (isAuthenticated() && userCompanyId() == companyId && isCompanyAdmin());
+      allow delete: if isSuperAdmin();
+
+      // Subcollection members
+      match /members/{memberId} {
+        allow read: if isAuthenticated() && (
+          isSuperAdmin() ||
+          userCompanyId() == companyId
+        );
+        allow write: if isSuperAdmin() || (isAuthenticated() && userCompanyId() == companyId && isCompanyAdmin());
+      }
+    }
+
+    // Top-level companyMembers collection
+    match /companyMembers/{memberId} {
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId() ||
+        resource.data.uid == request.auth.uid
+      );
+      allow write: if isSuperAdmin() || isCompanyAdmin();
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // TENANT SCOPED CRM DATA COLLECTIONS
+    // ──────────────────────────────────────────────────────────────────────────
+
+    // Employees
+    match /employees/{employeeId} {
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId() ||
+        resource.data.companyId == null
+      );
+      allow create: if isAuthenticated() && (isCompanyAdmin() || isSuperAdmin());
+      allow update: if isAuthenticated() && (
+        isSuperAdmin() ||
+        (resource.data.companyId == userCompanyId() && (isCompanyAdmin() || request.auth.uid == employeeId))
+      );
+      allow delete: if isSuperAdmin() || isCompanyAdmin();
+    }
+
+    // Attendance
+    match /attendance/{attendanceId} {
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId() ||
+        resource.data.companyId == null
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId()
+      );
+      allow delete: if isSuperAdmin() || isCompanyAdmin();
+    }
+
+    // Tasks
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId() ||
+        resource.data.companyId == null
+      );
+      allow write: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId()
+      );
+    }
+
+    // Projects
+    match /projects/{projectId} {
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId() ||
+        resource.data.companyId == null
+      );
+      allow write: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId()
+      );
+    }
+
+    // Leads
+    match /leads/{leadId} {
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId() ||
+        resource.data.companyId == null
+      );
+      allow write: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId()
+      );
+    }
+
+    // Leaves
+    match /leaves/{leaveId} {
+      allow read, write: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId() ||
+        resource.data.companyId == null
+      );
+    }
+
+    // Payroll
+    match /payroll/{payrollId} {
+      allow read, write: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId() ||
+        resource.data.companyId == null
+      );
+    }
+
+    // Tickets
+    match /tickets/{ticketId} {
+      allow read, write: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId() ||
+        resource.data.companyId == null
+      );
+    }
+
+    // Branches
+    match /branches/{branchId} {
+      allow read, write: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId() ||
+        resource.data.companyId == null
+      );
+    }
+
+    // Standups
+    match /standups/{standupId} {
+      allow read, write: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId() ||
+        resource.data.companyId == null
+      );
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read, write: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId() ||
+        resource.data.companyId == null
+      );
+    }
+
+    // Invoices & Quotations
+    match /invoices/{invoiceId} {
+      allow read, write: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId() ||
+        resource.data.companyId == null
+      );
+    }
+
+    match /quotations/{quotationId} {
+      allow read, write: if isAuthenticated() && (
+        isSuperAdmin() ||
+        resource.data.companyId == userCompanyId() ||
+        resource.data.companyId == null
+      );
+    }
+  }
+}

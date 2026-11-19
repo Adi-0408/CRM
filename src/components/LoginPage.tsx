@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Lock,
   Mail,
@@ -9,12 +10,20 @@ import {
   EyeOff,
   AlertCircle,
   Sparkles,
+  Building2,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { DEMO_CREDENTIALS } from '@/types/auth';
 
 interface LoginPageProps {
   onSuccess?: () => void;
+}
+
+interface TenantInfo {
+  companyName: string;
+  slug: string;
+  primaryColor?: string;
+  logo?: string;
 }
 
 export default function LoginPage({ onSuccess }: LoginPageProps) {
@@ -24,6 +33,23 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [tenant, setTenant] = useState<TenantInfo | null>(null);
+
+  // Check if tenant context exists
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get('slug');
+    if (slug) {
+      fetch(`/api/tenant?slug=${slug}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success && d.tenant) {
+            setTenant(d.tenant);
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,14 +85,23 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
       <div className="relative z-10 bg-white/95 backdrop-blur-xl rounded-3xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 sm:p-8 max-w-md w-full animate-in fade-in zoom-in-95 duration-200">
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#635BFF] text-white font-extrabold text-xl shadow-md shadow-indigo-500/20 mb-3.5">
-            P
+          <div
+            className="inline-flex items-center justify-center w-12 h-12 rounded-2xl text-white font-extrabold text-xl shadow-md mb-3.5"
+            style={{ backgroundColor: tenant?.primaryColor || '#635BFF' }}
+          >
+            {tenant ? tenant.companyName.charAt(0) : 'P'}
           </div>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-            Prism<span className="text-[#635BFF]">CRM</span>
+            {tenant ? (
+              <span>{tenant.companyName}</span>
+            ) : (
+              <>
+                Prism<span className="text-[#635BFF]">CRM</span>
+              </>
+            )}
           </h2>
           <p className="text-xs text-slate-400 font-medium mt-1">
-            Sign in to access your workspace
+            {tenant ? `Sign in to ${tenant.companyName} Workspace` : 'Sign in to access your workspace'}
           </p>
         </div>
 
@@ -173,10 +208,21 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
           </div>
         </div>
 
+        {/* Register Company Link */}
+        <div className="mt-4 text-center border-t border-slate-100 pt-3">
+          <Link
+            href="/register"
+            className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center justify-center gap-1.5 transition-colors"
+          >
+            <Building2 className="w-3.5 h-3.5" />
+            <span>Create new company workspace →</span>
+          </Link>
+        </div>
+
         {/* Footer */}
-        <div className="mt-5 text-center">
+        <div className="mt-4 text-center">
           <p className="text-[11px] text-slate-400 font-medium">
-            Strict Role-Based Separation of Privileges • PrismCRM v2.0
+            Strict Role-Based Separation of Privileges • Multi-Tenant Enterprise Edition
           </p>
         </div>
       </div>

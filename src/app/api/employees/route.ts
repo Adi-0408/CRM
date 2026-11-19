@@ -1,19 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Employee from '@/models/Employee';
-import { requireRoles } from '@/lib/apiAuth';
+import { requireRoles, getAuthUser } from '@/lib/apiAuth';
+import { withTenantScope, stampTenantPayload } from '@/lib/tenantScope';
+import { CompanyMember } from '@/models/CompanyMember';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    const user = await getAuthUser(req);
     await connectToDatabase();
     const { searchParams } = new URL(req.url);
     const department = searchParams.get('department');
     const query: any = {};
     if (department && department !== 'all') query.department = department;
 
-    const employees = await Employee.find(query).sort({ name: 1 });
+    const scopedQuery = withTenantScope(query, user);
+    const employees = await Employee.find(scopedQuery).sort({ name: 1 });
     return NextResponse.json(employees);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -98,7 +102,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       body.joinDate = new Date().toISOString();
     }
 
-    const newEmp = await Employee.create(body);
+    const payload = stampTenantPayload(body, authUser);
+    const newEmp = await Employee.create(payload);
+    const empId = String(newEmp._id || newEmp.id);
+
+    // Create CompanyMember link
+    try {
+      await CompanyMember.create({
+        companyId: authUser.companyId || 'itpl-default',
+        uid: empId,
+        employeeId: empId,
+        role: newEmp.role,
+        isActive: true,
+        joinedAt: new Date().toISOString(),
+      });
+    } catch (mErr) {
+      console.warn('CompanyMember creation warning:', mErr);
+    }
 
     // Also sync credentials into User collection
     try {

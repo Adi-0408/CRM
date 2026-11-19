@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Employee from '@/models/Employee';
 import { UserRole, DEMO_CREDENTIALS } from '@/types/auth';
+import { verifyJWT, COOKIE_NAME } from '@/lib/jwt';
 
 export function isValidDocId(id: any): boolean {
   if (!id || typeof id !== 'string') return false;
@@ -26,6 +27,8 @@ export interface AuthenticatedUser {
   email: string;
   role: UserRole;
   department?: string;
+  companyId?: string;      // tenant isolation key
+  platformRole?: string;   // 'super_admin' for platform admins
   isDemo?: boolean;
 }
 
@@ -89,9 +92,30 @@ export function normalizeRole(rawRole: any): UserRole {
 }
 
 /**
- * Extracts and verifies the authenticated user from request headers and MongoDB
+ * Extracts and verifies the authenticated user from JWT cookie or request headers and Firestore.
+ * Priority: 1) httpOnly JWT cookie → 2) Header-based legacy auth → 3) Demo fallback
  */
 export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser | null> {
+  // ── Priority 1: Verify secure httpOnly JWT cookie ──────────────────────────
+  const cookieHeader = req.headers.get('cookie') || '';
+  const cookieMatch = cookieHeader.match(new RegExp(`(?:^|;\\s*)${COOKIE_NAME}=([^;]+)`));
+  if (cookieMatch) {
+    const claims = await verifyJWT(cookieMatch[1]);
+    if (claims) {
+      return {
+        id: claims.userId,
+        name: claims.name,
+        email: claims.email,
+        role: normalizeRole(claims.role),
+        department: claims.department,
+        companyId: claims.companyId || 'itpl-default',
+        platformRole: claims.platformRole,
+        isDemo: claims.isDemo ?? false,
+      };
+    }
+  }
+
+  // ── Priority 2: Legacy header-based auth (backward compat) ─────────────────
   const headerId = req.headers.get('x-user-id');
   const headerEmail = req.headers.get('x-user-email');
   const headerRole = req.headers.get('x-user-role');
@@ -113,7 +137,7 @@ export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser |
 
   await connectToDatabase();
 
-  // 1. Verify against Firestore Employee collection by Document ID
+  // Verify against Firestore Employee collection by Document ID
   if (lookupId && mongoose.Types.ObjectId.isValid(lookupId)) {
     const emp = await Employee.findById(lookupId);
     if (emp) {
@@ -123,12 +147,13 @@ export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser |
         email: emp.email,
         role: normalizeRole(emp.role),
         department: emp.department,
+        companyId: (emp as any).companyId || 'itpl-default',
         isDemo: false,
       };
     }
   }
 
-  // 2. Verify against Firestore by Email
+  // Verify against Firestore by Email
   if (lookupEmail) {
     const emp = await Employee.findOne({ email: lookupEmail.toLowerCase().trim() });
     if (emp) {
@@ -138,12 +163,13 @@ export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser |
         email: emp.email,
         role: normalizeRole(emp.role),
         department: emp.department,
+        companyId: (emp as any).companyId || 'itpl-default',
         isDemo: false,
       };
     }
   }
 
-  // 3. Fallback to Demo Credentials
+  // Fallback to Demo Credentials
   const rawDemoRole = tokenRole || headerRole;
   if (rawDemoRole) {
     const norm = normalizeRole(rawDemoRole);
@@ -160,6 +186,7 @@ export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser |
           email: emp.email,
           role: normalizeRole(emp.role),
           department: emp.department,
+          companyId: (emp as any).companyId || 'itpl-default',
           isDemo: false,
         };
       }
@@ -170,12 +197,13 @@ export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser |
         email: demo.email,
         role: demo.role,
         department: demo.department,
+        companyId: 'itpl-default',
         isDemo: true,
       };
     }
   }
 
-  // 4. Fallback to demo admin if running local tests without headers
+  // Final fallback to demo admin
   const defaultAdmin = DEMO_CREDENTIALS[0];
   const adminEmp = await Employee.findOne({ email: defaultAdmin.email.toLowerCase() });
   if (adminEmp) {
@@ -185,6 +213,7 @@ export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser |
       email: adminEmp.email,
       role: normalizeRole(adminEmp.role),
       department: adminEmp.department,
+      companyId: (adminEmp as any).companyId || 'itpl-default',
       isDemo: false,
     };
   }
@@ -195,6 +224,7 @@ export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser |
     email: defaultAdmin.email,
     role: defaultAdmin.role,
     department: defaultAdmin.department,
+    companyId: 'itpl-default',
     isDemo: true,
   };
 }

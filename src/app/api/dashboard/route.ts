@@ -1,5 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
+import { getAuthUser } from '@/lib/apiAuth';
+import { withTenantScope } from '@/lib/tenantScope';
 
 export const dynamic = 'force-dynamic';
 import Employee from '@/models/Employee';
@@ -9,14 +11,15 @@ import Ticket from '@/models/Ticket';
 import Lead from '@/models/Lead';
 import Attendance from '@/models/Attendance';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const authUser = await getAuthUser(req);
     await connectToDatabase();
 
     const todayStr = new Date().toISOString().split('T')[0];
     const now = new Date();
 
-    // Execute consolidated queries in parallel via Promise.all
+    // Execute consolidated queries in parallel via Promise.all with tenant scoping
     const [
       totalEmployees,
       todayAttendance,
@@ -26,19 +29,19 @@ export async function GET() {
       allLeads,
       allTasks,
     ] = await Promise.all([
-      Employee.countDocuments(),
-      Attendance.find({ date: todayStr }),
-      Employee.find({ completedTasksCount: { $gt: 0 } })
+      Employee.countDocuments(withTenantScope({}, authUser)),
+      Attendance.find(withTenantScope({ date: todayStr }, authUser)),
+      Employee.find(withTenantScope({ completedTasksCount: { $gt: 0 } }, authUser))
         .sort({ completedTasksCount: -1, createdAt: 1 })
         .limit(5)
         .select('name role department avatar completedTasksCount'),
-      Project.find(),
-      Ticket.find()
+      Project.find(withTenantScope({}, authUser)),
+      Ticket.find(withTenantScope({}, authUser))
         .sort({ createdAt: -1 })
         .limit(5)
         .populate('assignedTo', 'name avatar'),
-      Lead.find(),
-      Task.find().populate('project', 'status').select('status project'),
+      Lead.find(withTenantScope({}, authUser)),
+      Task.find(withTenantScope({}, authUser)).populate('project', 'status').select('status project'),
     ]);
 
     const presentToday = todayAttendance.filter((a: any) => a.status === 'present').length;

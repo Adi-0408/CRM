@@ -144,6 +144,13 @@ export function matchesFilter(docData: any, filter?: any): boolean {
       continue;
     }
 
+    // Handle $and: [...]
+    if (key === '$and' && Array.isArray(filterVal)) {
+      const andMatched = filterVal.every((subFilter) => matchesFilter(docData, subFilter));
+      if (!andMatched) return false;
+      continue;
+    }
+
     const docVal = docData[key];
 
     // Handle regex match { field: { $regex: 'pattern', $options: 'i' } }

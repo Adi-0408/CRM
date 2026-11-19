@@ -3,6 +3,8 @@ import { connectToDatabase } from '@/lib/db';
 import Employee from '@/models/Employee';
 import { DEMO_CREDENTIALS, UserRole } from '@/types/auth';
 import { normalizeRole } from '@/lib/apiAuth';
+import { signJWT, buildSessionCookie } from '@/lib/jwt';
+import { CompanyMember } from '@/models/CompanyMember';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,28 +74,76 @@ export async function POST(req: NextRequest) {
       }
 
       const role: UserRole = normalizeRole(employee.role);
+      const userId = String(employee._id || employee.id);
 
-      return NextResponse.json({
+      // Look up company membership
+      let companyId: string | undefined;
+      try {
+        const membership = await CompanyMember.findOne({ employeeId: userId, isActive: true });
+        if (membership) companyId = membership.companyId;
+        // Fallback: check by email
+        if (!companyId) {
+          const memberByEmail = await CompanyMember.findOne({ uid: userId, isActive: true });
+          if (memberByEmail) companyId = memberByEmail.companyId;
+        }
+        // Final fallback: assign to default company
+        if (!companyId) companyId = 'itpl-default';
+      } catch {
+        companyId = 'itpl-default';
+      }
+
+      // Issue secure JWT
+      const jwtToken = await signJWT({
+        userId,
+        email: employee.email,
+        name: employee.name,
+        role,
+        companyId,
+        department: employee.department,
+        isDemo: false,
+      });
+
+      const sessionCookie = buildSessionCookie(jwtToken);
+      const legacyToken = `token_${userId}_${Date.now()}`;
+
+      const res = NextResponse.json({
         success: true,
-        token: `token_${employee._id}_${Date.now()}`,
+        token: legacyToken,  // Keep for backward compat with localStorage auth
         user: {
-          id: String(employee._id),
+          id: userId,
           name: employee.name,
           email: employee.email,
-          role: role,
+          role,
           department: employee.department || 'General',
           avatar: employee.avatar || '',
           phone: employee.phone || '',
           salary: employee.salary || employee.baseSalary || 50000,
           baseSalary: employee.baseSalary || employee.salary || 50000,
           status: employee.status || 'active',
+          companyId,
         },
       });
+
+      // Set httpOnly session cookie
+      res.headers.set('Set-Cookie', sessionCookie);
+      return res;
     }
 
     // 3. Fallback to demo credentials if employee doc not yet in DB
     if (demoMatch) {
-      return NextResponse.json({
+      const jwtToken = await signJWT({
+        userId: `demo_${demoMatch.role}`,
+        email: demoMatch.email,
+        name: demoMatch.name,
+        role: demoMatch.role,
+        companyId: 'itpl-default',
+        department: demoMatch.department,
+        isDemo: true,
+      });
+
+      const sessionCookie = buildSessionCookie(jwtToken);
+
+      const res = NextResponse.json({
         success: true,
         token: `token_demo_${demoMatch.role}_${Date.now()}`,
         user: {
@@ -106,8 +156,12 @@ export async function POST(req: NextRequest) {
           salary: demoMatch.baseSalary,
           baseSalary: demoMatch.baseSalary,
           status: 'active',
+          companyId: 'itpl-default',
         },
       });
+
+      res.headers.set('Set-Cookie', sessionCookie);
+      return res;
     }
 
     return NextResponse.json(

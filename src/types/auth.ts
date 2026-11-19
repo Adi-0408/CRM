@@ -19,6 +19,9 @@ export interface AuthUser {
   phone?: string;
   salary?: number;
   baseSalary?: number;
+  companyId?: string;
+  companyName?: string;
+  platformRole?: string;
 }
 
 export interface RoleConfig {

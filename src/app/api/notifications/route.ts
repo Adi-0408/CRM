@@ -7,6 +7,7 @@ import Leave from '@/models/Leave';
 import Ticket from '@/models/Ticket';
 import Lead from '@/models/Lead';
 import { getAuthUser } from '@/lib/apiAuth';
+import { withTenantScope, stampTenantPayload } from '@/lib/tenantScope';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,8 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    let notifications = await Notification.find(query).sort({ createdAt: -1 }).limit(30);
+    const scopedQuery = withTenantScope(query, authUser);
+    let notifications = await Notification.find(scopedQuery).sort({ createdAt: -1 }).limit(30);
 
     // If notifications store is empty, generate initial contextual notifications from real system state
     if (!notifications || notifications.length === 0) {

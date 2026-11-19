@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Quotation from '@/models/Quotation';
 import Lead from '@/models/Lead';
-import { requireRoles } from '@/lib/apiAuth';
+import { requireRoles, getAuthUser } from '@/lib/apiAuth';
+import { withTenantScope, stampTenantPayload } from '@/lib/tenantScope';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    const authUser = await getAuthUser(req);
     await connectToDatabase();
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
@@ -17,7 +19,8 @@ export async function GET(req: NextRequest) {
     if (status && status !== 'all') query.status = status;
     if (leadId) query.leadId = leadId;
 
-    const quotations = await Quotation.find(query).sort({ createdAt: -1 });
+    const scopedQuery = withTenantScope(query, authUser);
+    const quotations = await Quotation.find(scopedQuery).sort({ createdAt: -1 });
     return NextResponse.json(quotations);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -67,6 +70,7 @@ export async function POST(req: NextRequest) {
         : new Date(Date.now() + 30 * 86400000), // Default 30 days validity
       createdBy: authResult.user?.name || 'Sales Representative',
       createdAt: new Date(),
+      companyId: authResult.user?.companyId || 'itpl-default',
     });
 
     // If linked to a lead, update lead quotation info & advance stage to 'proposal'

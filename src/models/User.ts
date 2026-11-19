@@ -1,23 +1,19 @@
 import { createFirestoreModel } from '@/lib/firestoreModel';
-import { UserRole } from '@/types/auth';
+
+export type PlatformRole = 'super_admin' | 'support' | 'user';
 
 export interface IUser {
   _id?: string;
   id?: string;
   name: string;
   email: string;
-  password?: string;
-  role: UserRole | string;
-  department: string;
-  designation?: string;
   phone?: string;
-  avatar?: any;
-  status?: string;
-  joiningDate?: Date | string;
-  baseSalary?: number;
-  salary?: any;
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
+  platformRole: PlatformRole;  // Platform-level role (super_admin, etc.)
+  avatar?: string;
+  isActive: boolean;
+  lastLoginAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export const User = createFirestoreModel<IUser>('users');

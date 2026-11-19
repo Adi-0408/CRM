@@ -12,7 +12,9 @@ import {
   Luggage,
   FolderKanban,
   FileSpreadsheet,
+  Shield,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import NotificationDrawer from '@/components/notifications/NotificationDrawer';
 
@@ -242,6 +244,18 @@ export default function Header({
           <div className="hidden sm:flex items-center gap-2">
             {renderRoleActionButtons()}
           </div>
+
+          {/* Super Admin Quick Link */}
+          {(user?.email === (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'admin@crm.com') ||
+            (user as any)?.platformRole === 'super_admin') && (
+            <Link
+              href="/superadmin"
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold hover:bg-indigo-100 transition-colors shrink-0 shadow-2xs"
+            >
+              <Shield className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Super Admin</span>
+            </Link>
+          )}
 
           {/* Notification Bell */}
           <div className="relative">

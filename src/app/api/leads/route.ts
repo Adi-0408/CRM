@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Lead from '@/models/Lead';
 import Employee from '@/models/Employee';
-import { requireRoles } from '@/lib/apiAuth';
+import { requireRoles, getAuthUser } from '@/lib/apiAuth';
+import { withTenantScope, stampTenantPayload } from '@/lib/tenantScope';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    const user = await getAuthUser(req);
     await connectToDatabase();
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
@@ -16,7 +18,8 @@ export async function GET(req: NextRequest) {
       query.status = status;
     }
 
-    const leads = await Lead.find(query)
+    const scopedQuery = withTenantScope(query, user);
+    const leads = await Lead.find(scopedQuery)
       .sort({ createdAt: -1 })
       .populate('assignedTo', 'name email avatar role');
 
@@ -30,6 +33,7 @@ export async function POST(req: NextRequest) {
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'sales']);
     if (authResult.errorResponse) return authResult.errorResponse;
+    const authUser = authResult.user!;
 
     await connectToDatabase();
     const body = await req.json();
@@ -56,7 +60,8 @@ export async function POST(req: NextRequest) {
       body.value = Number(String(body.value).replace(/\D/g, '')) || 0;
     }
 
-    const newLead = await Lead.create(body);
+    const payload = stampTenantPayload(body, authUser);
+    const newLead = await Lead.create(payload);
     const populated = await Lead.findById(newLead._id).populate(
       'assignedTo',
       'name email avatar role'
