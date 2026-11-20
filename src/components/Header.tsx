@@ -6,6 +6,7 @@ import {
   Plus,
   Bell,
   Clock,
+  Lock,
   LogOut,
   CalendarCheck,
   CreditCard,
@@ -25,6 +26,7 @@ interface HeaderProps {
   onOpenAddEmployee?: () => void;
   onNavigateTab?: (tab: string) => void;
   onToggleMobileMenu?: () => void;
+  onOpenChangePassword?: () => void;
 }
 
 export default function Header({
@@ -35,6 +37,7 @@ export default function Header({
   onOpenAddEmployee,
   onNavigateTab,
   onToggleMobileMenu,
+  onOpenChangePassword,
 }: HeaderProps) {
   const { user, role, roleConfig, logout } = useAuth();
   const { branding } = useTenant();
@@ -286,6 +289,17 @@ export default function Header({
               />
             )}
           </div>
+
+          {/* Change Password Button */}
+          {onOpenChangePassword && (
+            <button
+              onClick={onOpenChangePassword}
+              className="w-9 h-9 rounded-xl bg-white/80 hover:bg-slate-100 backdrop-blur-xs text-slate-500 hover:text-slate-900 transition-colors border border-slate-200/80 shadow-2xs flex items-center justify-center shrink-0 cursor-pointer active:scale-95"
+              title="Change Password"
+            >
+              <Lock className="w-4 h-4" />
+            </button>
+          )}
 
           {/* Direct Logout Button */}
           <button

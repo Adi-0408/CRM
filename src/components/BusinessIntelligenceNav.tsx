@@ -102,7 +102,7 @@ export default function BusinessIntelligenceNav({
                   : 'text-slate-500 hover:text-slate-900 hover:bg-white/80 hover:shadow-xs font-semibold'
               }`}
             >
-              <Icon className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isActive ? 'text-[#635BFF] scale-110' : 'text-slate-400'}`} />
+              <Icon className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isActive ? 'text-brand-primary scale-110' : 'text-slate-400'}`} />
               <span>{tab.label}</span>
             </button>
           );

@@ -56,6 +56,7 @@ export default function Sidebar({
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'tasks', label: 'Task Management', icon: List },
     { id: 'leads', label: 'Lead Management', icon: Target },
+    { id: 'inquiries', label: 'Inquiries', icon: Inbox, badge: unreadInquiriesCount },
     { id: 'projects', label: 'Project', icon: Briefcase },
     { id: 'attendance', label: 'Attendance', icon: Calendar },
     { id: 'payroll', label: 'Payroll', icon: IndianRupee },
@@ -184,6 +185,7 @@ export default function Sidebar({
                       ? {
                           backgroundColor: 'var(--color-primary-light, #F0EEFF)',
                           color: branding.primary_color || 'var(--color-primary, #635BFF)',
+                          border: `1.5px solid ${branding.primary_color || 'var(--color-primary, #635BFF)'}`,
                         }
                       : undefined
                   }
@@ -206,7 +208,7 @@ export default function Sidebar({
               onClick={() => handleSelectTab(item.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] transition-all duration-150 active:scale-[0.99] group text-left ${
                 isActive
-                  ? 'font-semibold shadow-xs'
+                  ? 'font-bold shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80 font-medium'
               }`}
               style={
@@ -214,6 +216,7 @@ export default function Sidebar({
                   ? {
                       backgroundColor: 'var(--color-primary-light, #F0EEFF)',
                       color: branding.primary_color || 'var(--color-primary, #635BFF)',
+                      borderLeft: `3px solid ${branding.primary_color || 'var(--color-primary, #635BFF)'}`,
                     }
                   : undefined
               }

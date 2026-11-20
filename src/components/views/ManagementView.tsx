@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Building2,
   CheckCircle2,
+  Lock,
   RefreshCw,
   Sparkles,
   MapPin,
@@ -32,6 +33,7 @@ import { useAuth } from '@/context/AuthContext';
 
 interface ManagementViewProps {
   onRefresh: () => void;
+  onOpenChangePassword?: () => void;
 }
 
 interface BranchItem {
@@ -97,13 +99,11 @@ const TIMEZONE_OPTIONS = [
   { value: 'UTC', label: 'UTC (Coordinated Universal Time)' },
 ];
 
-export default function ManagementView({ onRefresh }: ManagementViewProps) {
+export default function ManagementView({ onRefresh, onOpenChangePassword }: ManagementViewProps) {
   const { branding, updateBranding, refreshBranding } = useTenant();
   const { user } = useAuth();
 
-  const [activeSubTab, setActiveSubTab] = useState<'branding' | 'branches' | 'data'>('branding');
-  const [seeding, setSeeding] = useState(false);
-  const [clearing, setClearing] = useState(false);
+  const [activeSubTab, setActiveSubTab] = useState<'branding' | 'branches'>('branding');
   const [message, setMessage] = useState('');
 
   // Branding Form State
@@ -377,38 +377,6 @@ export default function ManagementView({ onRefresh }: ManagementViewProps) {
     }
   };
 
-  const handleClear = async () => {
-    if (!confirm('Are you sure you want to delete all database records for this company?')) return;
-    try {
-      setClearing(true);
-      setMessage('');
-      const res = await fetch('/api/seed', { method: 'DELETE' });
-      const data = await res.json();
-      setMessage(data.message || 'All records cleared');
-      onRefresh();
-    } catch (err: any) {
-      setMessage(err.message || 'Error clearing database');
-    } finally {
-      setClearing(false);
-    }
-  };
-
-  const handleSeed = async () => {
-    try {
-      setSeeding(true);
-      setMessage('');
-      const res = await fetch('/api/seed', { method: 'POST' });
-      const data = await res.json();
-      setMessage(data.message || 'Sample data populated');
-      onRefresh();
-      await fetchBranches();
-    } catch (err: any) {
-      setMessage(err.message || 'Error seeding database');
-    } finally {
-      setSeeding(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* 1. Dynamic Organization Overview Card */}
@@ -464,18 +432,6 @@ export default function ManagementView({ onRefresh }: ManagementViewProps) {
           >
             <Building2 className="w-3.5 h-3.5 text-indigo-600" />
             <span>Offices &amp; Geofences</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('data')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl transition-all ${
-              activeSubTab === 'data'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5 text-purple-600" />
-            <span>Tenant Data</span>
           </button>
         </div>
       </div>
@@ -837,6 +793,32 @@ export default function ManagementView({ onRefresh }: ManagementViewProps) {
                 </p>
               </div>
             </div>
+
+            {/* Security & Admin Credentials Card */}
+            {onOpenChangePassword && (
+              <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 p-5 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] space-y-3">
+                <div className="flex items-center gap-2 text-slate-800">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                    <Shield className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-xs text-slate-800">Admin Account Security</h5>
+                    <p className="text-[10px] text-slate-400">Change your password anytime</p>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  You can update your personal admin password whenever you want to maintain maximum security for your organization.
+                </p>
+                <button
+                  type="button"
+                  onClick={onOpenChangePassword}
+                  className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold btn-brand-primary text-white shadow-xs transition active:scale-95"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Change Admin Password</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -942,51 +924,6 @@ export default function ManagementView({ onRefresh }: ManagementViewProps) {
               ))}
             </div>
           )}
-        </div>
-      )}
-
-      {/* SUB-TAB 3: Tenant Data Management */}
-      {activeSubTab === 'data' && (
-        <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/80 p-6 sm:p-7 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.12),0_6px_16px_-3px_rgba(15,23,42,0.06)] animate-in fade-in duration-200">
-          <div className="mb-6">
-            <h4 className="text-base font-bold text-slate-900">Tenant Data Isolation &amp; Environment Tools</h4>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Actions executed here operate strictly on <span className="font-bold text-slate-700">{branding.brand_name || branding.name}</span> data records only.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div className="p-5 rounded-2xl border border-slate-200/80 bg-slate-50/50 space-y-3">
-              <h5 className="font-bold text-slate-800 text-sm">Seed Sample Data</h5>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Initializes clean demonstration datasets (leads, tasks, projects, employees, and invoices) specifically within this company workspace.
-              </p>
-              <button
-                type="button"
-                onClick={handleSeed}
-                disabled={seeding}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition active:scale-95 disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${seeding ? 'animate-spin' : ''}`} />
-                <span>{seeding ? 'Populating...' : 'Seed Sample Data'}</span>
-              </button>
-            </div>
-
-            <div className="p-5 rounded-2xl border border-rose-100 bg-rose-50/40 space-y-3">
-              <h5 className="font-bold text-rose-800 text-sm">Clear Tenant Data</h5>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Permanently wipes all tasks, attendance logs, invoices, and leads belonging to this organization while preserving your company credentials and branch configs.
-              </p>
-              <button
-                type="button"
-                onClick={handleClear}
-                disabled={clearing}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-rose-600 bg-white hover:bg-rose-50 border border-rose-200 shadow-2xs transition active:scale-95 disabled:opacity-50"
-              >
-                <span>{clearing ? 'Clearing Data...' : 'Clear All Data'}</span>
-              </button>
-            </div>
-          </div>
         </div>
       )}
 

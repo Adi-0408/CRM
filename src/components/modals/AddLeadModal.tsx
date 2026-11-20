@@ -275,7 +275,7 @@ export default function AddLeadModal({
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md shadow-indigo-500/25 disabled:opacity-50 transition-all"
+              className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white btn-brand-primary shadow-md disabled:opacity-50 transition-all"
             >
               {loading ? 'Adding...' : 'Add Lead'}
             </button>

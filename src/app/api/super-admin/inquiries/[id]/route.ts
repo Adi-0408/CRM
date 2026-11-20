@@ -10,7 +10,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const authResult = await requireRoles(req, ['platform_super_admin']);
+    const authResult = await requireRoles(req, ['platform_super_admin', 'company_admin', 'admin_manager']);
     if (authResult.errorResponse) {
       return authResult.errorResponse;
     }
@@ -67,7 +67,7 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const authResult = await requireRoles(req, ['platform_super_admin']);
+    const authResult = await requireRoles(req, ['platform_super_admin', 'company_admin', 'admin_manager']);
     if (authResult.errorResponse) {
       return authResult.errorResponse;
     }

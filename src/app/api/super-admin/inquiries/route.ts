@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
-    const authResult = await requireRoles(req, ['platform_super_admin']);
+    const authResult = await requireRoles(req, ['platform_super_admin', 'company_admin', 'admin_manager']);
     if (authResult.errorResponse) {
       return authResult.errorResponse;
     }

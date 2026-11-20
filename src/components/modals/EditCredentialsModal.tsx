@@ -318,7 +318,7 @@ export default function EditCredentialsModal({
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2 min-h-[44px] rounded-full text-xs font-bold text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm disabled:opacity-50 transition-all"
+              className="px-5 py-2 min-h-[44px] rounded-full text-xs font-bold text-white btn-brand-primary shadow-sm disabled:opacity-50 transition-all"
             >
               {saving ? 'Updating...' : 'Save Credentials'}
             </button>

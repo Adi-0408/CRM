@@ -292,7 +292,7 @@ export default function AddEmployeeModal({
               <button
                 type="button"
                 onClick={handleCloseAll}
-                className="px-6 py-2.5 min-h-[44px] rounded-full text-xs font-semibold text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm transition-all"
+                className="px-6 py-2.5 min-h-[44px] rounded-full text-xs font-semibold text-white btn-brand-primary shadow-sm transition-all"
               >
                 Done
               </button>
@@ -545,7 +545,7 @@ export default function AddEmployeeModal({
                 <button
                   type="submit"
                   disabled={loading || uploading}
-                  className="px-6 py-2.5 min-h-[44px] rounded-full text-xs font-bold text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm hover:shadow-md hover:shadow-indigo-500/15 disabled:opacity-50 transition-all flex items-center justify-center space-x-2 active:scale-98"
+                  className="px-6 py-2.5 min-h-[44px] rounded-full text-xs font-bold text-white btn-brand-primary shadow-sm hover:shadow-md disabled:opacity-50 transition-all flex items-center justify-center space-x-2 active:scale-98"
                 >
                   <KeyRound className="w-3.5 h-3.5" />
                   <span>{loading ? 'Creating...' : 'Issue Credentials & Save'}</span>

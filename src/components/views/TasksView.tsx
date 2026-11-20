@@ -148,7 +148,7 @@ export default function TasksView({
         {canManage && (
           <button
             onClick={onOpenCreateTask}
-            className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm hover:shadow-md hover:shadow-indigo-500/15 active:scale-95 transition-all w-full md:w-auto"
+            className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-white btn-brand-primary shadow-sm hover:shadow-md active:scale-95 transition-all w-full md:w-auto"
           >
             <Plus className="w-3.5 h-3.5 shrink-0" />
             <span>New Task</span>

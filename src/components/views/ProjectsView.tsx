@@ -164,7 +164,7 @@ export default function ProjectsView({
           {canManageProjects && (
             <button
               onClick={onOpenCreateProject}
-              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm hover:shadow-md hover:shadow-indigo-500/15 active:scale-95 transition-all w-full sm:w-auto"
+              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-white btn-brand-primary shadow-sm hover:shadow-md active:scale-95 transition-all w-full sm:w-auto"
             >
               <Plus className="w-3.5 h-3.5 shrink-0" />
               <span>New Project</span>
@@ -332,7 +332,7 @@ export default function ProjectsView({
                       {canDistribute && (
                         <button
                           onClick={() => setDistributeModalProject(project)}
-                          className="flex-1 py-1.5 px-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-[#635BFF] text-xs font-bold flex items-center justify-center space-x-1 transition-all"
+                          className="flex-1 py-1.5 px-2.5 rounded-xl bg-brand-light hover:opacity-90 text-brand-primary text-xs font-bold flex items-center justify-center space-x-1 transition-all"
                           title="Distribute this project between developers"
                         >
                           <Users className="w-3.5 h-3.5" />

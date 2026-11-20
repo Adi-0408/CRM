@@ -94,6 +94,7 @@ export async function PUT(
         {
           $set: {
             name: updated.name,
+            email: updated.email,
             role: updated.role,
             department: updated.department,
             status: updated.status,

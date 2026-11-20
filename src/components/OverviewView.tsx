@@ -186,7 +186,7 @@ export default function OverviewView({
           {onOpenAddLead && canAddLead && (
             <button
               onClick={onOpenAddLead}
-              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-bold text-white bg-gradient-to-r from-[#635BFF] via-[#7067FF] to-[#7B73FF] hover:brightness-105 shadow-[0_6px_20px_-2px_rgba(99,91,255,0.40)] hover:shadow-[0_10px_25px_-2px_rgba(99,91,255,0.50)] border-t border-white/30 active:scale-95 transition-all duration-200 hover:-translate-y-0.5"
+              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-bold text-white btn-brand-primary shadow-sm hover:shadow-md border-t border-white/30 active:scale-95 transition-all duration-200 hover:-translate-y-0.5"
             >
               <Plus className="w-3.5 h-3.5 shrink-0" />
               <span>Add Leads</span>
@@ -224,7 +224,7 @@ export default function OverviewView({
               Active company team
             </p>
           </div>
-          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-[#F0EEFF] text-[#635BFF] flex items-center justify-center flex-shrink-0 shadow-xs transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-brand-light text-brand-primary flex items-center justify-center flex-shrink-0 shadow-xs transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
             <Users className="w-5 h-5" />
           </div>
         </div>
@@ -289,7 +289,7 @@ export default function OverviewView({
             <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1.5">
               ${(stats?.totalPipelineValue ?? 0).toLocaleString()}
             </h3>
-            <p className="text-[11px] text-[#635BFF] font-semibold mt-1">
+            <p className="text-[11px] text-brand-primary font-semibold mt-1">
               {stats?.totalLeads ?? 0} active prospects
             </p>
           </div>
@@ -336,7 +336,7 @@ export default function OverviewView({
                     <div
                       className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs ${
                         idx === 0
-                          ? 'bg-[#EEF2FF] text-[#635BFF]'
+                          ? 'bg-brand-light text-brand-primary'
                           : idx === 1
                           ? 'bg-[#E6F7F0] text-[#10B981]'
                           : 'bg-slate-100 text-slate-600'
@@ -509,7 +509,7 @@ export default function OverviewView({
                 >
                   <div className="truncate mr-3">
                     <div className="flex items-center space-x-2">
-                      <span className="text-[11px] font-semibold text-[#635BFF] bg-[#EEF2FF] px-2 py-0.5 rounded-md">
+                      <span className="text-[11px] font-semibold text-brand-primary bg-brand-light px-2 py-0.5 rounded-md">
                         {ticket.ticketNumber}
                       </span>
                       <h4 className="text-xs font-semibold text-slate-800 truncate">
@@ -537,7 +537,7 @@ export default function OverviewView({
                       className={`text-[10px] font-semibold uppercase px-2.5 py-0.5 rounded-full ${
                         ticket.status === 'resolved' || ticket.status === 'closed'
                           ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                          : 'bg-[#EEF2FF] text-[#635BFF] border border-indigo-100'
+                          : 'bg-brand-light text-brand-primary border border-brand-light'
                       }`}
                     >
                       {ticket.status}

@@ -19,6 +19,7 @@ import LeavesView from '@/components/views/LeavesView';
 import EmployeesView from '@/components/views/EmployeesView';
 import ManagementView from '@/components/views/ManagementView';
 import SuperAdminView from '@/components/views/SuperAdminView';
+import InquiriesPanel from '@/components/views/InquiriesPanel';
 
 import CreateTaskModal from '@/components/modals/CreateTaskModal';
 import AddLeadModal from '@/components/modals/AddLeadModal';
@@ -84,6 +85,7 @@ export default function CRMWorkspace({
   const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [unreadInquiriesCount, setUnreadInquiriesCount] = useState<number>(0);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState<boolean>(false);
 
   // Keep visited tabs alive in memory for 0ms instant tab switching
   const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>({
@@ -108,9 +110,9 @@ export default function CRMWorkspace({
     }
   }, [role]);
 
-  // Fetch unread inquiries count for Super Admin sidebar badge
+  // Fetch unread inquiries count for Super Admin & Company Admin sidebar badge
   useEffect(() => {
-    if (role === 'platform_super_admin') {
+    if (role === 'platform_super_admin' || role === 'company_admin' || role === 'admin_manager') {
       fetch('/api/super-admin/inquiries?status=new', {
         headers: {
           'x-user-id': user?.id || '',
@@ -372,6 +374,8 @@ export default function CRMWorkspace({
         return 'Task Management';
       case 'leads':
         return 'Lead Management';
+      case 'inquiries':
+        return 'Inquiries Inbox';
       case 'projects':
         return 'Project';
       case 'support':
@@ -416,6 +420,7 @@ export default function CRMWorkspace({
           onOpenAddEmployee={() => openModal(setShowAddEmployee)}
           onNavigateTab={navigateToTab}
           onToggleMobileMenu={toggleMobileMenu}
+          onOpenChangePassword={() => setShowChangePasswordModal(true)}
         />
 
         {/* Inner Content Area (Isolated Vertical Scrolling) */}
@@ -504,6 +509,13 @@ export default function CRMWorkspace({
                 </div>
               )}
 
+              {/* 3b. Inquiries Management */}
+              {visitedTabs.inquiries && (
+                <div className={activeTab === 'inquiries' ? 'block' : 'hidden'}>
+                  <InquiriesPanel onCountChange={(cnt) => setUnreadInquiriesCount(cnt)} />
+                </div>
+              )}
+
               {/* 4. Project */}
               {visitedTabs.projects && (
                 <div className={activeTab === 'projects' ? 'block' : 'hidden'}>
@@ -578,7 +590,10 @@ export default function CRMWorkspace({
               {/* 10. Management */}
               {(visitedTabs.management || visitedTabs.branches) && (
                 <div className={activeTab === 'management' || activeTab === 'branches' ? 'block' : 'hidden'}>
-                  <ManagementView onRefresh={fetchData} />
+                  <ManagementView
+                    onRefresh={fetchData}
+                    onOpenChangePassword={() => setShowChangePasswordModal(true)}
+                  />
                 </div>
               )}
             </>
@@ -595,12 +610,14 @@ export default function CRMWorkspace({
         />
       )}
 
-      {/* First-Login Change Password Onboarding Modal */}
-      {isAuthenticated && user?.must_change_password && (
+      {/* Change Password Modal: Forced on first login or On-Demand anytime */}
+      {isAuthenticated && (showChangePasswordModal || Boolean(user?.must_change_password)) && (
         <ChangePasswordModal
           isOpen={true}
-          isForced={true}
+          isForced={Boolean(user?.must_change_password)}
+          onClose={() => setShowChangePasswordModal(false)}
           onSuccess={() => {
+            setShowChangePasswordModal(false);
             updateUser({ must_change_password: false });
           }}
         />

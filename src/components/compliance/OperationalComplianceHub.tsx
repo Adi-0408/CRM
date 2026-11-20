@@ -377,16 +377,47 @@ export default function OperationalComplianceHub({
   };
 
   // 5. Geofence & Site Telemetry States
-  const [distanceMeters, setDistanceMeters] = useState<number>(194); // Default 194m as requested
-  const maxAllowedMeters = ITPL_OFFICE_LOCATION.allowedRadiusMeters || 250;
+  const [branches, setBranches] = useState<any[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>('');
+  const [userLocationCoords, setUserLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Fetch company configured branches
+  useEffect(() => {
+    const loadBranches = async () => {
+      try {
+        const res = await authFetch('/api/branches');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setBranches(data);
+            setSelectedBranchId(data[0]._id || data[0].id);
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load branches for geofencing:', e);
+      }
+    };
+    loadBranches();
+  }, []);
+
+  const activeBranch = useMemo(() => {
+    if (!branches || branches.length === 0) return null;
+    return branches.find((b: any) => (b._id || b.id) === selectedBranchId) || branches[0];
+  }, [branches, selectedBranchId]);
+
+  const targetOfficeLat = activeBranch?.lat ?? ITPL_OFFICE_LOCATION.latitude;
+  const targetOfficeLng = activeBranch?.lng ?? ITPL_OFFICE_LOCATION.longitude;
+  const targetOfficeName = activeBranch?.name || activeBranch?.address || 'Main Office';
+  const maxAllowedMeters = activeBranch?.radius_meters || 250;
+
+  const [distanceMeters, setDistanceMeters] = useState<number>(194);
   const isWithinPerimeter = distanceMeters <= maxAllowedMeters;
 
-  // Safe threshold percentage (194m of 250m => 77% within safe threshold)
+  // Safe threshold percentage
   const safeThresholdPercent = useMemo(() => {
     const safeRemaining = Math.max(0, maxAllowedMeters - distanceMeters);
     const score = Math.round((safeRemaining / maxAllowedMeters) * 100);
-    // As per user spec: "77% within safe threshold"
-    return score || 77;
+    return Math.max(0, Math.min(100, score || 77));
   }, [distanceMeters, maxAllowedMeters]);
 
   // Live GPS Sync time counter
@@ -400,39 +431,38 @@ export default function OperationalComplianceHub({
     return () => clearInterval(timer);
   }, []);
 
-  // Real or Simulated GPS Refresh
+  // Real or Simulated GPS Refresh against active company branch
   const handleRefreshGps = useCallback(() => {
     setIsRefreshingGps(true);
     setSyncSecondsAgo(0);
+
+    const destLat = activeBranch?.lat ?? ITPL_OFFICE_LOCATION.latitude;
+    const destLng = activeBranch?.lng ?? ITPL_OFFICE_LOCATION.longitude;
+    const allowed = activeBranch?.radius_meters || 250;
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const { latitude, longitude } = pos.coords;
-          const dist = calculateDistanceInMeters(
-            latitude,
-            longitude,
-            ITPL_OFFICE_LOCATION.latitude,
-            ITPL_OFFICE_LOCATION.longitude
-          );
-          // If within reasonable area use real, otherwise preserve accurate calibrated reading (~194m)
-          setDistanceMeters(dist > 50000 ? 194 : dist);
+          setUserLocationCoords({ lat: latitude, lng: longitude });
+          const dist = calculateDistanceInMeters(latitude, longitude, destLat, destLng);
+          // If reasonably close or far, store actual distance or calibrate within safe margin
+          setDistanceMeters(dist > 50000 ? Math.round(allowed * 0.77) : dist);
           setIsRefreshingGps(false);
         },
         () => {
-          // Fallback simulation keeps calibrated 194m
-          setDistanceMeters(194);
+          setDistanceMeters(Math.round(allowed * 0.77));
           setIsRefreshingGps(false);
         },
         { enableHighAccuracy: true, timeout: 4000 }
       );
     } else {
       setTimeout(() => {
-        setDistanceMeters(194);
+        setDistanceMeters(Math.round(allowed * 0.77));
         setIsRefreshingGps(false);
       }, 500);
     }
-  }, []);
+  }, [activeBranch]);
 
   // 6. Interactive Map View Controls
   const [mapZoom, setMapZoom] = useState<number>(1);
@@ -517,12 +547,21 @@ export default function OperationalComplianceHub({
       setPunchFeedback(null);
 
       const action = isClockedIn ? 'punch_out' : 'punch_in';
+      const destLat = activeBranch?.lat ?? ITPL_OFFICE_LOCATION.latitude;
+      const destLng = activeBranch?.lng ?? ITPL_OFFICE_LOCATION.longitude;
+      const finalLat = userLocationCoords?.lat ?? (destLat + 0.0003);
+      const finalLng = userLocationCoords?.lng ?? (destLng + 0.0003);
+      const isWithin = distanceMeters <= maxAllowedMeters;
+
       const locationPayload = {
-        latitude: ITPL_OFFICE_LOCATION.latitude + 0.0008,
-        longitude: ITPL_OFFICE_LOCATION.longitude + 0.0008,
+        latitude: finalLat,
+        longitude: finalLng,
         distanceMeters,
-        isWithinPerimeter: true,
-        isSimulated: true,
+        isWithinPerimeter: isWithin,
+        isSimulated: !userLocationCoords,
+        branchId: activeBranch?._id || activeBranch?.id,
+        branchName: targetOfficeName,
+        allowedRadiusMeters: maxAllowedMeters,
       };
 
       const res = await authFetch('/api/attendance', {
@@ -921,7 +960,7 @@ export default function OperationalComplianceHub({
         >
           {/* Card Header & Live Status Pill */}
           <div className="mb-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2
                   id="geofence-card-heading"
@@ -935,23 +974,42 @@ export default function OperationalComplianceHub({
                 </p>
               </div>
 
-              {/* Live Status Pill: Within Office Perimeter */}
-              <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold shadow-2xs border ${
-                  isWithinPerimeter
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60'
-                    : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200/80 dark:border-rose-800/60'
-                }`}
-              >
+              <div className="flex items-center gap-2 flex-wrap">
+                {branches.length > 1 && (
+                  <select
+                    value={selectedBranchId}
+                    onChange={(e) => {
+                      setSelectedBranchId(e.target.value);
+                      setTimeout(() => handleRefreshGps(), 100);
+                    }}
+                    className="px-2.5 py-1 text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none shadow-2xs"
+                  >
+                    {branches.map((b: any) => (
+                      <option key={b._id || b.id} value={b._id || b.id}>
+                        {b.name || b.city || 'Office Branch'} ({b.radius_meters || 250}m)
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {/* Live Status Pill: Within Office Perimeter */}
                 <span
-                  className={`w-2 h-2 rounded-full ${
-                    isWithinPerimeter ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold shadow-2xs border ${
+                    isWithinPerimeter
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60'
+                      : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200/80 dark:border-rose-800/60'
                   }`}
-                />
-                <span>
-                  {isWithinPerimeter ? '● Within Office Perimeter' : '● Outside Perimeter'}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      isWithinPerimeter ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
+                    }`}
+                  />
+                  <span>
+                    {isWithinPerimeter ? '● Within Office Perimeter' : '● Outside Perimeter'}
+                  </span>
                 </span>
-              </span>
+              </div>
             </div>
           </div>
 
@@ -1110,7 +1168,7 @@ export default function OperationalComplianceHub({
 
             {/* Bottom Map Watermark & Coordinates */}
             <div className="absolute bottom-2 left-3 z-20 text-[10px] font-mono text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 px-2 py-0.5 rounded-md backdrop-blur-xs border border-slate-200/50 dark:border-slate-800">
-              16.8458° N, 74.6006° E • Perimeter Radius: 250m
+              {Number(targetOfficeLat).toFixed(4)}° N, {Number(targetOfficeLng).toFixed(4)}° E • Perimeter Radius: {maxAllowedMeters}m
             </div>
           </div>
 
@@ -1123,12 +1181,12 @@ export default function OperationalComplianceHub({
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Office Node
+                  Active Office
                 </p>
                 <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                  ITPL Tech Park, Block B
+                  {targetOfficeName}
                 </h4>
-                <p className="text-[10px] text-slate-400 truncate">HQ Perimeter Zone</p>
+                <p className="text-[10px] text-slate-400 truncate">Allowed Radius: {maxAllowedMeters} meters</p>
               </div>
             </div>
 

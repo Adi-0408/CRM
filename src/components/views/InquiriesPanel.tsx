@@ -288,7 +288,7 @@ export default function InquiriesPanel({ onCountChange }: InquiriesPanelProps) {
         <div className="bg-white rounded-2xl border border-slate-150 p-4 sm:p-5 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold">Total Inquiries</span>
-            <Inbox className="w-4 h-4 text-purple-600" />
+            <Inbox className="w-4 h-4 text-brand-primary" />
           </div>
           <div className="text-2xl font-extrabold text-slate-900 tracking-tight">
             {counts.total}
@@ -300,12 +300,12 @@ export default function InquiriesPanel({ onCountChange }: InquiriesPanelProps) {
         <div className="bg-white rounded-2xl border border-slate-150 p-4 sm:p-5 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold">New Submissions</span>
-            <Sparkles className="w-4 h-4 text-purple-600" />
+            <Sparkles className="w-4 h-4 text-brand-primary" />
           </div>
-          <div className="text-2xl font-extrabold text-purple-700 tracking-tight">
+          <div className="text-2xl font-extrabold text-brand-primary tracking-tight">
             {counts.new}
           </div>
-          <div className="text-[11px] text-purple-600 mt-1 font-medium">Requires initial contact</div>
+          <div className="text-[11px] text-brand-primary mt-1 font-medium">Requires initial contact</div>
         </div>
 
         {/* Contacted */}
@@ -342,7 +342,7 @@ export default function InquiriesPanel({ onCountChange }: InquiriesPanelProps) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name, email, or company..."
-            className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-purple-500"
+            className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-brand-primary"
           />
         </div>
 
@@ -356,7 +356,7 @@ export default function InquiriesPanel({ onCountChange }: InquiriesPanelProps) {
                 onClick={() => setStatusFilter(filter)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold capitalize transition-all ${
                   statusFilter === filter
-                    ? 'bg-purple-600 text-white shadow-xs'
+                    ? 'btn-brand-primary text-white shadow-xs font-bold'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80'
                 }`}
               >
@@ -373,7 +373,7 @@ export default function InquiriesPanel({ onCountChange }: InquiriesPanelProps) {
             className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition-all active:scale-95 shadow-2xs"
             title="Refresh inquiries"
           >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-purple-600' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-brand-primary' : ''}`} />
           </button>
         </div>
       </div>
@@ -448,8 +448,8 @@ export default function InquiriesPanel({ onCountChange }: InquiriesPanelProps) {
                       <tr
                         key={targetId}
                         onClick={() => setSelectedInquiry(inq)}
-                        className={`hover:bg-purple-50/40 cursor-pointer transition-colors ${
-                          isNew ? 'bg-purple-50/20 font-medium' : ''
+                        className={`hover:bg-slate-50/80 cursor-pointer transition-colors ${
+                          isNew ? 'bg-slate-50/40 font-medium' : ''
                         }`}
                       >
                         <td className="py-3.5 px-5">
@@ -479,7 +479,7 @@ export default function InquiriesPanel({ onCountChange }: InquiriesPanelProps) {
                           <span
                             className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold capitalize ${
                               inq.status === 'new'
-                                ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                ? 'bg-brand-light text-brand-primary border border-brand-light'
                                 : inq.status === 'contacted'
                                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                                 : 'bg-slate-100 text-slate-700 border border-slate-200'
@@ -557,7 +557,7 @@ export default function InquiriesPanel({ onCountChange }: InquiriesPanelProps) {
             <div className="shrink-0 p-5 sm:p-6 border-b border-slate-100 bg-white/95 backdrop-blur-sm z-10 flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-700 bg-purple-100/80 px-2.5 py-0.5 rounded-full border border-purple-200/50">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand-primary bg-brand-light px-2.5 py-0.5 rounded-full border border-brand-light">
                     Inquiry Detail
                   </span>
                   <span className="text-xs text-slate-400 font-medium">
@@ -575,7 +575,7 @@ export default function InquiriesPanel({ onCountChange }: InquiriesPanelProps) {
               <button
                 type="button"
                 onClick={() => setSelectedInquiry(null)}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-purple-500 shrink-0"
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-slate-300 shrink-0"
                 aria-label="Close detail drawer"
               >
                 <X className="w-5 h-5" />
@@ -598,8 +598,8 @@ export default function InquiriesPanel({ onCountChange }: InquiriesPanelProps) {
                     onClick={() => handleUpdateStatus(selectedInquiry.id || selectedInquiry._id, 'new')}
                     className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                       selectedInquiry.status === 'new'
-                        ? 'bg-purple-600 text-white shadow-xs'
-                        : 'bg-white hover:bg-purple-50 text-slate-600 hover:text-purple-700 border border-slate-200/60'
+                        ? 'btn-brand-primary text-white shadow-xs'
+                        : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200/60'
                     }`}
                   >
                     {selectedInquiry.status === 'new' && <Check className="w-3.5 h-3.5 text-white" />}
@@ -792,7 +792,7 @@ export default function InquiriesPanel({ onCountChange }: InquiriesPanelProps) {
                   type="button"
                   onClick={handleSaveNotes}
                   disabled={savingNotes}
-                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs active:scale-95 transition-all shadow-2xs disabled:bg-slate-300 flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl btn-brand-primary text-white font-semibold text-xs active:scale-95 transition-all shadow-2xs disabled:bg-slate-300 flex items-center gap-1.5"
                 >
                   {savingNotes ? (
                     <>

@@ -193,7 +193,7 @@ export default function SupportView({
 
           <button
             onClick={() => setShowModal(true)}
-            className="whitespace-nowrap shrink-0 px-4 py-2 text-xs sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-bold text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm hover:shadow-md hover:shadow-indigo-500/20 active:scale-95 transition-all w-full sm:w-auto"
+            className="whitespace-nowrap shrink-0 px-4 py-2 text-xs sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-bold text-white btn-brand-primary shadow-sm hover:shadow-md active:scale-95 transition-all w-full sm:w-auto"
           >
             <Plus className="w-4 h-4 shrink-0" />
             <span>Raise Tech Ticket</span>
@@ -310,7 +310,7 @@ export default function SupportView({
           })
         ) : (
           <div className="glass-card p-12 text-center border-slate-100 space-y-2">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-[#635BFF] flex items-center justify-center mx-auto mb-2">
+            <div className="w-12 h-12 rounded-2xl bg-brand-light text-brand-primary flex items-center justify-center mx-auto mb-2">
               <Wrench className="w-6 h-6" />
             </div>
             <h4 className="text-sm font-bold text-slate-800">No Technical Tickets Found</h4>
@@ -334,7 +334,7 @@ export default function SupportView({
             </button>
 
             <div className="flex items-center space-x-3 pb-4 mb-4 border-b border-slate-100 pr-8">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-[#635BFF] flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-2xl bg-brand-light text-brand-primary flex items-center justify-center shrink-0">
                 <Wrench className="w-5 h-5" />
               </div>
               <div>
@@ -444,7 +444,7 @@ export default function SupportView({
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2.5 text-xs font-bold text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm hover:shadow-md hover:shadow-indigo-500/20 rounded-xl transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                  className="px-5 py-2.5 text-xs font-bold text-white btn-brand-primary shadow-sm hover:shadow-md rounded-xl transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                 >
                   {submitting ? 'Submitting...' : 'Create Tech Ticket'}
                 </button>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Lock, Eye, EyeOff, ShieldCheck, AlertCircle, ArrowRight } from 'lucide-react';
+import { Lock, Eye, EyeOff, ShieldCheck, AlertCircle, ArrowRight, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 interface ChangePasswordModalProps {
@@ -82,6 +82,16 @@ export default function ChangePasswordModal({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl border border-slate-150 shadow-2xl max-w-md w-full p-6 sm:p-8 relative">
+        {!isForced && onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-5 right-5 p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition"
+            title="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-50 text-[#635BFF] mb-3 shadow-inner">
             <ShieldCheck className="w-7 h-7" />
@@ -154,7 +164,7 @@ export default function ChangePasswordModal({
           <button
             type="submit"
             disabled={loading || success}
-            className="w-full mt-2 rounded-xl bg-[#635BFF] hover:bg-[#5249E5] text-white text-xs font-semibold py-3 shadow-md transition-all active:scale-[0.99] flex items-center justify-center space-x-2 disabled:opacity-50"
+            className="w-full mt-2 rounded-xl btn-brand-primary text-white text-xs font-semibold py-3 shadow-md transition-all active:scale-[0.99] flex items-center justify-center space-x-2 disabled:opacity-50"
           >
             <span>{loading ? 'Updating Password...' : 'Save Password & Enter Workspace'}</span>
             <ArrowRight className="w-4 h-4" />

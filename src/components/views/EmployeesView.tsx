@@ -14,8 +14,10 @@ import {
   Shield,
   CheckCircle2,
   AlertTriangle,
+  Edit3,
 } from 'lucide-react';
 import EditCredentialsModal from '@/components/modals/EditCredentialsModal';
+import EditEmployeeModal from '@/components/modals/EditEmployeeModal';
 import { useAuth } from '@/context/AuthContext';
 import { useTenant } from '@/context/TenantContext';
 import { authFetch } from '@/lib/apiClient';
@@ -33,12 +35,17 @@ export default function EmployeesView({
 }: EmployeesViewProps) {
   const { user: currentUser } = useAuth();
   const { branding, formatCurrency } = useTenant();
-  const isAdmin = currentUser?.role === 'admin_manager';
-  const isAdminOrHR = isAdmin || currentUser?.role === 'hr';
+  const isCompanyAdmin =
+    currentUser?.role === 'company_admin' ||
+    currentUser?.role === 'admin_manager' ||
+    currentUser?.role === 'platform_super_admin';
+  const isAdmin = isCompanyAdmin;
+  const isAdminOrHR = isCompanyAdmin || currentUser?.role === 'hr';
 
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [selectedEmpForCredentials, setSelectedEmpForCredentials] = useState<any | null>(null);
+  const [selectedEmpForEdit, setSelectedEmpForEdit] = useState<any | null>(null);
   const [editingSalaryEmpId, setEditingSalaryEmpId] = useState<string | null>(null);
   const [editSalaryValue, setEditSalaryValue] = useState<number>(45000);
 
@@ -217,7 +224,7 @@ export default function EmployeesView({
           {isAdminOrHR && (
             <button
               onClick={onOpenAddEmployee}
-              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm hover:shadow-md hover:shadow-indigo-500/15 active:scale-95 transition-all"
+              className="whitespace-nowrap shrink-0 px-3.5 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full inline-flex items-center justify-center gap-1.5 font-semibold text-white btn-brand-primary shadow-sm hover:shadow-md active:scale-95 transition-all"
             >
               <Plus className="w-3.5 h-3.5 shrink-0" />
               <span>+ Add Employee &amp; Issue Credentials</span>
@@ -375,6 +382,18 @@ export default function EmployeesView({
                         {isAdminOrHR && (
                           <td className="py-3.5 px-5 text-right">
                             <div className="flex items-center justify-end space-x-2">
+                              {isCompanyAdmin && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedEmpForEdit(emp)}
+                                  className="px-3 py-1.5 min-h-[36px] rounded-full text-xs font-bold text-slate-700 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 border border-slate-200 shadow-xs transition-colors flex items-center space-x-1.5 active:scale-95"
+                                  title="Edit Employee Details (Name, Email, Role, Department, etc.)"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                  <span>Edit Details</span>
+                                </button>
+                              )}
+
                               <button
                                 onClick={() => setSelectedEmpForCredentials(emp)}
                                 className="px-3 py-1.5 min-h-[36px] rounded-full text-xs font-bold text-[#635BFF] bg-[#F0EEFF] hover:bg-[#E6E2FF] border border-indigo-100 shadow-xs transition-colors flex items-center space-x-1.5 active:scale-95"
@@ -492,6 +511,18 @@ export default function EmployeesView({
                       <span className="truncate font-mono font-medium">{emp.email}</span>
                     </div>
 
+                    {/* Edit Details Button: Company Admin only */}
+                    {isCompanyAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEmpForEdit(emp)}
+                        className="w-full py-2 min-h-[36px] px-3 rounded-xl text-xs font-bold text-slate-700 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 border border-slate-200 shadow-2xs transition-all flex items-center justify-center space-x-1.5 active:scale-98"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Edit Employee Details</span>
+                      </button>
+                    )}
+
                     {/* Reset Password / View Credentials Button: visible only for Admin and HR */}
                     {isAdminOrHR && (
                       <button
@@ -518,6 +549,16 @@ export default function EmployeesView({
             </div>
           )}
         </div>
+      )}
+
+      {/* Edit Employee Details Modal (Company Admin only) */}
+      {selectedEmpForEdit && (
+        <EditEmployeeModal
+          isOpen={Boolean(selectedEmpForEdit)}
+          onClose={() => setSelectedEmpForEdit(null)}
+          employee={selectedEmpForEdit}
+          onUpdated={onRefresh}
+        />
       )}
 
       {/* Edit / Reset Credentials Modal */}

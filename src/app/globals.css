@@ -51,6 +51,18 @@
   filter: brightness(0.92);
 }
 
+.ring-brand-primary:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 2px var(--color-primary-border, #D8D4FF) !important;
+  border-color: var(--color-primary, #635BFF) !important;
+}
+
+.badge-brand-primary {
+  background-color: var(--color-primary-light, #F0EEFF) !important;
+  color: var(--color-primary, #635BFF) !important;
+  border: 1px solid var(--color-primary-border, #D8D4FF) !important;
+}
+
 html,
 body {
   height: 100%;
