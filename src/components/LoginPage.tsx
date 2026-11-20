@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import {
   Lock,
   Mail,
@@ -31,7 +31,17 @@ export default function LoginPage({
   initialBranding,
 }: LoginPageProps) {
   const router = useRouter();
+  const routeParams = useParams();
   const { login } = useAuth();
+
+  const effectiveSlug =
+    companySlug ||
+    (typeof routeParams?.companySlug === 'string'
+      ? routeParams.companySlug
+      : Array.isArray(routeParams?.companySlug)
+        ? routeParams.companySlug[0]
+        : undefined);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -52,10 +62,10 @@ export default function LoginPage({
   });
 
   useEffect(() => {
-    if (companySlug) {
+    if (effectiveSlug) {
       const fetchPublicBranding = async () => {
         try {
-          const res = await fetch(`/api/companies/public/${companySlug}`);
+          const res = await fetch(`/api/companies/public/${effectiveSlug}`);
           if (res.ok) {
             const data = await res.json();
             if (data.brand_name) {
@@ -76,7 +86,7 @@ export default function LoginPage({
       };
       fetchPublicBranding();
     }
-  }, [companySlug]);
+  }, [effectiveSlug]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,7 +118,7 @@ export default function LoginPage({
 
   // Only show demo credentials on generic platform login, NOT for specific branded client companies
   const showDemoGrid =
-    !companySlug &&
+    !effectiveSlug &&
     process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN !== 'false';
 
   return (
