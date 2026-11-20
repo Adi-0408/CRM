@@ -7,14 +7,15 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const authResult = await requireTenantAuth(req);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
-    let targetId = params.id;
+    const resolvedParams = await Promise.resolve(context.params);
+    let targetId = resolvedParams.id;
     if (targetId === 'current') {
       targetId = authResult.companyId || DEFAULT_COMPANY_ID;
     }
@@ -37,14 +38,15 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
-    let targetId = params.id;
+    const resolvedParams = await Promise.resolve(context.params);
+    let targetId = resolvedParams.id;
     if (targetId === 'current') {
       targetId = authResult.companyId || DEFAULT_COMPANY_ID;
     }
@@ -83,7 +85,7 @@ export const PATCH = PUT;
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     // Only platform super admin can delete a company
@@ -91,7 +93,8 @@ export async function DELETE(
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
-    const deleted = await Company.findByIdAndDelete(params.id);
+    const resolvedParams = await Promise.resolve(context.params);
+    const deleted = await Company.findByIdAndDelete(resolvedParams.id);
     if (!deleted) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }

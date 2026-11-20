@@ -739,6 +739,72 @@ export function createFirestoreModel<T = any>(collectionName: string) {
       return null;
     }
 
+    static async updateOne(filter: any, update: any, options: any = {}): Promise<any> {
+      const doc = await ModelInstance.findOneAndUpdate(filter, update, options);
+      return {
+        acknowledged: true,
+        matchedCount: doc ? 1 : 0,
+        modifiedCount: doc ? 1 : 0,
+        upsertedCount: options.upsert && doc ? 1 : 0,
+      };
+    }
+
+    static async updateMany(filter: any, update: any, options: any = {}): Promise<any> {
+      const colRef = collection(db, collectionName);
+      const snap = await getDocs(colRef);
+      let count = 0;
+      await Promise.all(
+        snap.docs.map(async (d) => {
+          const data = d.data();
+          if (matchesFilter({ ...data, _id: d.id, id: d.id }, filter)) {
+            await ModelInstance.findByIdAndUpdate(d.id, update, options);
+            count++;
+          }
+        })
+      );
+      return {
+        acknowledged: true,
+        matchedCount: count,
+        modifiedCount: count,
+      };
+    }
+
+    static async bulkWrite(operations: any[] = []): Promise<any> {
+      let matchedCount = 0;
+      let modifiedCount = 0;
+      let upsertedCount = 0;
+      for (const op of operations) {
+        if (op.updateOne) {
+          const res = await ModelInstance.updateOne(
+            op.updateOne.filter,
+            op.updateOne.update,
+            { upsert: op.updateOne.upsert }
+          );
+          matchedCount += res.matchedCount || 0;
+          modifiedCount += res.modifiedCount || 0;
+          upsertedCount += res.upsertedCount || 0;
+        } else if (op.updateMany) {
+          const res = await ModelInstance.updateMany(
+            op.updateMany.filter,
+            op.updateMany.update,
+            { upsert: op.updateMany.upsert }
+          );
+          matchedCount += res.matchedCount || 0;
+          modifiedCount += res.modifiedCount || 0;
+        } else if (op.insertOne) {
+          await ModelInstance.create(op.insertOne.document);
+          upsertedCount++;
+        } else if (op.deleteOne) {
+          const target: any = await ModelInstance.findOne(op.deleteOne.filter);
+          if (target) {
+            await ModelInstance.findByIdAndDelete(target._id || target.id);
+            modifiedCount++;
+          }
+        }
+      }
+      return { acknowledged: true, matchedCount, modifiedCount, upsertedCount };
+    }
+
     static async findByIdAndDelete(id: any): Promise<any> {
       if (!id) return null;
       const docRef = doc(db, collectionName, String(id));

@@ -217,7 +217,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const roleConfig = ROLE_CONFIGS[role] || ROLE_CONFIGS.admin_manager;
 
   const hasAccessTo = (tabId: string): boolean => {
-    if (role === 'admin_manager' || role === 'company_admin' || role === 'platform_super_admin') return true;
+    // Platform Super Admin ONLY has access to the Super Admin Console — strictly isolated from tenant CRM data
+    if (role === 'platform_super_admin') {
+      return tabId === 'super_admin';
+    }
+    if (role === 'admin_manager' || role === 'company_admin') return true;
     return roleConfig.allowedViews.includes(tabId);
   };
 

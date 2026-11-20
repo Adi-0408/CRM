@@ -1,7 +1,7 @@
 import { AuthUser, UserRole } from '@/types/auth';
 
 export function isUserAdminManager(user: AuthUser | null): boolean {
-  return user?.role === 'admin_manager' || user?.role === 'company_admin' || user?.role === 'platform_super_admin';
+  return user?.role === 'admin_manager' || user?.role === 'company_admin';
 }
 
 export function isUserTeamLead(user: AuthUser | null): boolean {
@@ -16,7 +16,6 @@ export function isUserAdminOrHR(user: AuthUser | null): boolean {
   return (
     user?.role === 'admin_manager' ||
     user?.role === 'company_admin' ||
-    user?.role === 'platform_super_admin' ||
     user?.role === 'hr'
   );
 }
@@ -93,7 +92,7 @@ export function isRecordOwner(user: AuthUser | null, record: any): boolean {
  */
 export function canApproveLeave(user: AuthUser | null, leave?: any): boolean {
   if (!user) return false;
-  if (user.role === 'admin_manager' || user.role === 'company_admin' || user.role === 'platform_super_admin') return true;
+  if (user.role === 'admin_manager' || user.role === 'company_admin') return true;
 
   if (user.role === 'hr') {
     if (leave && isRecordOwner(user, leave)) {
@@ -119,7 +118,6 @@ export function canCancelLeave(user: AuthUser | null, leave: any): boolean {
     isRecordOwner(user, leave) ||
     user.role === 'admin_manager' ||
     user.role === 'company_admin' ||
-    user.role === 'platform_super_admin' ||
     user.role === 'hr'
   );
 }
@@ -132,7 +130,6 @@ export function canManagePayroll(user: AuthUser | null): boolean {
   return (
     user?.role === 'admin_manager' ||
     user?.role === 'company_admin' ||
-    user?.role === 'platform_super_admin' ||
     user?.role === 'accounts'
   );
 }
@@ -145,7 +142,6 @@ export function canRegularizeAttendance(user: AuthUser | null): boolean {
   return (
     user?.role === 'admin_manager' ||
     user?.role === 'company_admin' ||
-    user?.role === 'platform_super_admin' ||
     user?.role === 'hr'
   );
 }
@@ -158,7 +154,6 @@ export function canManageProjects(user: AuthUser | null): boolean {
   return (
     user?.role === 'admin_manager' ||
     user?.role === 'company_admin' ||
-    user?.role === 'platform_super_admin' ||
     user?.role === 'team_lead'
   );
 }
@@ -171,7 +166,6 @@ export function canDistributeProject(user: AuthUser | null): boolean {
   return (
     user?.role === 'admin_manager' ||
     user?.role === 'company_admin' ||
-    user?.role === 'platform_super_admin' ||
     user?.role === 'team_lead'
   );
 }
@@ -186,7 +180,6 @@ export function canSalesEditProject(user: AuthUser | null, project: any, lead?: 
   if (
     user.role === 'admin_manager' ||
     user.role === 'company_admin' ||
-    user.role === 'platform_super_admin' ||
     user.role === 'team_lead'
   )
     return true;
@@ -217,7 +210,6 @@ export function canManageTasks(user: AuthUser | null): boolean {
   return (
     user?.role === 'admin_manager' ||
     user?.role === 'company_admin' ||
-    user?.role === 'platform_super_admin' ||
     user?.role === 'team_lead'
   );
 }
@@ -230,7 +222,6 @@ export function canManageInvoices(user: AuthUser | null): boolean {
   return (
     user?.role === 'admin_manager' ||
     user?.role === 'company_admin' ||
-    user?.role === 'platform_super_admin' ||
     user?.role === 'accounts'
   );
 }
@@ -243,7 +234,6 @@ export function canManageLeads(user: AuthUser | null): boolean {
   return (
     user?.role === 'admin_manager' ||
     user?.role === 'company_admin' ||
-    user?.role === 'platform_super_admin' ||
     user?.role === 'sales'
   );
 }
@@ -256,7 +246,6 @@ export function canManageQuotations(user: AuthUser | null): boolean {
   return (
     user?.role === 'admin_manager' ||
     user?.role === 'company_admin' ||
-    user?.role === 'platform_super_admin' ||
     user?.role === 'sales'
   );
 }
@@ -269,7 +258,6 @@ export function canManageTickets(user: AuthUser | null): boolean {
   return (
     user?.role === 'admin_manager' ||
     user?.role === 'company_admin' ||
-    user?.role === 'platform_super_admin' ||
     user?.role === 'tech_support'
   );
 }
@@ -282,19 +270,17 @@ export function canManageCredentials(user: AuthUser | null): boolean {
   return (
     user?.role === 'admin_manager' ||
     user?.role === 'company_admin' ||
-    user?.role === 'platform_super_admin' ||
     user?.role === 'hr'
   );
 }
 
 /**
  * Permission checker for deleting employee accounts
- * - Strictly admin_manager, company_admin & platform_super_admin
+ * - Strictly admin_manager & company_admin (Super Admin manages companies, not employees)
  */
 export function canDeleteEmployee(user: AuthUser | null): boolean {
   return (
     user?.role === 'admin_manager' ||
-    user?.role === 'company_admin' ||
-    user?.role === 'platform_super_admin'
+    user?.role === 'company_admin'
   );
 }

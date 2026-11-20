@@ -475,7 +475,11 @@ export async function requireTenantAuth(
  */
 export function buildTenantFilter(user: AuthenticatedUser, baseFilter: any = {}): any {
   if (user.role === 'platform_super_admin') {
-    return { ...baseFilter };
+    // Platform Super Admin manages tenants only — never has access to companies' operational CRM records
+    return {
+      ...baseFilter,
+      company_id: '__platform_super_admin_no_company__',
+    };
   }
   return {
     ...baseFilter,

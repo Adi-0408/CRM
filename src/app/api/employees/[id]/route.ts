@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const authUser = await getAuthUser(req);
@@ -20,7 +20,8 @@ export async function PUT(
     }
 
     await connectToDatabase();
-    const existing = await Employee.findById(params.id);
+    const resolvedParams = await Promise.resolve(context.params);
+    const existing = await Employee.findById(resolvedParams.id);
     if (!existing) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
@@ -33,7 +34,7 @@ export async function PUT(
     const body = await req.json();
     delete body.company_id; // Never let client alter company_id
 
-    const isSelf = authUser.id === params.id || authUser.email === existing.email;
+    const isSelf = authUser.id === resolvedParams.id || authUser.email === existing.email;
     const isAdminOrHR =
       authUser.role === 'admin_manager' ||
       authUser.role === 'company_admin' ||
@@ -77,7 +78,7 @@ export async function PUT(
       body.must_change_password = false;
     }
 
-    const updated = await Employee.findByIdAndUpdate(params.id, body, {
+    const updated = await Employee.findByIdAndUpdate(resolvedParams.id, body, {
       new: true,
       runValidators: true,
     });
@@ -114,14 +115,15 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ): Promise<NextResponse> {
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
-    const existing = await Employee.findById(params.id);
+    const resolvedParams = await Promise.resolve(context.params);
+    const existing = await Employee.findById(resolvedParams.id);
     if (!existing) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
@@ -131,7 +133,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
-    const deleted = await Employee.findByIdAndDelete(params.id);
+    const deleted = await Employee.findByIdAndDelete(resolvedParams.id);
     if (!deleted) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }

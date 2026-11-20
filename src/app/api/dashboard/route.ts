@@ -17,6 +17,17 @@ export async function GET(req: NextRequest) {
       return authResult.errorResponse;
     }
 
+    // Platform Super Admin manages tenants only — zero access to companies' operational CRM dashboard
+    if (authResult.user?.role === 'platform_super_admin') {
+      return NextResponse.json({
+        stats: { totalEmployees: 0, activeProjects: 0, attendanceRate: 0 },
+        topPerformers: [],
+        upcomingDeadlines: [],
+        projectStatusDistribution: [],
+        recentTickets: [],
+      });
+    }
+
     await connectToDatabase();
 
     const todayStr = new Date().toISOString().split('T')[0];

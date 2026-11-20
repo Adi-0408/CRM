@@ -18,14 +18,15 @@ function generateRandomPassword(): string {
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const authResult = await requireRoles(req, ['platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
-    const company = (await Company.findById(params.id)) || (await Company.findOne({ slug: params.id }));
+    const resolvedParams = await Promise.resolve(context.params);
+    const company = (await Company.findById(resolvedParams.id)) || (await Company.findOne({ slug: resolvedParams.id }));
     if (!company) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }

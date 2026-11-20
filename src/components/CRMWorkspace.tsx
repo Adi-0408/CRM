@@ -87,8 +87,8 @@ export default function CRMWorkspace({
   // Keep visited tabs alive in memory for 0ms instant tab switching
   const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>({
     [initialTab]: true,
-    overview: true,
-    dashboard: true,
+    overview: role !== 'platform_super_admin',
+    dashboard: role !== 'platform_super_admin',
     super_admin: role === 'platform_super_admin',
   });
 
@@ -96,12 +96,12 @@ export default function CRMWorkspace({
     setVisitedTabs((prev) => (prev[activeTab] ? prev : { ...prev, [activeTab]: true }));
   }, [activeTab]);
 
-  // If role is Super Admin, always default to super_admin tab
+  // If role is Super Admin, strictly lock to super_admin tab
   useEffect(() => {
-    if (role === 'platform_super_admin' && initialTab === 'overview') {
+    if (role === 'platform_super_admin') {
       setActiveTab('super_admin');
     }
-  }, [role, initialTab]);
+  }, [role]);
 
   // If initialTab changes due to deep-linking or route change, sync activeTab
   useEffect(() => {
@@ -132,10 +132,18 @@ export default function CRMWorkspace({
   const [leadsSection, setLeadsSection] = useState<'leads' | 'quotations'>(initialSection);
 
   const handleTabChange = (tab: string) => {
+    if (role === 'platform_super_admin') {
+      setActiveTab('super_admin');
+      return;
+    }
     setActiveTab(tab);
   };
 
   const navigateToTab = (tab: string, section?: 'leads' | 'quotations') => {
+    if (role === 'platform_super_admin') {
+      setActiveTab('super_admin');
+      return;
+    }
     if (tab === 'quotations') {
       setLeadsSection('quotations');
       handleTabChange('leads');
@@ -219,6 +227,13 @@ export default function CRMWorkspace({
   const [selectedProjectIdForTask, setSelectedProjectIdForTask] = useState<string | undefined>(undefined);
 
   const fetchData = async () => {
+    // Platform Super Admin manages tenants only — never query or populate tenant operational CRM data
+    if (role === 'platform_super_admin') {
+      setSyncing(false);
+      setLoading(false);
+      return;
+    }
+
     try {
       setSyncing(true);
       // Phase 1: Fetch primary dashboard data & employees for immediate render
@@ -273,6 +288,12 @@ export default function CRMWorkspace({
 
   // Ensure user cannot stay on restricted tab if role switches
   useEffect(() => {
+    if (role === 'platform_super_admin') {
+      if (activeTab !== 'super_admin') {
+        setActiveTab('super_admin');
+      }
+      return;
+    }
     if (!hasAccessTo(activeTab)) {
       setActiveTab('overview');
     }
@@ -297,6 +318,9 @@ export default function CRMWorkspace({
 
   // Map active navigation title
   const getHeaderTitle = () => {
+    if (role === 'platform_super_admin') {
+      return 'Super Admin Console';
+    }
     switch (activeTab) {
       case 'super_admin':
         return 'Super Admin Console';
@@ -354,12 +378,14 @@ export default function CRMWorkspace({
 
         {/* Inner Content Area (Isolated Vertical Scrolling) */}
         <main className="p-4 sm:p-6 md:p-8 pb-24 lg:pb-8 flex-1 min-h-0 overflow-y-auto overflow-x-hidden max-w-7xl w-full mx-auto scroll-smooth focus:outline-none">
-          {/* Business Intelligence Header & Pill Navigation */}
-          <BusinessIntelligenceNav
-            activeTab={activeTab}
-            setActiveTab={handleTabChange}
-            syncing={syncing}
-          />
+          {/* Business Intelligence Header & Pill Navigation - strictly for company tenant users */}
+          {role !== 'platform_super_admin' && (
+            <BusinessIntelligenceNav
+              activeTab={activeTab}
+              setActiveTab={handleTabChange}
+              syncing={syncing}
+            />
+          )}
 
           {/* Section Views */}
           {loading ? (
@@ -374,14 +400,13 @@ export default function CRMWorkspace({
                 <div className="h-72 bg-slate-200/60 rounded-2xl" />
               </div>
             </div>
+          ) : role === 'platform_super_admin' ? (
+            /* Super Admin Platform Console: Strictly tenant management only, zero company operational data */
+            <div className="block">
+              <SuperAdminView />
+            </div>
           ) : (
             <>
-              {/* 0. Super Admin Platform Console Section */}
-              {(visitedTabs.super_admin || role === 'platform_super_admin') && (
-                <div className={activeTab === 'super_admin' ? 'block' : 'hidden'}>
-                  <SuperAdminView />
-                </div>
-              )}
 
               {/* 1. Dashboard (Overview) with Dynamic Role Rendering */}
               {(visitedTabs.overview || visitedTabs.dashboard) && (
@@ -510,8 +535,8 @@ export default function CRMWorkspace({
         </main>
       </div>
 
-      {/* Floating Mobile Bottom Navigation Dock */}
-      {isAuthenticated && (
+      {/* Floating Mobile Bottom Navigation Dock (Company Users Only) */}
+      {isAuthenticated && role !== 'platform_super_admin' && (
         <MobileBottomDock
           activeTab={activeTab}
           onNavigateTab={navigateToTab}

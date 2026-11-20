@@ -58,11 +58,28 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    return NextResponse.json({
+    const updatedUser = {
+      ...authUser,
+      must_change_password: false,
+    };
+
+    const response = NextResponse.json({
       success: true,
       message: 'Password successfully updated.',
       must_change_password: false,
+      user: updatedUser,
     });
+
+    // Refresh the session cookie with must_change_password cleared
+    response.cookies.set({
+      name: 'crm_session',
+      value: encodeURIComponent(JSON.stringify(updatedUser)),
+      path: '/',
+      maxAge: 30 * 24 * 60 * 60,
+      sameSite: 'lax',
+    });
+
+    return response;
   } catch (error: any) {
     console.error('Change password error:', error);
     return NextResponse.json(

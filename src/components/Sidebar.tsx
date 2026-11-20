@@ -192,7 +192,7 @@ export default function Sidebar({
               {!collapsed && (
                 <div className="flex items-center truncate animate-in fade-in duration-150">
                   <span className="text-slate-900 font-extrabold text-base tracking-tight truncate">
-                    {branding.brand_name || 'Enterprise CRM'}
+                    {user?.role === 'platform_super_admin' ? 'Prism Platform' : (branding.brand_name || 'Enterprise CRM')}
                   </span>
                 </div>
               )}
@@ -282,7 +282,7 @@ export default function Sidebar({
                   </div>
                   <div className="overflow-hidden">
                     <span className="text-slate-900 font-extrabold text-base tracking-tight truncate block">
-                      {branding.brand_name || 'Enterprise CRM'}
+                      {user?.role === 'platform_super_admin' ? 'Prism Platform' : (branding.brand_name || 'Enterprise CRM')}
                     </span>
                   </div>
                 </div>

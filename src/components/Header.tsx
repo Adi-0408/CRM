@@ -65,7 +65,11 @@ export default function Header({
     const secondaryBtnClass =
       'whitespace-nowrap shrink-0 px-3.5 py-1.5 text-xs rounded-xl inline-flex items-center justify-center gap-1.5 font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 shadow-2xs transition-all duration-150 active:scale-95 cursor-pointer';
 
-    if (role === 'admin_manager' || role === 'company_admin' || role === 'platform_super_admin') {
+    if (role === 'platform_super_admin') {
+      return null;
+    }
+
+    if (role === 'admin_manager' || role === 'company_admin') {
       return (
         <>
           <button onClick={onOpenCreateTask} className={secondaryBtnClass}>
@@ -237,11 +241,18 @@ export default function Header({
             <span>{roleConfig.label}</span>
           </span>
 
-          {branding.brand_name && (
+          {branding.brand_name && role !== 'platform_super_admin' && (
             <span
               className="text-[10px] font-bold px-2 py-0.5 rounded-full border hidden md:inline-flex items-center flex-shrink-0 bg-indigo-50/70 text-indigo-700 border-indigo-150"
             >
               <span>{branding.brand_name}</span>
+            </span>
+          )}
+          {role === 'platform_super_admin' && (
+            <span
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full border hidden md:inline-flex items-center flex-shrink-0 bg-purple-50 text-purple-700 border-purple-200"
+            >
+              <span>Platform Control Center</span>
             </span>
           )}
         </div>
