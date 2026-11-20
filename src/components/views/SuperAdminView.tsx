@@ -64,10 +64,14 @@ interface StatsSummary {
 }
 
 interface SuperAdminViewProps {
-  // onEnterWorkspace removed: Super Admin manages tenant access only, not company data
+  activeSection?: 'organizations' | 'inquiries' | 'landing_cms';
+  onInquiriesCountChange?: (cnt: number) => void;
 }
 
-export default function SuperAdminView(_props: SuperAdminViewProps) {
+export default function SuperAdminView({
+  activeSection = 'organizations',
+  onInquiriesCountChange,
+}: SuperAdminViewProps) {
   const { user } = useAuth();
 
   const [companies, setCompanies] = useState<CompanyItem[]>([]);
@@ -84,6 +88,8 @@ export default function SuperAdminView(_props: SuperAdminViewProps) {
   const [subTab, setSubTab] = useState<'organizations' | 'inquiries' | 'landing_cms'>('organizations');
   const [newInquiriesCount, setNewInquiriesCount] = useState<number>(0);
 
+  const currentSection = activeSection || subTab;
+
   const fetchInquiryBadge = async () => {
     try {
       const res = await fetch('/api/super-admin/inquiries?status=new', {
@@ -95,7 +101,9 @@ export default function SuperAdminView(_props: SuperAdminViewProps) {
       });
       if (res.ok) {
         const data = await res.json();
-        setNewInquiriesCount(data.counts?.new || 0);
+        const cnt = data.counts?.new || 0;
+        setNewInquiriesCount(cnt);
+        onInquiriesCountChange?.(cnt);
       }
     } catch (_) {}
   };
@@ -399,149 +407,101 @@ export default function SuperAdminView(_props: SuperAdminViewProps) {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Top Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/70 backdrop-blur-md p-5 sm:p-6 rounded-3xl border border-slate-150 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-purple-100/80 border border-purple-200 text-purple-700 flex items-center justify-center font-bold">
-              <Building2 className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold tracking-tight text-slate-900">
-                Platform Organizations & Tenants
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Manage all companies, provision new workspaces, and oversee platform tenants.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Platform Data Reset Danger Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setWipeConfirmation('');
-              setShowWipeModal(true);
-            }}
-            className="px-3.5 py-2.5 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold inline-flex items-center gap-1.5 transition-all active:scale-95 shadow-2xs"
-            title="Wipe test data and reset to baseline"
-          >
-            <ShieldAlert className="w-4 h-4 text-rose-600" />
-            <span>Reset Platform Data</span>
-          </button>
-
-          <a
-            href="/landing"
-            target="_blank"
-            rel="noreferrer"
-            className="px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold inline-flex items-center gap-1.5 transition-all shadow-2xs"
-            title="Preview live public landing page in new tab"
-          >
-            <Globe className="w-4 h-4 text-purple-600" />
-            <span>Landing Page</span>
-            <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-          </a>
-
-          <button
-            type="button"
-            onClick={fetchCompanies}
-            disabled={refreshing}
-            className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-all active:scale-95 shadow-2xs"
-            title="Refresh tenants"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-purple-600' : ''}`} />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setForm({
-                name: '',
-                slug: '',
-                adminName: '',
-                adminEmail: '',
-                adminPassword: '',
-                phone: '',
-                address: '',
-                currency_code: 'INR',
-                currency_symbol: '₹',
-                timezone: 'Asia/Kolkata',
-              });
-              setCreateStep('form');
-              setCreateError('');
-              setShowCreateModal(true);
-            }}
-            className="px-4 py-2.5 rounded-xl bg-[#635BFF] hover:bg-[#5249EC] text-white text-xs font-bold inline-flex items-center gap-2 shadow-sm transition-all active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Company & Admin</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Segmented Sub-Tab Control: Organizations vs Inquiries */}
-      <div className="flex items-center gap-2 border-b border-slate-200/80 pb-2">
-        <button
-          type="button"
-          onClick={() => setSubTab('organizations')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all ${
-            subTab === 'organizations'
-              ? 'bg-purple-600 text-white shadow-xs'
-              : 'bg-white/80 hover:bg-white text-slate-600 hover:text-slate-900 border border-slate-200/70'
-          }`}
-        >
-          <Building2 className="w-4 h-4" />
-          <span>Organizations & Tenants</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSubTab('inquiries')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all relative ${
-            subTab === 'inquiries'
-              ? 'bg-purple-600 text-white shadow-xs'
-              : 'bg-white/80 hover:bg-white text-slate-600 hover:text-slate-900 border border-slate-200/70'
-          }`}
-        >
-          <Inbox className="w-4 h-4" />
-          <span>Inquiries</span>
-          {newInquiriesCount > 0 && (
-            <span
-              className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                subTab === 'inquiries'
-                  ? 'bg-white text-purple-700'
-                  : 'bg-purple-600 text-white'
-              }`}
-            >
-              {newInquiriesCount}
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSubTab('landing_cms')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all ${
-            subTab === 'landing_cms'
-              ? 'bg-purple-600 text-white shadow-xs'
-              : 'bg-white/80 hover:bg-white text-slate-600 hover:text-slate-900 border border-slate-200/70'
-          }`}
-        >
-          <Globe className="w-4 h-4" />
-          <span>Landing Page CMS</span>
-        </button>
-      </div>
-
-      {subTab === 'inquiries' ? (
-        <InquiriesPanel onCountChange={(cnt) => setNewInquiriesCount(cnt)} />
-      ) : subTab === 'landing_cms' ? (
+      {currentSection === 'inquiries' ? (
+        <InquiriesPanel
+          onCountChange={(cnt) => {
+            setNewInquiriesCount(cnt);
+            onInquiriesCountChange?.(cnt);
+          }}
+        />
+      ) : currentSection === 'landing_cms' ? (
         <LandingEditorPanel />
       ) : (
         <>
+          {/* Top Section Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/70 backdrop-blur-md p-5 sm:p-6 rounded-3xl border border-slate-150 shadow-xs">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-purple-100/80 border border-purple-200 text-purple-700 flex items-center justify-center font-bold">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight text-slate-900">
+                    Platform Organizations & Tenants
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Manage all companies, provision new workspaces, and oversee platform tenants.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {/* Platform Data Reset Danger Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setWipeConfirmation('');
+                  setShowWipeModal(true);
+                }}
+                className="px-3.5 py-2.5 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold inline-flex items-center gap-1.5 transition-all active:scale-95 shadow-2xs"
+                title="Wipe test data and reset to baseline"
+              >
+                <ShieldAlert className="w-4 h-4 text-rose-600" />
+                <span>Reset Platform Data</span>
+              </button>
+
+              <a
+                href="/landing"
+                target="_blank"
+                rel="noreferrer"
+                className="px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold inline-flex items-center gap-1.5 transition-all shadow-2xs"
+                title="Preview live public landing page in new tab"
+              >
+                <Globe className="w-4 h-4 text-purple-600" />
+                <span>Landing Page</span>
+                <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+              </a>
+
+              <button
+                type="button"
+                onClick={fetchCompanies}
+                disabled={refreshing}
+                className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-all active:scale-95 shadow-2xs"
+                title="Refresh tenants"
+              >
+                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-purple-600' : ''}`} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setForm({
+                    name: '',
+                    slug: '',
+                    adminName: '',
+                    adminEmail: '',
+                    adminPassword: '',
+                    phone: '',
+                    address: '',
+                    currency_code: 'INR',
+                    currency_symbol: '₹',
+                    timezone: 'Asia/Kolkata',
+                  });
+                  setCreateStep('form');
+                  setCreateError('');
+                  setShowCreateModal(true);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-[#635BFF] hover:bg-[#5249EC] text-white text-xs font-bold inline-flex items-center gap-2 shadow-sm transition-all active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create Company & Admin</span>
+              </button>
+            </div>
+          </div>
+
           {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl border border-slate-150 p-4 sm:p-5 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold">Total Companies</span>

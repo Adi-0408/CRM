@@ -17,6 +17,22 @@ export async function GET(
     const resolvedParams = await Promise.resolve(context.params);
     let targetId = resolvedParams.id;
     if (targetId === 'current') {
+      if (authResult.isSuperAdmin) {
+        return NextResponse.json({
+          name: 'PrismCRM',
+          slug: 'prism-crm',
+          brand_name: 'PrismCRM',
+          logo_url: '',
+          favicon_url: '',
+          primary_color: '#635BFF',
+          accent_color: '#00D4B2',
+          currency_code: 'INR',
+          currency_symbol: '₹',
+          timezone: 'Asia/Kolkata',
+          support_email: 'support@crm.com',
+          status: 'active',
+        });
+      }
       targetId = authResult.companyId || DEFAULT_COMPANY_ID;
     }
 
@@ -63,6 +79,12 @@ export async function PUT(
     const resolvedParams = await Promise.resolve(context.params);
     let targetId = resolvedParams.id;
     if (targetId === 'current') {
+      if (authResult.isSuperAdmin) {
+        return NextResponse.json(
+          { error: 'Platform Super Admin cannot update company branding via current endpoint' },
+          { status: 400 }
+        );
+      }
       targetId = authResult.companyId || DEFAULT_COMPANY_ID;
     }
 

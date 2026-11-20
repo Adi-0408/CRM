@@ -48,13 +48,20 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
     badgeText: 'text-purple-900',
     badgeBorder: 'border-purple-300',
     sidebarTabs: [
-      'super_admin',
+      'organizations',
+      'inquiries',
+      'landing_cms',
     ],
     biNavTabs: [
-      'super_admin',
+      'organizations',
+      'inquiries',
+      'landing_cms',
     ],
     allowedViews: [
       'super_admin',
+      'organizations',
+      'inquiries',
+      'landing_cms',
     ],
   },
 

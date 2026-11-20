@@ -79,16 +79,18 @@ export default function CRMWorkspace({
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(
-    role === 'platform_super_admin' ? 'super_admin' : initialTab
+    role === 'platform_super_admin' ? 'organizations' : initialTab
   );
   const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [unreadInquiriesCount, setUnreadInquiriesCount] = useState<number>(0);
 
   // Keep visited tabs alive in memory for 0ms instant tab switching
   const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>({
     [initialTab]: true,
     overview: role !== 'platform_super_admin',
     dashboard: role !== 'platform_super_admin',
+    organizations: role === 'platform_super_admin',
     super_admin: role === 'platform_super_admin',
   });
 
@@ -96,12 +98,35 @@ export default function CRMWorkspace({
     setVisitedTabs((prev) => (prev[activeTab] ? prev : { ...prev, [activeTab]: true }));
   }, [activeTab]);
 
-  // If role is Super Admin, strictly lock to super_admin tab
+  // If role is Super Admin, validate active tab
   useEffect(() => {
     if (role === 'platform_super_admin') {
-      setActiveTab('super_admin');
+      const allowed = ['organizations', 'inquiries', 'landing_cms', 'super_admin'];
+      if (!allowed.includes(activeTab)) {
+        setActiveTab('organizations');
+      }
     }
   }, [role]);
+
+  // Fetch unread inquiries count for Super Admin sidebar badge
+  useEffect(() => {
+    if (role === 'platform_super_admin') {
+      fetch('/api/super-admin/inquiries?status=new', {
+        headers: {
+          'x-user-id': user?.id || '',
+          'x-user-email': user?.email || '',
+          'x-user-role': user?.role || '',
+        },
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.counts?.new !== undefined) {
+            setUnreadInquiriesCount(data.counts.new);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [role, user?.id, user?.email, user?.role]);
 
   // If initialTab changes due to deep-linking or route change, sync activeTab
   useEffect(() => {
@@ -133,7 +158,10 @@ export default function CRMWorkspace({
 
   const handleTabChange = (tab: string) => {
     if (role === 'platform_super_admin') {
-      setActiveTab('super_admin');
+      const allowed = ['organizations', 'inquiries', 'landing_cms', 'super_admin'];
+      if (allowed.includes(tab)) {
+        setActiveTab(tab === 'super_admin' ? 'organizations' : tab);
+      }
       return;
     }
     setActiveTab(tab);
@@ -141,7 +169,10 @@ export default function CRMWorkspace({
 
   const navigateToTab = (tab: string, section?: 'leads' | 'quotations') => {
     if (role === 'platform_super_admin') {
-      setActiveTab('super_admin');
+      const allowed = ['organizations', 'inquiries', 'landing_cms', 'super_admin'];
+      if (allowed.includes(tab)) {
+        setActiveTab(tab === 'super_admin' ? 'organizations' : tab);
+      }
       return;
     }
     if (tab === 'quotations') {
@@ -289,8 +320,9 @@ export default function CRMWorkspace({
   // Ensure user cannot stay on restricted tab if role switches
   useEffect(() => {
     if (role === 'platform_super_admin') {
-      if (activeTab !== 'super_admin') {
-        setActiveTab('super_admin');
+      const allowed = ['organizations', 'inquiries', 'landing_cms', 'super_admin'];
+      if (!allowed.includes(activeTab)) {
+        setActiveTab('organizations');
       }
       return;
     }
@@ -319,11 +351,20 @@ export default function CRMWorkspace({
   // Map active navigation title
   const getHeaderTitle = () => {
     if (role === 'platform_super_admin') {
-      return 'Super Admin Console';
+      switch (activeTab) {
+        case 'inquiries':
+          return 'Inquiries & Platform Leads';
+        case 'landing_cms':
+          return 'Landing Page CMS';
+        case 'organizations':
+        case 'super_admin':
+        default:
+          return 'Organizations & Tenants';
+      }
     }
     switch (activeTab) {
       case 'super_admin':
-        return 'Super Admin Console';
+        return 'Organizations & Tenants';
       case 'overview':
       case 'dashboard':
         return 'Dashboard';
@@ -361,6 +402,7 @@ export default function CRMWorkspace({
         setCollapsed={setCollapsed}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
+        unreadInquiriesCount={unreadInquiriesCount}
       />
 
       {/* 2. Main Content Layout (Fixed Glassy Navbar + Scrolling Content View) */}
@@ -403,7 +445,16 @@ export default function CRMWorkspace({
           ) : role === 'platform_super_admin' ? (
             /* Super Admin Platform Console: Strictly tenant management only, zero company operational data */
             <div className="block">
-              <SuperAdminView />
+              <SuperAdminView
+                activeSection={
+                  activeTab === 'inquiries'
+                    ? 'inquiries'
+                    : activeTab === 'landing_cms'
+                    ? 'landing_cms'
+                    : 'organizations'
+                }
+                onInquiriesCountChange={(cnt) => setUnreadInquiriesCount(cnt)}
+              />
             </div>
           ) : (
             <>

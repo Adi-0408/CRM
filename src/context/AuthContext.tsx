@@ -208,6 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     localStorage.removeItem('crm_auth_user');
     localStorage.removeItem('crm_auth_token');
+    localStorage.removeItem('crm_active_branding');
     try {
       document.cookie = 'crm_session=; path=/; max-age=0; SameSite=Lax';
     } catch {}
@@ -217,9 +218,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const roleConfig = ROLE_CONFIGS[role] || ROLE_CONFIGS.admin_manager;
 
   const hasAccessTo = (tabId: string): boolean => {
-    // Platform Super Admin ONLY has access to the Super Admin Console — strictly isolated from tenant CRM data
+    // Platform Super Admin ONLY has access to the Super Admin platform sections — strictly isolated from tenant CRM data
     if (role === 'platform_super_admin') {
-      return tabId === 'super_admin';
+      return ['super_admin', 'organizations', 'inquiries', 'landing_cms'].includes(tabId);
     }
     if (role === 'admin_manager' || role === 'company_admin') return true;
     return roleConfig.allowedViews.includes(tabId);

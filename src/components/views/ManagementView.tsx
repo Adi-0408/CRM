@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import CustomSelect from '@/components/common/CustomSelect';
 import { useTenant, CompanyBranding } from '@/context/TenantContext';
+import { useAuth } from '@/context/AuthContext';
 
 interface ManagementViewProps {
   onRefresh: () => void;
@@ -98,6 +99,7 @@ const TIMEZONE_OPTIONS = [
 
 export default function ManagementView({ onRefresh }: ManagementViewProps) {
   const { branding, updateBranding, refreshBranding } = useTenant();
+  const { user } = useAuth();
 
   const [activeSubTab, setActiveSubTab] = useState<'branding' | 'branches' | 'data'>('branding');
   const [seeding, setSeeding] = useState(false);
@@ -304,6 +306,11 @@ export default function ManagementView({ onRefresh }: ManagementViewProps) {
 
       const res = await fetch('/api/upload', {
         method: 'POST',
+        headers: {
+          'x-user-id': user?.id || '',
+          'x-user-email': user?.email || '',
+          'x-user-role': user?.role || '',
+        },
         body: formData,
       });
 

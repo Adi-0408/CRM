@@ -9,9 +9,29 @@ export async function POST(req: NextRequest) {
     const authResult = await requireTenantAuth(req);
     if (authResult.errorResponse) return authResult.errorResponse;
 
-    const companyId = authResult.companyId || DEFAULT_COMPANY_ID;
-    const body = await req.json();
-    const { file, folder } = body;
+    const companyId = authResult.companyId || (authResult.isSuperAdmin ? 'platform' : DEFAULT_COMPANY_ID);
+    let file: string | null = null;
+    let folder = 'branding';
+
+    const contentType = req.headers.get('content-type') || '';
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await req.formData();
+      const fileEntry = formData.get('file');
+      const folderEntry = formData.get('folder');
+      if (typeof folderEntry === 'string') folder = folderEntry;
+
+      if (fileEntry instanceof File) {
+        const buffer = await fileEntry.arrayBuffer();
+        const base64 = Buffer.from(buffer).toString('base64');
+        file = `data:${fileEntry.type || 'image/png'};base64,${base64}`;
+      } else if (typeof fileEntry === 'string') {
+        file = fileEntry;
+      }
+    } else {
+      const body = await req.json();
+      file = body.file;
+      folder = body.folder || 'branding';
+    }
 
     if (!file) {
       return NextResponse.json({ error: 'No file data provided' }, { status: 400 });

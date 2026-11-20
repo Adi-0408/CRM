@@ -53,8 +53,19 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [branding, setBranding] = useState<CompanyBranding>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const cached = localStorage.getItem('crm_active_branding');
-        if (cached) return JSON.parse(cached);
+        // Clean up legacy global key if it exists
+        localStorage.removeItem('crm_active_branding');
+        const authRaw = localStorage.getItem('crm_auth_user');
+        if (authRaw) {
+          const authUser = JSON.parse(authRaw);
+          if (authUser?.role === 'platform_super_admin') {
+            return DEFAULT_BRANDING;
+          }
+          if (authUser?.company_id) {
+            const cached = localStorage.getItem(`crm_branding_${authUser.company_id}`);
+            if (cached) return JSON.parse(cached);
+          }
+        }
       } catch {}
     }
     return DEFAULT_BRANDING;
@@ -90,7 +101,19 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const fetchCompanyBranding = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      setBranding(DEFAULT_BRANDING);
+      applyBrandingToDOM(DEFAULT_BRANDING);
+      return;
+    }
+
+    // Platform Super Admin uses clean platform branding only - never any tenant's branding or custom logo
+    if (user?.role === 'platform_super_admin') {
+      setBranding(DEFAULT_BRANDING);
+      applyBrandingToDOM(DEFAULT_BRANDING);
+      return;
+    }
+
     try {
       setLoading(true);
       const res = await fetch('/api/companies/current', {
@@ -125,9 +148,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
           setBranding(merged);
           applyBrandingToDOM(merged);
-          try {
-            localStorage.setItem('crm_active_branding', JSON.stringify(merged));
-          } catch {}
+          const cacheKey = user?.company_id ? `crm_branding_${user.company_id}` : (comp.id || comp._id ? `crm_branding_${comp.id || comp._id}` : null);
+          if (cacheKey) {
+            try {
+              localStorage.setItem(cacheKey, JSON.stringify(merged));
+            } catch {}
+          }
         }
       }
     } catch (err) {
@@ -135,13 +161,16 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, user?.id, user?.email, user?.role, applyBrandingToDOM]);
+  }, [isAuthenticated, user?.id, user?.email, user?.role, user?.company_id, applyBrandingToDOM]);
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchCompanyBranding();
+    } else {
+      setBranding(DEFAULT_BRANDING);
+      applyBrandingToDOM(DEFAULT_BRANDING);
     }
-  }, [isAuthenticated, user?.company_id, fetchCompanyBranding]);
+  }, [isAuthenticated, user?.company_id, user?.role, fetchCompanyBranding, applyBrandingToDOM]);
 
   useEffect(() => {
     applyBrandingToDOM(branding);
@@ -179,9 +208,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
       setBranding(merged);
       applyBrandingToDOM(merged);
-      try {
-        localStorage.setItem('crm_active_branding', JSON.stringify(merged));
-      } catch {}
+      const cacheKey = user?.company_id ? `crm_branding_${user.company_id}` : (updated.id || updated._id ? `crm_branding_${updated.id || updated._id}` : null);
+      if (cacheKey) {
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(merged));
+        } catch {}
+      }
       return true;
     } catch (err) {
       console.error('Error updating company branding:', err);
