@@ -222,17 +222,19 @@ export default function LoginPage({
           </button>
         </form>
 
-        {/* 1-Click Demo Roles Section (Only rendered on platform root login if enabled) */}
+        {/* 1-Click Platform Access (Only Platform Super Admin) */}
         {showDemoGrid && (
           <div className="mt-5 pt-4 border-t border-slate-100">
             <div className="flex items-center justify-between mb-2.5">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                 <Sparkles className="w-3 h-3 text-[#635BFF]" />
-                Demo Roles (1-Click Fill)
+                Platform Access (1-Click Fill)
               </span>
-              <span className="text-[10px] text-slate-400 font-medium">9 Roles</span>
+              <span className="text-[10px] text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                Super Admin
+              </span>
             </div>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div>
               {DEMO_CREDENTIALS.map((cred) => {
                 const isSelected = email.toLowerCase() === cred.email.toLowerCase();
                 return (
@@ -244,15 +246,25 @@ export default function LoginPage({
                       setPassword(cred.password);
                       setError('');
                     }}
-                    className={`text-left px-2 py-1.5 rounded-lg border text-[11px] font-medium transition-all ${
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-xs font-semibold transition-all ${
                       isSelected
-                        ? 'border-[#635BFF] bg-[#F0EEFF] text-[#635BFF] shadow-xs'
-                        : 'border-slate-150 bg-slate-50/70 hover:bg-slate-100/80 text-slate-700'
+                        ? 'border-purple-500 bg-purple-50 text-purple-900 shadow-xs'
+                        : 'border-slate-200 bg-slate-50/70 hover:bg-slate-100 text-slate-800'
                     }`}
-                    title={`${cred.name} (${cred.email}) - ${cred.department}`}
+                    title={`${cred.name} (${cred.email})`}
                   >
-                    <div className="truncate font-semibold">{cred.roleTitle.split(' ')[0]}</div>
-                    <div className="truncate text-[9.5px] text-slate-400">{cred.role.replace('_', ' ')}</div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                        SA
+                      </div>
+                      <div className="text-left">
+                        <div className="font-bold text-slate-900 leading-tight">{cred.roleTitle}</div>
+                        <div className="text-[10.5px] font-mono text-slate-400">{cred.email}</div>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-bold text-purple-600 bg-purple-100/70 px-2.5 py-1 rounded-lg border border-purple-200/60">
+                      1-Click Fill
+                    </span>
                   </button>
                 );
               })}
