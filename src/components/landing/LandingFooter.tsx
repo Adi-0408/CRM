@@ -2,8 +2,9 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Layers, Mail, Phone, MapPin } from 'lucide-react';
+import { Layers, Mail, Phone, LayoutDashboard, Lock } from 'lucide-react';
 import { ILandingContent, DEFAULT_LANDING_CONTENT } from '@/models/LandingContent';
+import { useAuth } from '@/context/AuthContext';
 
 interface LandingFooterProps {
   contact?: ILandingContent['contact'];
@@ -11,6 +12,7 @@ interface LandingFooterProps {
 
 export default function LandingFooter({ contact = DEFAULT_LANDING_CONTENT.contact }: LandingFooterProps) {
   const currentYear = new Date().getFullYear();
+  const { isAuthenticated } = useAuth();
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -80,12 +82,27 @@ export default function LandingFooter({ contact = DEFAULT_LANDING_CONTENT.contac
             >
               Contact
             </button>
-            <Link
-              href="/login"
-              className="hover:text-[#635BFF] transition-colors py-1"
-            >
-              Sign In
-            </Link>
+          </div>
+
+          {/* Login & Dashboard Access Section in Footer */}
+          <div className="flex items-center">
+            {isAuthenticated ? (
+              <Link
+                href="/"
+                className="px-4 py-2.5 rounded-xl border border-purple-200 hover:border-purple-300 text-purple-700 bg-purple-50 hover:bg-purple-100 font-semibold text-xs sm:text-sm transition-all shadow-xs flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#635BFF] active:scale-95"
+              >
+                <LayoutDashboard className="w-4 h-4 text-purple-600" />
+                <span>Open Dashboard</span>
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="px-4 py-2.5 rounded-xl border border-slate-200/90 hover:border-slate-300 text-slate-700 hover:text-slate-900 font-semibold text-xs sm:text-sm bg-white hover:bg-slate-50 transition-all shadow-xs flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#635BFF] active:scale-95"
+              >
+                <Lock className="w-3.5 h-3.5 text-slate-500" />
+                <span>Log in</span>
+              </Link>
+            )}
           </div>
         </div>
       </div>
