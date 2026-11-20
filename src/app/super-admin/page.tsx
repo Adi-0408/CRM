@@ -122,6 +122,11 @@ export default function SuperAdminPage() {
   const [deleteConfirmationSlug, setDeleteConfirmationSlug] = useState('');
   const [deleting, setDeleting] = useState(false);
 
+  // Wipe All Data Modal
+  const [showWipeModal, setShowWipeModal] = useState(false);
+  const [wipeConfirmation, setWipeConfirmation] = useState('');
+  const [wipingData, setWipingData] = useState(false);
+
   // Actions Dropdown Menu state
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
@@ -351,6 +356,38 @@ export default function SuperAdminPage() {
     }
   };
 
+  const handleWipeAllData = async () => {
+    if (wipeConfirmation.trim().toUpperCase() !== 'RESET') {
+      alert('Please type RESET to confirm data wipe.');
+      return;
+    }
+    try {
+      setWipingData(true);
+      const res = await fetch('/api/super-admin/wipe-all', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user?.id || '',
+          'x-user-email': user?.email || '',
+          'x-user-role': user?.role || '',
+        },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setShowWipeModal(false);
+        setWipeConfirmation('');
+        alert('All platform test data successfully wiped. System reset to baseline.');
+        fetchCompanies();
+      } else {
+        alert(data.error || 'Failed to wipe platform data.');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error executing platform data wipe.');
+    } finally {
+      setWipingData(false);
+    }
+  };
+
   const filteredCompanies = companies.filter((c) => {
     if (statusFilter !== 'all' && c.status !== statusFilter) return false;
     if (search.trim()) {
@@ -440,6 +477,18 @@ export default function SuperAdminPage() {
               title="Refresh Tenants"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-[#635BFF]' : ''}`} />
+            </button>
+
+            <button
+              onClick={() => {
+                setWipeConfirmation('');
+                setShowWipeModal(true);
+              }}
+              className="inline-flex items-center space-x-1.5 px-3 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-all active:scale-[0.98]"
+              title="Wipe test data and reset to baseline"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+              <span className="hidden sm:inline">Reset Platform Data</span>
             </button>
 
             <button
@@ -596,7 +645,16 @@ export default function SuperAdminPage() {
                             </div>
                             <div>
                               <div className="font-bold text-slate-900 text-sm leading-tight flex items-center space-x-1.5">
-                                <span>{comp.name || comp.brand_name || (comp as any).companyName || 'Unnamed Company'}</span>
+                                <a
+                                  href={`/login/${comp.slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="hover:text-indigo-600 transition-colors inline-flex items-center space-x-1 group"
+                                  title="Open Company Login Portal"
+                                >
+                                  <span>{comp.name || comp.brand_name || (comp as any).companyName || 'Unnamed Company'}</span>
+                                  <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                                </a>
                                 {comp.id === 'company_unique_digital' && (
                                   <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-[#635BFF] border border-indigo-100">
                                     DEFAULT TENANT
@@ -604,7 +662,7 @@ export default function SuperAdminPage() {
                                 )}
                               </div>
                               <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                                slug: <span className="text-slate-600 font-semibold">{comp.slug}</span>
+                                slug: <a href={`/login/${comp.slug}`} target="_blank" rel="noopener noreferrer" className="text-slate-600 hover:text-indigo-600 font-semibold">{comp.slug}</a>
                               </div>
                             </div>
                           </div>
@@ -662,6 +720,17 @@ export default function SuperAdminPage() {
 
                         <td className="px-5 py-4 text-right">
                           <div className="flex items-center justify-end space-x-1.5">
+                            <a
+                              href={`/login/${comp.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100 text-[#635BFF] text-[11px] font-bold transition-colors flex items-center space-x-1 shadow-2xs"
+                              title="Open Branded Login Portal in new tab"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 text-[#635BFF]" />
+                              <span className="hidden sm:inline">Open Portal</span>
+                            </a>
+
                             <button
                               onClick={() => handleResetPassword(comp)}
                               className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-[11px] font-semibold transition-colors flex items-center space-x-1 shadow-xs"
@@ -940,6 +1009,16 @@ export default function SuperAdminPage() {
                 </div>
 
                 <div className="flex flex-col space-y-2">
+                  <a
+                    href={`/login/${provisionedData?.company?.slug || ''}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-2.5 rounded-xl bg-[#635BFF] hover:bg-[#5249E5] text-white text-xs font-bold transition-all flex items-center justify-center space-x-2 shadow-md shadow-indigo-500/20 cursor-pointer active:scale-[0.98]"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>Open Company Login Portal</span>
+                  </a>
+
                   <button
                     onClick={() => {
                       const loginUrl = `${window.location.origin}/login/${provisionedData?.company?.slug || ''}`;
@@ -1132,6 +1211,58 @@ export default function SuperAdminPage() {
                 className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-500/20 disabled:opacity-40"
               >
                 {deleting ? 'Deleting...' : 'Confirm Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 5: Wipe All Platform Data Confirmation */}
+      {showWipeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl border border-slate-150 shadow-2xl max-w-md w-full p-6 sm:p-8 space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center mx-auto">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+
+            <div className="text-center">
+              <h2 className="text-xl font-bold text-slate-900">Reset & Wipe Platform Data</h2>
+              <p className="text-xs text-slate-500 mt-1">
+                This will delete all test companies, users, tasks, projects, leads, attendance, payroll, and tickets.
+                Only the <span className="font-semibold text-slate-700">Platform Super Admin</span> and the <span className="font-semibold text-slate-700">Default Company Tenant</span> will remain.
+              </p>
+            </div>
+
+            <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 text-xs text-amber-900">
+              Please type <span className="font-mono font-bold text-amber-700 select-all">RESET</span> below to confirm:
+            </div>
+
+            <input
+              type="text"
+              value={wipeConfirmation}
+              onChange={(e) => setWipeConfirmation(e.target.value)}
+              placeholder="RESET"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+            />
+
+            <div className="flex items-center space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowWipeModal(false);
+                  setWipeConfirmation('');
+                }}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={wipingData || wipeConfirmation.trim().toUpperCase() !== 'RESET'}
+                onClick={handleWipeAllData}
+                className="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-md shadow-amber-500/20 disabled:opacity-40"
+              >
+                {wipingData ? 'Resetting...' : 'Confirm Wipe'}
               </button>
             </div>
           </div>

@@ -8,6 +8,32 @@ import { normalizeRole, DEFAULT_COMPANY_ID, isCompanySuspended } from '@/lib/api
 
 export const dynamic = 'force-dynamic';
 
+function createLoginResponse(user: any, token: string) {
+  const sessionData = {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    company_id: user.company_id,
+  };
+  const sessionCookieVal = encodeURIComponent(JSON.stringify(sessionData));
+
+  const response = NextResponse.json({
+    success: true,
+    token,
+    user,
+  });
+
+  response.cookies.set({
+    name: 'crm_session',
+    value: sessionCookieVal,
+    path: '/',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    sameSite: 'lax',
+  });
+
+  return response;
+}
+
 export async function POST(req: NextRequest) {
   try {
     let body: any = {};
@@ -41,10 +67,8 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      return NextResponse.json({
-        success: true,
-        token: `token_superadmin_${Date.now()}`,
-        user: {
+      return createLoginResponse(
+        {
           id: 'user_superadmin',
           name: 'Platform Super Admin',
           email: 'superadmin@crm.com',
@@ -58,7 +82,8 @@ export async function POST(req: NextRequest) {
           company_id: null,
           must_change_password: false,
         },
-      });
+        `token_superadmin_${Date.now()}`
+      );
     }
 
     // 2. Check if matching demo credentials
@@ -115,10 +140,8 @@ export async function POST(req: NextRequest) {
 
       const role: UserRole = normalizeRole(employee.role);
 
-      return NextResponse.json({
-        success: true,
-        token: `token_${employee._id}_${Date.now()}`,
-        user: {
+      return createLoginResponse(
+        {
           id: String(employee._id),
           name: employee.name,
           email: employee.email,
@@ -132,7 +155,8 @@ export async function POST(req: NextRequest) {
           company_id: companyId,
           must_change_password: !!employee.must_change_password,
         },
-      });
+        `token_${employee._id}_${Date.now()}`
+      );
     }
 
     // 4. Query user collection if employee record not found
@@ -158,10 +182,8 @@ export async function POST(req: NextRequest) {
 
       const role: UserRole = normalizeRole(userDoc.role);
 
-      return NextResponse.json({
-        success: true,
-        token: `token_${userDoc._id}_${Date.now()}`,
-        user: {
+      return createLoginResponse(
+        {
           id: String(userDoc._id),
           name: userDoc.name,
           email: userDoc.email,
@@ -175,7 +197,8 @@ export async function POST(req: NextRequest) {
           company_id: companyId,
           must_change_password: !!userDoc.must_change_password,
         },
-      });
+        `token_${userDoc._id}_${Date.now()}`
+      );
     }
 
     // 5. Fallback to demo credentials
@@ -189,10 +212,8 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      return NextResponse.json({
-        success: true,
-        token: `token_demo_${demoMatch.role}_${Date.now()}`,
-        user: {
+      return createLoginResponse(
+        {
           id: `demo_${demoMatch.role}`,
           name: demoMatch.name,
           email: demoMatch.email,
@@ -205,7 +226,8 @@ export async function POST(req: NextRequest) {
           company_id: companyId,
           must_change_password: false,
         },
-      });
+        `token_demo_${demoMatch.role}_${Date.now()}`
+      );
     }
 
     return NextResponse.json(

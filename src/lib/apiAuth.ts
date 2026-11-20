@@ -128,7 +128,7 @@ export async function isCompanySuspended(companyId: string | null | undefined): 
 }
 
 /**
- * Extracts and verifies the authenticated user from request headers and Cloud Firestore
+ * Extracts and verifies the authenticated user from request headers, cookies and Cloud Firestore
  */
 export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser | null> {
   const headerId = req.headers.get('x-user-id');
@@ -147,13 +147,31 @@ export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser |
     }
   }
 
-  const lookupEmail = headerEmail || tokenEmail;
-  const lookupId = headerId;
+  // 0. Extract Session from Cookies if headers absent
+  let cookieEmail: string | null = null;
+  let cookieId: string | null = null;
+  let cookieRole: UserRole | null = null;
+  try {
+    const rawCookie = req.cookies.get('crm_session')?.value;
+    if (rawCookie) {
+      const parsed = JSON.parse(decodeURIComponent(rawCookie));
+      if (parsed) {
+        if (parsed.email) cookieEmail = String(parsed.email).toLowerCase().trim();
+        if (parsed.id) cookieId = String(parsed.id);
+        if (parsed.role) cookieRole = normalizeRole(parsed.role);
+      }
+    }
+  } catch (err) {
+    // Malformed session cookie ignored
+  }
+
+  const lookupEmail = headerEmail || tokenEmail || cookieEmail;
+  const lookupId = headerId || cookieId;
 
   await connectToDatabase();
 
-  // 1. Verify against Firestore Employee collection by Document ID
-  if (lookupId && mongoose.Types.ObjectId.isValid(lookupId)) {
+  // 1. Verify against Firestore Employee collection by Document ID (supports any string ID)
+  if (lookupId) {
     const emp = await Employee.findById(lookupId);
     if (emp) {
       const role = normalizeRole(emp.role);

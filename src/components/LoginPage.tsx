@@ -43,10 +43,12 @@ export default function LoginPage({
     brand_name: string;
     logo_url: string;
     primary_color: string;
+    status?: string;
   }>({
     brand_name: initialBranding?.brand_name || 'PrismCRM',
     logo_url: initialBranding?.logo_url || '',
     primary_color: initialBranding?.primary_color || '#635BFF',
+    status: 'active',
   });
 
   useEffect(() => {
@@ -61,6 +63,7 @@ export default function LoginPage({
                 brand_name: data.brand_name,
                 logo_url: data.logo_url || '',
                 primary_color: data.primary_color || '#635BFF',
+                status: data.status || 'active',
               });
               if (typeof document !== 'undefined') {
                 document.title = `${data.brand_name} - Login`;
@@ -136,6 +139,16 @@ export default function LoginPage({
             Sign in to access your organization workspace
           </p>
         </div>
+
+        {/* Suspended Tenant Warning */}
+        {tenantBrand.status === 'suspended' && (
+          <div className="mb-5 p-3.5 rounded-xl bg-amber-50 border border-amber-200 flex items-start space-x-2.5 text-amber-800 text-xs font-medium animate-in fade-in duration-150">
+            <AlertCircle className="w-4 h-4 mt-0.5 text-amber-600 flex-shrink-0" />
+            <div className="leading-relaxed">
+              <span className="font-bold">Organization Suspended:</span> This company workspace has been paused by the platform administrator. Access is temporarily unavailable.
+            </div>
+          </div>
+        )}
 
         {/* Error Alert Box */}
         {error && (

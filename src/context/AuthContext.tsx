@@ -94,6 +94,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.token) {
         localStorage.setItem('crm_auth_token', data.token);
       }
+      try {
+        const sessionPayload = encodeURIComponent(
+          JSON.stringify({
+            id: data.user.id,
+            email: data.user.email,
+            role: data.user.role,
+            company_id: data.user.company_id,
+          })
+        );
+        document.cookie = `crm_session=${sessionPayload}; path=/; max-age=2592000; SameSite=Lax`;
+      } catch {}
 
       return { success: true, user: data.user };
     } catch (err: any) {
@@ -155,6 +166,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     setUser(switchedUser);
     localStorage.setItem('crm_auth_user', JSON.stringify(switchedUser));
+    try {
+      const sessionPayload = encodeURIComponent(
+        JSON.stringify({
+          id: switchedUser.id,
+          email: switchedUser.email,
+          role: switchedUser.role,
+          company_id: switchedUser.company_id,
+        })
+      );
+      document.cookie = `crm_session=${sessionPayload}; path=/; max-age=2592000; SameSite=Lax`;
+    } catch {}
     setIsAuthenticating(false);
   };
 
@@ -165,6 +187,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const updated = { ...prev, ...updates };
       try {
         localStorage.setItem('crm_auth_user', JSON.stringify(updated));
+        const sessionPayload = encodeURIComponent(
+          JSON.stringify({
+            id: updated.id,
+            email: updated.email,
+            role: updated.role,
+            company_id: updated.company_id,
+          })
+        );
+        document.cookie = `crm_session=${sessionPayload}; path=/; max-age=2592000; SameSite=Lax`;
       } catch (err) {
         console.error('Error persisting user update:', err);
       }
@@ -177,6 +208,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     localStorage.removeItem('crm_auth_user');
     localStorage.removeItem('crm_auth_token');
+    try {
+      document.cookie = 'crm_session=; path=/; max-age=0; SameSite=Lax';
+    } catch {}
   };
 
   const role: UserRole = user?.role || 'admin_manager';
