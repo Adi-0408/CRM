@@ -283,68 +283,46 @@ export async function POST(req: NextRequest) {
       }
 
       // Dynamic Office Perimeter Verification
-      let isVerifiedWithinPerimeter = Boolean(location.isWithinPerimeter || location.isSimulated);
+      let isVerifiedWithinPerimeter = false;
       let nearestDistance = 999999;
       let matchedAddress = ITPL_OFFICE_LOCATION.address;
       let allowedRadius = 250;
 
-      if (!isVerifiedWithinPerimeter) {
-        // 1. Check custom calibrated office if provided
-        const customOffice =
-          location.calibratedOffice?.latitude && location.calibratedOffice?.longitude
-            ? {
-                latitude: Number(location.calibratedOffice.latitude),
-                longitude: Number(location.calibratedOffice.longitude),
-              }
-            : undefined;
-
-        if (customOffice) {
-          const customCheck = evaluateGeofence(location.latitude, location.longitude, customOffice);
-          if (customCheck.isWithinPerimeter) {
+      // Check all configured company branches
+      const branches = await Branch.find({ company_id: companyId });
+      if (branches && branches.length > 0) {
+        for (const br of branches) {
+          const bLat = typeof br.lat === 'number' ? br.lat : ITPL_OFFICE_LOCATION.latitude;
+          const bLng = typeof br.lng === 'number' ? br.lng : ITPL_OFFICE_LOCATION.longitude;
+          const bRad = typeof br.radius_meters === 'number' ? br.radius_meters : 250;
+          const d = calculateDistanceInMeters(location.latitude, location.longitude, bLat, bLng);
+          if (d < nearestDistance) {
+            nearestDistance = d;
+            matchedAddress = br.address || br.name || 'Office Branch';
+            allowedRadius = bRad;
+          }
+          if (d <= bRad) {
             isVerifiedWithinPerimeter = true;
-          }
-          nearestDistance = customCheck.distanceMeters;
-          matchedAddress = customCheck.officeAddress;
-          allowedRadius = customCheck.allowedRadiusMeters;
-        }
-
-        // 2. Check all configured company branches
-        if (!isVerifiedWithinPerimeter) {
-          const branches = await Branch.find({ company_id: companyId });
-          if (branches && branches.length > 0) {
-            for (const br of branches) {
-              const bLat = typeof br.lat === 'number' ? br.lat : ITPL_OFFICE_LOCATION.latitude;
-              const bLng = typeof br.lng === 'number' ? br.lng : ITPL_OFFICE_LOCATION.longitude;
-              const bRad = typeof br.radius_meters === 'number' ? br.radius_meters : 250;
-              const d = calculateDistanceInMeters(location.latitude, location.longitude, bLat, bLng);
-              if (d < nearestDistance) {
-                nearestDistance = d;
-                matchedAddress = br.address || br.name || 'Office Branch';
-                allowedRadius = bRad;
-              }
-              if (d <= bRad) {
-                isVerifiedWithinPerimeter = true;
-                break;
-              }
-            }
-          } else {
-            const defCheck = evaluateGeofence(location.latitude, location.longitude);
-            if (defCheck.isWithinPerimeter) {
-              isVerifiedWithinPerimeter = true;
-            }
-            nearestDistance = defCheck.distanceMeters;
-            matchedAddress = defCheck.officeAddress;
-            allowedRadius = defCheck.allowedRadiusMeters;
+            break;
           }
         }
+      } else {
+        const defCheck = evaluateGeofence(location.latitude, location.longitude);
+        if (defCheck.isWithinPerimeter) {
+          isVerifiedWithinPerimeter = true;
+        }
+        nearestDistance = defCheck.distanceMeters;
+        matchedAddress = defCheck.officeAddress;
+        allowedRadius = defCheck.allowedRadiusMeters;
       }
 
       if (!isVerifiedWithinPerimeter) {
         return NextResponse.json(
           {
-            error: `Location verification failed: You are ${nearestDistance}m away from the office. You must be within ${allowedRadius}m of ${matchedAddress} to clock out. (Click "Simulate/Calibrate Office Location" if testing remotely).`,
+            error: `Location verification failed: You are ${nearestDistance}m away from the office. You must be within ${allowedRadius}m of ${matchedAddress} to clock out. Punching is not allowed outside the office radius.`,
             distanceMeters: nearestDistance,
             allowedRadiusMeters: allowedRadius,
+            isWithinPerimeter: false,
           },
           { status: 403 }
         );
@@ -437,68 +415,46 @@ export async function POST(req: NextRequest) {
       }
 
       // Dynamic Office Perimeter Verification
-      let isVerifiedWithinPerimeter = Boolean(location.isWithinPerimeter || location.isSimulated);
+      let isVerifiedWithinPerimeter = false;
       let nearestDistance = 999999;
       let matchedAddress = ITPL_OFFICE_LOCATION.address;
       let allowedRadius = 250;
 
-      if (!isVerifiedWithinPerimeter) {
-        // 1. Check custom calibrated office if provided
-        const customOffice =
-          location.calibratedOffice?.latitude && location.calibratedOffice?.longitude
-            ? {
-                latitude: Number(location.calibratedOffice.latitude),
-                longitude: Number(location.calibratedOffice.longitude),
-              }
-            : undefined;
-
-        if (customOffice) {
-          const customCheck = evaluateGeofence(location.latitude, location.longitude, customOffice);
-          if (customCheck.isWithinPerimeter) {
+      // Check all configured company branches
+      const branches = await Branch.find({ company_id: companyId });
+      if (branches && branches.length > 0) {
+        for (const br of branches) {
+          const bLat = typeof br.lat === 'number' ? br.lat : ITPL_OFFICE_LOCATION.latitude;
+          const bLng = typeof br.lng === 'number' ? br.lng : ITPL_OFFICE_LOCATION.longitude;
+          const bRad = typeof br.radius_meters === 'number' ? br.radius_meters : 250;
+          const d = calculateDistanceInMeters(location.latitude, location.longitude, bLat, bLng);
+          if (d < nearestDistance) {
+            nearestDistance = d;
+            matchedAddress = br.address || br.name || 'Office Branch';
+            allowedRadius = bRad;
+          }
+          if (d <= bRad) {
             isVerifiedWithinPerimeter = true;
-          }
-          nearestDistance = customCheck.distanceMeters;
-          matchedAddress = customCheck.officeAddress;
-          allowedRadius = customCheck.allowedRadiusMeters;
-        }
-
-        // 2. Check all configured company branches
-        if (!isVerifiedWithinPerimeter) {
-          const branches = await Branch.find({ company_id: companyId });
-          if (branches && branches.length > 0) {
-            for (const br of branches) {
-              const bLat = typeof br.lat === 'number' ? br.lat : ITPL_OFFICE_LOCATION.latitude;
-              const bLng = typeof br.lng === 'number' ? br.lng : ITPL_OFFICE_LOCATION.longitude;
-              const bRad = typeof br.radius_meters === 'number' ? br.radius_meters : 250;
-              const d = calculateDistanceInMeters(location.latitude, location.longitude, bLat, bLng);
-              if (d < nearestDistance) {
-                nearestDistance = d;
-                matchedAddress = br.address || br.name || 'Office Branch';
-                allowedRadius = bRad;
-              }
-              if (d <= bRad) {
-                isVerifiedWithinPerimeter = true;
-                break;
-              }
-            }
-          } else {
-            const defCheck = evaluateGeofence(location.latitude, location.longitude);
-            if (defCheck.isWithinPerimeter) {
-              isVerifiedWithinPerimeter = true;
-            }
-            nearestDistance = defCheck.distanceMeters;
-            matchedAddress = defCheck.officeAddress;
-            allowedRadius = defCheck.allowedRadiusMeters;
+            break;
           }
         }
+      } else {
+        const defCheck = evaluateGeofence(location.latitude, location.longitude);
+        if (defCheck.isWithinPerimeter) {
+          isVerifiedWithinPerimeter = true;
+        }
+        nearestDistance = defCheck.distanceMeters;
+        matchedAddress = defCheck.officeAddress;
+        allowedRadius = defCheck.allowedRadiusMeters;
       }
 
       if (!isVerifiedWithinPerimeter) {
         return NextResponse.json(
           {
-            error: `Location verification failed: You are ${nearestDistance}m away from the office. You must be within ${allowedRadius}m of ${matchedAddress} to clock in. (Click "Simulate/Calibrate Office Location" if testing remotely).`,
+            error: `Location verification failed: You are ${nearestDistance}m away from the office. You must be within ${allowedRadius}m of ${matchedAddress} to clock in. Punching is not allowed outside the office radius.`,
             distanceMeters: nearestDistance,
             allowedRadiusMeters: allowedRadius,
+            isWithinPerimeter: false,
           },
           { status: 403 }
         );

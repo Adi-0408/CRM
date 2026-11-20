@@ -37,15 +37,15 @@ export const DEFAULT_LANDING_CONTENT: ILandingContent = {
   id: 'landing_content',
   hero: {
     badgeText: 'Complete Multi-Tenant CRM & Operations Platform',
-    headline: 'The unified operating system for modern enterprise teams',
+    headline: 'One Platform. Every Team. Complete Business Control.',
     subheadline:
-      'Unify your leads, quotations, project workflows, attendance with dynamic geofencing, payroll, invoicing, and support desk inside an isolated, custom-branded workspace.',
-    primaryCtaText: 'Send an inquiry',
-    secondaryCtaText: 'Sign in to workspace',
+      'Manage your entire business with PrismCRM. Unify sales, finance, projects, HR, attendance, payroll, and customer support in one intelligent, secure, company-specific workspace.',
+    primaryCtaText: 'Explore Features',
+    secondaryCtaText: 'Sign In',
   },
   features: {
     sectionBadge: 'Built-in Capabilities',
-    sectionTitle: 'Everything your organization needs to execute',
+    sectionTitle: 'Everything Your Business Needs. One Connected Platform.',
     sectionSubtitle:
       'Engineered as a cohesive ecosystem — eliminating scattered SaaS subscriptions and disconnected databases.',
     multiTenantBannerTitle: 'Dedicated Workspaces with Custom Branding & Branch Isolation',
@@ -53,15 +53,15 @@ export const DEFAULT_LANDING_CONTENT: ILandingContent = {
       'Every company tenant operates inside a strictly isolated boundary with custom logos, brand color themes, branch coordinates, and company-specific administrator logins.',
   },
   howItWorks: {
-    step1Title: 'Send an inquiry',
+    step1Title: 'Request Your Workspace',
     step1Desc:
-      'Submit the inquiry form below with your company name, team size, and operational requirements.',
-    step2Title: 'We contact you',
+      'Submit your organization details and operational requirements.',
+    step2Title: 'Workspace Configuration',
     step2Desc:
-      'Our platform engineering team reviews your needs, schedules an alignment call, and configures your tenant instance.',
-    step3Title: 'Get your workspace',
+      'The PrismCRM platform team reviews the request and configures the company workspace.',
+    step3Title: 'Start Managing Your Business',
     step3Desc:
-      'Receive your dedicated company portal URL, initial administrator credentials, and set up your branch geofences and staff.',
+      'Receive access to your dedicated company portal and configure employees, branches, and permissions.',
   },
   contact: {
     email: 'contact@prismcrm.com',

@@ -12,7 +12,9 @@ import {
   Phone,
   MessageSquare,
   Users,
-  Compass,
+  Sparkles,
+  ArrowRight,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface FormState {
@@ -23,7 +25,7 @@ interface FormState {
   teamSize: string;
   interest: string;
   message: string;
-  website: string; // Honeypot
+  website: string; // Honeypot field
 }
 
 interface FormErrors {
@@ -34,14 +36,24 @@ interface FormErrors {
   message?: string;
 }
 
+const MODULE_OPTIONS = [
+  'All-in-One Suite',
+  'Sales & Quotations',
+  'GST Invoicing & Finance',
+  'Smart Attendance & Geofencing',
+  'Project & Task Kanban',
+  'HR & Payroll',
+  'Technical Support Desk',
+];
+
 export default function InquiryForm() {
   const [formData, setFormData] = useState<FormState>({
     name: '',
     email: '',
     phone: '',
     companyName: '',
-    teamSize: '1-10',
-    interest: 'Everything',
+    teamSize: '11-50',
+    interest: 'All-in-One Suite',
     message: '',
     website: '',
   });
@@ -78,7 +90,7 @@ export default function InquiryForm() {
         if (value.trim().length > 120) return 'Company name cannot exceed 120 characters.';
         return undefined;
       case 'message':
-        if (!value.trim()) return 'Message is required.';
+        if (!value.trim()) return 'Please describe your operational requirements.';
         if (value.trim().length < 10) return 'Message must be at least 10 characters.';
         if (value.trim().length > 1000) return 'Message cannot exceed 1000 characters.';
         return undefined;
@@ -106,7 +118,6 @@ export default function InquiryForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Mark all required fields as touched
     const newTouched = {
       name: true,
       email: true,
@@ -116,7 +127,6 @@ export default function InquiryForm() {
     };
     setTouched(newTouched);
 
-    // Validate all fields
     const newErrors: FormErrors = {
       name: validateField('name', formData.name),
       email: validateField('email', formData.email),
@@ -127,8 +137,7 @@ export default function InquiryForm() {
 
     setErrors(newErrors);
 
-    const hasErrors = Object.values(newErrors).some((err) => Boolean(err));
-    if (hasErrors) {
+    if (Object.values(newErrors).some((err) => Boolean(err))) {
       return;
     }
 
@@ -136,7 +145,6 @@ export default function InquiryForm() {
       setSubmitting(true);
       setServerError(null);
 
-      // Create abort controller for 15s timeout
       const controller = new AbortController();
       abortControllerRef.current = controller;
       const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -149,21 +157,20 @@ export default function InquiryForm() {
       });
 
       clearTimeout(timeoutId);
-
       const data = await res.json().catch(() => ({}));
 
       if (res.ok && data.ok) {
         setIsSuccess(true);
       } else if (res.status === 429) {
-        setServerError(data.error || 'Too many submissions. Please wait a few minutes before trying again.');
+        setServerError(data.error || 'Too many submissions. Please wait a few moments before trying again.');
       } else {
         setServerError(data.error || 'Failed to submit inquiry. Please review your details and try again.');
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
-        setServerError('Request timed out. Please verify your connection and try again.');
+        setServerError('Request timed out. Please check your network connection and try again.');
       } else {
-        setServerError('Could not send. Please try again.');
+        setServerError('Could not send inquiry. Please try again.');
       }
     } finally {
       setSubmitting(false);
@@ -176,8 +183,8 @@ export default function InquiryForm() {
       email: '',
       phone: '',
       companyName: '',
-      teamSize: '1-10',
-      interest: 'Everything',
+      teamSize: '11-50',
+      interest: 'All-in-One Suite',
       message: '',
       website: '',
     });
@@ -188,317 +195,271 @@ export default function InquiryForm() {
   };
 
   return (
-    <section id="contact" className="py-16 sm:py-24 relative scroll-mt-20">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+    <section id="contact" className="py-20 sm:py-28 relative scroll-mt-20 overflow-hidden bg-gradient-to-b from-white via-slate-50 to-white">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-10 space-y-3">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-[#635BFF] text-xs font-bold uppercase tracking-wider">
-            <Send className="w-3.5 h-3.5" />
-            <span>Direct Inquiries</span>
+        <div className="text-center max-w-2xl mx-auto mb-12 space-y-4">
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#F0EEFF] border border-[#D8D4FF] text-[#635BFF] text-xs font-bold uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5 text-[#00D4B2]" />
+            <span>Direct Enterprise Inquiries</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
-            Request an Organization Workspace
+
+          <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-900 leading-tight">
+            Let&apos;s Build a Smarter Workplace Together.
           </h2>
-          <p className="text-sm sm:text-base text-slate-600">
-            Tell us about your team and operational scope. Our platform team will contact you to coordinate setup.
+
+          <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal">
+            Tell us about your organization and discover how PrismCRM can simplify your business operations.
           </p>
         </div>
 
-        {/* Card Form Wrapper */}
-        <div className="bg-white/95 backdrop-blur-xl rounded-3xl border border-slate-200/80 p-6 sm:p-10 shadow-[0_15px_40px_rgba(15,23,42,0.06)] relative">
-          {/* Success State Card */}
+        {/* Form Container */}
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-[0_20px_50px_rgba(15,23,42,0.08)] p-6 sm:p-10 transition-all duration-300">
           {isSuccess ? (
-            <div
-              className="py-12 px-4 text-center space-y-5 animate-in fade-in zoom-in-95 duration-200"
-              aria-live="polite"
-            >
-              <div className="w-16 h-16 rounded-3xl bg-emerald-100/80 border border-emerald-200 text-emerald-700 flex items-center justify-center mx-auto shadow-md shadow-emerald-500/10">
-                <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+            /* Success Feedback State */
+            <div className="text-center py-10 sm:py-16 space-y-6 animate-in fade-in zoom-in-95 duration-300">
+              <div className="w-16 h-16 rounded-3xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto shadow-md shadow-emerald-500/10">
+                <CheckCircle2 className="w-9 h-9" />
               </div>
-              <div className="space-y-2">
-                <h3 className="text-2xl font-bold text-slate-900">Inquiry Received!</h3>
-                <p className="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
-                  Thanks, we&apos;ll contact you soon. Our platform team has received your inquiry and will reach out via work email.
+
+              <div className="space-y-2 max-w-md mx-auto">
+                <h3 className="text-2xl font-bold text-slate-900">Inquiry Received Successfully</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  Thank you for your interest in PrismCRM! Our platform engineering team has received your workspace requirements and will reach out to{' '}
+                  <span className="font-semibold text-slate-800">{formData.email}</span> within 24 business hours.
                 </p>
               </div>
-              <div className="pt-2">
+
+              <div className="pt-4">
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-6 py-2.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-all shadow-xs min-h-[44px] focus:outline-none focus:ring-2 focus:ring-[#635BFF]"
+                  className="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs sm:text-sm transition-colors"
                 >
-                  Send another inquiry
+                  Submit Another Inquiry
                 </button>
               </div>
             </div>
           ) : (
+            /* Inquiry Input Form */
             <form onSubmit={handleSubmit} noValidate className="space-y-6">
-              {/* Hidden Honeypot Field for anti-spam bots */}
-              <div
-                style={{ position: 'absolute', opacity: 0, zIndex: -1, pointerEvents: 'none', height: 0, width: 0 }}
-                aria-hidden="true"
-              >
-                <label htmlFor="landing-form-website">Website Url</label>
+              {/* Anti-spam Honeypot field (hidden) */}
+              <div className="hidden" aria-hidden="true">
                 <input
-                  id="landing-form-website"
                   type="text"
                   name="website"
-                  value={formData.website}
-                  onChange={(e) => setFormData((p) => ({ ...p, website: e.target.value }))}
                   tabIndex={-1}
                   autoComplete="off"
+                  value={formData.website}
+                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                 />
               </div>
 
-              {/* Grid: Name & Work Email */}
+              {/* Server Error Alert */}
+              {serverError && (
+                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold">Submission Failed</div>
+                    <div className="mt-0.5">{serverError}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Form Row 1: Name and Email */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {/* Full Name */}
                 <div>
-                  <label htmlFor="inquiry-name" className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Full name <span className="text-rose-500">*</span>
+                  <label htmlFor="inquiry-name" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Full Name <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       id="inquiry-name"
                       type="text"
                       required
-                      readOnly={submitting}
+                      placeholder="e.g. Rahul Sharma"
                       value={formData.name}
                       onChange={(e) => handleChange('name', e.target.value)}
                       onBlur={() => handleBlur('name')}
-                      placeholder="Jane Doe"
-                      aria-invalid={Boolean(errors.name)}
-                      aria-describedby={errors.name ? 'inquiry-name-error' : undefined}
-                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-xs sm:text-sm text-slate-900 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 transition-all min-h-[44px] ${
-                        errors.name
-                          ? 'border-rose-300 focus:ring-rose-500/20 bg-rose-50/20'
-                          : 'border-slate-200 focus:ring-[#635BFF]/20 focus:border-[#635BFF]'
+                      className={`w-full pl-10 pr-4 py-3 rounded-2xl border bg-slate-50/50 text-slate-900 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#635BFF] ${
+                        errors.name && touched.name ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 hover:border-slate-300'
                       }`}
                     />
                   </div>
-                  {errors.name && (
-                    <p id="inquiry-name-error" role="alert" className="text-[11px] text-rose-600 mt-1.5 font-medium">
-                      {errors.name}
-                    </p>
+                  {errors.name && touched.name && (
+                    <p className="text-xs text-rose-600 mt-1 font-medium">{errors.name}</p>
                   )}
                 </div>
 
-                {/* Work Email */}
                 <div>
-                  <label htmlFor="inquiry-email" className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Work email <span className="text-rose-500">*</span>
+                  <label htmlFor="inquiry-email" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Work Email Address <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       id="inquiry-email"
                       type="email"
                       required
-                      readOnly={submitting}
+                      placeholder="rahul@company.com"
                       value={formData.email}
                       onChange={(e) => handleChange('email', e.target.value)}
                       onBlur={() => handleBlur('email')}
-                      placeholder="jane@company.com"
-                      aria-invalid={Boolean(errors.email)}
-                      aria-describedby={errors.email ? 'inquiry-email-error' : undefined}
-                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-xs sm:text-sm text-slate-900 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 transition-all min-h-[44px] ${
-                        errors.email
-                          ? 'border-rose-300 focus:ring-rose-500/20 bg-rose-50/20'
-                          : 'border-slate-200 focus:ring-[#635BFF]/20 focus:border-[#635BFF]'
+                      className={`w-full pl-10 pr-4 py-3 rounded-2xl border bg-slate-50/50 text-slate-900 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#635BFF] ${
+                        errors.email && touched.email ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 hover:border-slate-300'
                       }`}
                     />
                   </div>
-                  {errors.email && (
-                    <p id="inquiry-email-error" role="alert" className="text-[11px] text-rose-600 mt-1.5 font-medium">
-                      {errors.email}
-                    </p>
+                  {errors.email && touched.email && (
+                    <p className="text-xs text-rose-600 mt-1 font-medium">{errors.email}</p>
                   )}
                 </div>
               </div>
 
-              {/* Grid: Mobile & Company Name */}
+              {/* Form Row 2: Phone and Company Name */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {/* Mobile Number */}
                 <div>
-                  <label htmlFor="inquiry-phone" className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Mobile number <span className="text-slate-400 font-normal">(10 digits)</span>
+                  <label htmlFor="inquiry-phone" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Mobile Number (10 Digits)
                   </label>
                   <div className="relative">
-                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       id="inquiry-phone"
                       type="tel"
                       maxLength={10}
-                      readOnly={submitting}
+                      placeholder="9876543210"
                       value={formData.phone}
                       onChange={(e) => handleChange('phone', e.target.value)}
                       onBlur={() => handleBlur('phone')}
-                      placeholder="9876543210"
-                      aria-invalid={Boolean(errors.phone)}
-                      aria-describedby={errors.phone ? 'inquiry-phone-error' : undefined}
-                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-xs sm:text-sm text-slate-900 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 transition-all min-h-[44px] ${
-                        errors.phone
-                          ? 'border-rose-300 focus:ring-rose-500/20 bg-rose-50/20'
-                          : 'border-slate-200 focus:ring-[#635BFF]/20 focus:border-[#635BFF]'
+                      className={`w-full pl-10 pr-4 py-3 rounded-2xl border bg-slate-50/50 text-slate-900 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#635BFF] ${
+                        errors.phone && touched.phone ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 hover:border-slate-300'
                       }`}
                     />
                   </div>
-                  {errors.phone && (
-                    <p id="inquiry-phone-error" role="alert" className="text-[11px] text-rose-600 mt-1.5 font-medium">
-                      {errors.phone}
-                    </p>
+                  {errors.phone && touched.phone && (
+                    <p className="text-xs text-rose-600 mt-1 font-medium">{errors.phone}</p>
                   )}
                 </div>
 
-                {/* Company Name */}
                 <div>
-                  <label htmlFor="inquiry-company" className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Company name
+                  <label htmlFor="inquiry-company" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Company / Organization Name
                   </label>
                   <div className="relative">
-                    <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+                    <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       id="inquiry-company"
                       type="text"
-                      readOnly={submitting}
+                      placeholder="e.g. Apex Technologies Pvt Ltd"
                       value={formData.companyName}
                       onChange={(e) => handleChange('companyName', e.target.value)}
                       onBlur={() => handleBlur('companyName')}
-                      placeholder="Acme Innovations"
-                      aria-invalid={Boolean(errors.companyName)}
-                      aria-describedby={errors.companyName ? 'inquiry-company-error' : undefined}
-                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-xs sm:text-sm text-slate-900 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 transition-all min-h-[44px] ${
-                        errors.companyName
-                          ? 'border-rose-300 focus:ring-rose-500/20 bg-rose-50/20'
-                          : 'border-slate-200 focus:ring-[#635BFF]/20 focus:border-[#635BFF]'
-                      }`}
+                      className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#635BFF]"
                     />
                   </div>
-                  {errors.companyName && (
-                    <p id="inquiry-company-error" role="alert" className="text-[11px] text-rose-600 mt-1.5 font-medium">
-                      {errors.companyName}
-                    </p>
-                  )}
                 </div>
               </div>
 
-              {/* Grid: Team Size & What are you interested in? */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {/* Team Size */}
-                <div>
-                  <label htmlFor="inquiry-teamsize" className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Team size
-                  </label>
-                  <div className="relative">
-                    <Users className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
-                    <select
-                      id="inquiry-teamsize"
-                      disabled={submitting}
-                      value={formData.teamSize}
-                      onChange={(e) => handleChange('teamSize', e.target.value)}
-                      className="w-full pl-10 pr-8 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#635BFF]/20 focus:border-[#635BFF] transition-all min-h-[44px]"
-                    >
-                      <option value="1-10">1-10 Employees</option>
-                      <option value="11-50">11-50 Employees</option>
-                      <option value="51-200">51-200 Employees</option>
-                      <option value="200+">200+ Employees</option>
-                    </select>
+              {/* Form Row 3: Team Size Dropdown & Primary Interest Chips */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  <div>
+                    <label htmlFor="inquiry-teamsize" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                      Estimated Team Size
+                    </label>
+                    <div className="relative">
+                      <Users className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <select
+                        id="inquiry-teamsize"
+                        value={formData.teamSize}
+                        onChange={(e) => handleChange('teamSize', e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#635BFF] cursor-pointer"
+                      >
+                        <option value="1-10">1 - 10 Team Members</option>
+                        <option value="11-50">11 - 50 Team Members</option>
+                        <option value="51-200">51 - 200 Team Members</option>
+                        <option value="200+">200+ Enterprise Staff</option>
+                      </select>
+                    </div>
                   </div>
-                </div>
 
-                {/* Primary Interest */}
-                <div>
-                  <label htmlFor="inquiry-interest" className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    What are you interested in?
-                  </label>
-                  <div className="relative">
-                    <Compass className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
-                    <select
-                      id="inquiry-interest"
-                      disabled={submitting}
-                      value={formData.interest}
-                      onChange={(e) => handleChange('interest', e.target.value)}
-                      className="w-full pl-10 pr-8 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#635BFF]/20 focus:border-[#635BFF] transition-all min-h-[44px]"
-                    >
-                      <option value="Everything">Everything (Unified Platform)</option>
-                      <option value="Leads and sales">Leads and Sales Pipeline</option>
-                      <option value="Projects and tasks">Projects and Task Management</option>
-                      <option value="Attendance and payroll">Attendance and Payroll</option>
-                      <option value="Support desk">Support Desk & Ticketing</option>
-                    </select>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                      Primary Module of Interest
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {MODULE_OPTIONS.map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => handleChange('interest', opt)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                            formData.interest === opt
+                              ? 'bg-[#635BFF] text-white shadow-xs'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Message */}
+              {/* Form Row 4: Message */}
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label htmlFor="inquiry-message" className="block text-xs font-semibold text-slate-700">
-                    Message <span className="text-rose-500">*</span>
-                  </label>
-                  <span className={`text-[10px] font-semibold ${
-                    formData.message.length > 1000 ? 'text-rose-600' : 'text-slate-400'
-                  }`}>
-                    {formData.message.length}/1000
-                  </span>
-                </div>
+                <label htmlFor="inquiry-message" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Operational Requirements / Notes <span className="text-rose-500">*</span>
+                </label>
                 <div className="relative">
                   <textarea
                     id="inquiry-message"
-                    rows={4}
                     required
-                    readOnly={submitting}
+                    rows={4}
+                    placeholder="Describe your company branches, team structure, or specific workflows you'd like PrismCRM to manage..."
                     value={formData.message}
                     onChange={(e) => handleChange('message', e.target.value)}
                     onBlur={() => handleBlur('message')}
-                    placeholder="Briefly describe your company operational goals and how PrismCRM can assist..."
-                    aria-invalid={Boolean(errors.message)}
-                    aria-describedby={errors.message ? 'inquiry-message-error' : undefined}
-                    className={`w-full p-3.5 rounded-xl border text-xs sm:text-sm text-slate-900 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 transition-all resize-y ${
-                      errors.message
-                        ? 'border-rose-300 focus:ring-rose-500/20 bg-rose-50/20'
-                        : 'border-slate-200 focus:ring-[#635BFF]/20 focus:border-[#635BFF]'
+                    className={`w-full p-4 rounded-2xl border bg-slate-50/50 text-slate-900 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#635BFF] ${
+                      errors.message && touched.message ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 hover:border-slate-300'
                     }`}
                   />
                 </div>
-                {errors.message && (
-                  <p id="inquiry-message-error" role="alert" className="text-[11px] text-rose-600 mt-1.5 font-medium">
-                    {errors.message}
-                  </p>
+                {errors.message && touched.message ? (
+                  <p className="text-xs text-rose-600 mt-1 font-medium">{errors.message}</p>
+                ) : (
+                  <p className="text-[11px] text-slate-400 mt-1">Minimum 10 characters.</p>
                 )}
               </div>
 
-              {/* Server / Network Error Alert */}
-              {serverError && (
-                <div
-                  role="alert"
-                  className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-start gap-2.5"
-                >
-                  <AlertCircle className="w-4 h-4 text-rose-600 mt-0.5 flex-shrink-0" />
-                  <span className="leading-relaxed">{serverError}</span>
-                </div>
-              )}
-
-              {/* Submit Button */}
+              {/* Submit CTA */}
               <div className="pt-2">
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full py-3.5 px-6 rounded-2xl bg-[#635BFF] hover:bg-[#5249EC] disabled:bg-slate-300 text-white font-bold text-sm sm:text-base shadow-md shadow-[#635BFF]/25 hover:shadow-lg hover:shadow-[#635BFF]/35 active:scale-98 transition-all flex items-center justify-center gap-2 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#635BFF]"
+                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#635BFF] via-[#5249EC] to-[#00D4B2] hover:opacity-95 text-white font-extrabold text-sm sm:text-base shadow-lg shadow-[#635BFF]/30 active:scale-98 transition-all flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Sending inquiry...</span>
+                      <span>Transmitting Inquiry...</span>
                     </>
                   ) : (
                     <>
-                      <span>Submit Workspace Inquiry</span>
-                      <Send className="w-4 h-4" />
+                      <span>Submit Organization Inquiry</span>
+                      <ArrowRight className="w-4 h-4" />
                     </>
                   )}
                 </button>
+              </div>
+
+              {/* Security Privacy Assurance */}
+              <div className="flex items-center justify-center gap-2 text-xs text-slate-500 pt-1">
+                <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                <span>Your information is held in strict confidentiality. No spam.</span>
               </div>
             </form>
           )}

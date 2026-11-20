@@ -3,9 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import LandingNav from './LandingNav';
 import HeroSection from './HeroSection';
+import TrustSection from './TrustSection';
 import FeaturesSection from './FeaturesSection';
+import ProductShowcaseSection from './ProductShowcaseSection';
+import ArchitectureSection from './ArchitectureSection';
+import WhyChooseSection from './WhyChooseSection';
 import HowItWorksSection from './HowItWorksSection';
 import RolesSection from './RolesSection';
+import SecuritySection from './SecuritySection';
+import PricingSection from './PricingSection';
+import FaqSection from './FaqSection';
 import InquiryForm from './InquiryForm';
 import LandingFooter from './LandingFooter';
 import { ILandingContent, DEFAULT_LANDING_CONTENT } from '@/models/LandingContent';
@@ -23,13 +30,18 @@ export default function LandingPage() {
             setContent(data);
           }
         }
-      } catch {}
+      } catch {
+        // Fall back to DEFAULT_LANDING_CONTENT
+      }
     };
     loadContent();
   }, []);
 
   return (
-    <div className="fixed inset-0 z-40 h-full overflow-y-auto scroll-smooth bg-gradient-to-br from-[#f4f3fa] via-[#f8f7fd] to-[#fdfcfe] text-slate-800 flex flex-col selection:bg-[#635BFF]/15 selection:text-[#635BFF]">
+    <div
+      id="landing-scroll-container"
+      className="fixed inset-0 z-40 h-full overflow-y-auto scroll-smooth bg-gradient-to-br from-[#f4f3fa] via-[#f8f7fd] to-[#fdfcfe] text-slate-800 flex flex-col selection:bg-[#635BFF]/15 selection:text-[#635BFF]"
+    >
       {/* Skip to Content Accessibility Link */}
       <a
         href="#main-content"
@@ -38,19 +50,49 @@ export default function LandingPage() {
         Skip to main content
       </a>
 
-      {/* Sticky Navigation */}
+      {/* 1. Sticky Frosted Navigation */}
       <LandingNav />
 
-      {/* Main Page Content */}
+      {/* Main Page Content Flow */}
       <main id="main-content" className="flex-1">
+        {/* 2. Impressive Hero Section with Interactive Dashboard Preview */}
         <HeroSection hero={content.hero} />
+
+        {/* 3. Trust & Unified Operations Value Strip */}
+        <TrustSection sectionTitle={content.features?.sectionTitle} />
+
+        {/* 4. Complete 8-Module Features Grid */}
         <FeaturesSection features={content.features} />
+
+        {/* 5. Interactive Product Showcase (Tabbed Workspace Views) */}
+        <ProductShowcaseSection />
+
+        {/* 6. Multi-Tenant Architecture & Workspace Isolation Visualizer */}
+        <ArchitectureSection />
+
+        {/* 7. Why Choose PrismCRM Operational Advantage */}
+        <WhyChooseSection />
+
+        {/* 8. 3-Step Animated Onboarding Timeline */}
         <HowItWorksSection howItWorks={content.howItWorks} />
+
+        {/* 9. Role-Based Access Control (8 Roles Grid) */}
         <RolesSection />
+
+        {/* 10. Verified Security & Compliance Section */}
+        <SecuritySection />
+
+        {/* 11. Deployment Options & Custom Consultation */}
+        <PricingSection />
+
+        {/* 12. 10-Item Expandable FAQ Accordion */}
+        <FaqSection />
+
+        {/* 13. Upgraded Enterprise Inquiry Form */}
         <InquiryForm />
       </main>
 
-      {/* Footer */}
+      {/* 14. Professional 5-Column Enterprise Footer */}
       <LandingFooter contact={content.contact} />
     </div>
   );

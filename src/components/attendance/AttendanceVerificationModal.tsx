@@ -57,7 +57,6 @@ export default function AttendanceVerificationModal({
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [geoResult, setGeoResult] = useState<GeofenceResult | null>(null);
-  const [isSimulated, setIsSimulated] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [branches, setBranches] = useState<any[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<any | null>(null);
@@ -249,7 +248,6 @@ export default function AttendanceVerificationModal({
   const fetchLocation = useCallback(() => {
     setLocationLoading(true);
     setLocationError(null);
-    setIsSimulated(false);
 
     if (!navigator.geolocation) {
       setLocationError('Geolocation is not supported by your browser.');
@@ -328,22 +326,6 @@ export default function AttendanceVerificationModal({
     );
   }, []);
 
-  // Development / Admin Testing Simulation Toggle
-  const handleSimulateOfficeLocation = () => {
-    setIsSimulated(true);
-    setLocationError(null);
-    const simulatedLat = activeOffice.latitude + 0.0001;
-    const simulatedLng = activeOffice.longitude + 0.0001;
-    const evaluation = evaluateGeofence(simulatedLat, simulatedLng, activeOffice);
-    setGeoResult(evaluation);
-    try {
-      sessionStorage.setItem(
-        'itpl_last_verified_geo',
-        JSON.stringify({ lat: simulatedLat, lng: simulatedLng, timestamp: Date.now() })
-      );
-    } catch {}
-  };
-
   // Lifecycle on modal open / close
   useEffect(() => {
     if (isOpen) {
@@ -380,24 +362,19 @@ export default function AttendanceVerificationModal({
 
   if (!isOpen) return null;
 
-  const isWithinPerimeter = Boolean(geoResult?.isWithinPerimeter || isSimulated);
-  const canSubmit = Boolean(capturedPhoto && !isLoading);
+  const isWithinPerimeter = Boolean(geoResult?.isWithinPerimeter);
+  const canSubmit = Boolean(capturedPhoto && isWithinPerimeter && !isLoading);
 
   const handleSubmit = async () => {
-    if (!canSubmit || !capturedPhoto) return;
-
-    const evalResult = geoResult || evaluateGeofence(activeOffice.latitude + 0.0001, activeOffice.longitude + 0.0001, activeOffice);
+    if (!canSubmit || !capturedPhoto || !isWithinPerimeter || !geoResult) return;
 
     const locationPayload: IAttendanceLocation = {
-      latitude: evalResult.userLat,
-      longitude: evalResult.userLng,
-      distanceMeters: evalResult.distanceMeters,
+      latitude: geoResult.userLat,
+      longitude: geoResult.userLng,
+      distanceMeters: geoResult.distanceMeters,
       address: activeOffice.address,
-      isWithinPerimeter: true,
-      calibratedOffice: {
-        latitude: activeOffice.latitude,
-        longitude: activeOffice.longitude,
-      },
+      isWithinPerimeter: geoResult.isWithinPerimeter,
+      allowedRadiusMeters: geoResult.allowedRadiusMeters,
     };
 
     await onVerified({
@@ -669,18 +646,11 @@ export default function AttendanceVerificationModal({
                       <p className="text-[9px] leading-tight">{locationError}</p>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-rose-200/60">
-                    <button
-                      type="button"
-                      onClick={handleSimulateOfficeLocation}
-                      className="text-[9px] font-semibold text-rose-800 underline hover:text-rose-950 cursor-pointer"
-                    >
-                      Simulate Office GPS
-                    </button>
+                  <div className="flex items-center justify-end gap-2 pt-1 border-t border-rose-200/60">
                     <button
                       type="button"
                       onClick={fetchLocation}
-                      className="px-2 py-0.5 rounded bg-rose-600 text-white text-[9px] font-bold hover:bg-rose-700 transition-colors cursor-pointer"
+                      className="px-2.5 py-1 rounded bg-rose-600 text-white text-[10px] font-bold hover:bg-rose-700 transition-colors cursor-pointer"
                     >
                       Retry GPS
                     </button>
@@ -688,7 +658,7 @@ export default function AttendanceVerificationModal({
                 </div>
               ) : geoResult ? (
                 <div
-                  className={`p-2 rounded-xl border transition-all ${
+                  className={`p-2.5 rounded-xl border transition-all ${
                     isWithinPerimeter
                       ? 'border-emerald-200 bg-emerald-50/80 text-emerald-900'
                       : 'border-rose-200 bg-rose-50/80 text-rose-900'
@@ -724,48 +694,46 @@ export default function AttendanceVerificationModal({
                           : 'bg-rose-600 text-white shadow-xs'
                       }`}
                     >
-                      {isWithinPerimeter ? 'PERMITTED' : 'OUTSIDE'}
+                      {isWithinPerimeter ? 'PERMITTED' : 'BLOCKED'}
                     </span>
                   </div>
 
                   {!isWithinPerimeter && (
-                    <div className="mt-1.5 pt-1 border-t border-rose-200/60 flex items-center justify-between">
-                      <span className="text-[9px] text-rose-700">Testing locally?</span>
-                      <button
-                        type="button"
-                        onClick={handleSimulateOfficeLocation}
-                        className="text-[9px] font-bold text-rose-800 underline hover:text-rose-950 cursor-pointer"
-                      >
-                        Simulate Office GPS (Testing)
-                      </button>
+                    <div className="mt-2 pt-1.5 border-t border-rose-200/60 text-[10px] text-rose-700 leading-tight">
+                      <span className="font-bold">Punching Disabled:</span> You are{' '}
+                      <span className="font-mono font-bold">
+                        {Math.max(0, geoResult.distanceMeters - geoResult.allowedRadiusMeters)}m
+                      </span>{' '}
+                      outside the office boundary. You cannot {actionTitle.toLowerCase()} while outside the office radius.
                     </div>
-                  )}
-
-                  {isSimulated && (
-                    <p className="text-[8px] text-amber-700 italic mt-0.5 font-mono">
-                      * Simulation active for local testing
-                    </p>
                   )}
                 </div>
               ) : null}
             </div>
 
-            {/* In-Card Primary Submit Button (Right in front of user!) */}
+            {/* In-Card Primary Submit Button */}
             <div className="pt-2">
               <button
                 type="button"
                 onClick={handleSubmit}
                 disabled={!canSubmit}
-                className={`w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-                  isPunchIn
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30'
-                    : 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/30'
+                className={`w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
+                  !isWithinPerimeter
+                    ? 'bg-slate-200 text-slate-500 border border-slate-300'
+                    : isPunchIn
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30 cursor-pointer'
+                    : 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/30 cursor-pointer'
                 }`}
               >
                 {isLoading ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
                     <span>Verifying...</span>
+                  </>
+                ) : !isWithinPerimeter ? (
+                  <>
+                    <Lock className="w-4 h-4 text-slate-500" />
+                    <span>Outside Office Perimeter ({geoResult ? `${geoResult.distanceMeters}m` : 'Locating...'})</span>
                   </>
                 ) : canSubmit ? (
                   <>
@@ -812,10 +780,12 @@ export default function AttendanceVerificationModal({
                   : 'bg-rose-50 text-rose-700 border-rose-200'
               }`}
             >
-              <CheckCircle2
-                className={`w-3 h-3 ${isWithinPerimeter ? 'text-emerald-600' : 'text-rose-400'}`}
-              />
-              <span>Geofence: {isWithinPerimeter ? 'Inside' : 'Outside'}</span>
+              {isWithinPerimeter ? (
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+              ) : (
+                <Lock className="w-3 h-3 text-rose-500" />
+              )}
+              <span>Geofence: {isWithinPerimeter ? 'Inside' : 'Blocked (Outside)'}</span>
             </div>
           </div>
 
@@ -834,16 +804,23 @@ export default function AttendanceVerificationModal({
               type="button"
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className={`flex-1 sm:flex-initial px-5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-md disabled:opacity-40 disabled:cursor-not-allowed ${
-                isPunchIn
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/25'
-                  : 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/25'
+              className={`flex-1 sm:flex-initial px-5 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
+                !isWithinPerimeter
+                  ? 'bg-slate-300 text-slate-600'
+                  : isPunchIn
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/25 cursor-pointer'
+                  : 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/25 cursor-pointer'
               }`}
             >
               {isLoading ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                   <span>Verifying...</span>
+                </>
+              ) : !isWithinPerimeter ? (
+                <>
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Outside Perimeter</span>
                 </>
               ) : (
                 <>

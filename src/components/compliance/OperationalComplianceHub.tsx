@@ -410,18 +410,22 @@ export default function OperationalComplianceHub({
   const targetOfficeName = activeBranch?.name || activeBranch?.address || 'Main Office';
   const maxAllowedMeters = activeBranch?.radius_meters || 250;
 
-  const [distanceMeters, setDistanceMeters] = useState<number>(194);
-  const isWithinPerimeter = distanceMeters <= maxAllowedMeters;
+  const [distanceMeters, setDistanceMeters] = useState<number>(0);
+  const [gpsAccuracy, setGpsAccuracy] = useState<string>('High (± 4.2m)');
+  const [isLocationLoaded, setIsLocationLoaded] = useState<boolean>(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const isWithinPerimeter = isLocationLoaded && !locationError && distanceMeters <= maxAllowedMeters;
 
   // Safe threshold percentage
   const safeThresholdPercent = useMemo(() => {
+    if (!isLocationLoaded || !isWithinPerimeter) return 0;
     const safeRemaining = Math.max(0, maxAllowedMeters - distanceMeters);
     const score = Math.round((safeRemaining / maxAllowedMeters) * 100);
-    return Math.max(0, Math.min(100, score || 77));
-  }, [distanceMeters, maxAllowedMeters]);
+    return Math.max(0, Math.min(100, score));
+  }, [distanceMeters, maxAllowedMeters, isWithinPerimeter, isLocationLoaded]);
 
   // Live GPS Sync time counter
-  const [syncSecondsAgo, setSyncSecondsAgo] = useState<number>(12);
+  const [syncSecondsAgo, setSyncSecondsAgo] = useState<number>(0);
   const [isRefreshingGps, setIsRefreshingGps] = useState<boolean>(false);
 
   useEffect(() => {
@@ -431,38 +435,57 @@ export default function OperationalComplianceHub({
     return () => clearInterval(timer);
   }, []);
 
-  // Real or Simulated GPS Refresh against active company branch
+  // Real GPS Refresh against active company branch
   const handleRefreshGps = useCallback(() => {
     setIsRefreshingGps(true);
     setSyncSecondsAgo(0);
+    setLocationError(null);
 
     const destLat = activeBranch?.lat ?? ITPL_OFFICE_LOCATION.latitude;
     const destLng = activeBranch?.lng ?? ITPL_OFFICE_LOCATION.longitude;
-    const allowed = activeBranch?.radius_meters || 250;
 
-    if (navigator.geolocation) {
+    if (typeof window !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          const { latitude, longitude } = pos.coords;
+          const { latitude, longitude, accuracy } = pos.coords;
           setUserLocationCoords({ lat: latitude, lng: longitude });
+          if (accuracy) {
+            setGpsAccuracy(`± ${accuracy.toFixed(1)}m`);
+          }
           const dist = calculateDistanceInMeters(latitude, longitude, destLat, destLng);
-          // If reasonably close or far, store actual distance or calibrate within safe margin
-          setDistanceMeters(dist > 50000 ? Math.round(allowed * 0.77) : dist);
+          setDistanceMeters(dist);
+          setIsLocationLoaded(true);
           setIsRefreshingGps(false);
         },
-        () => {
-          setDistanceMeters(Math.round(allowed * 0.77));
+        (err) => {
+          console.warn('Geolocation error:', err.message);
+          let msg = 'Failed to retrieve GPS location.';
+          if (err.code === 1) {
+            msg = 'Location permission denied. Please allow GPS access in browser settings.';
+          } else if (err.code === 2) {
+            msg = 'GPS coordinates unavailable.';
+          } else if (err.code === 3) {
+            msg = 'GPS request timed out. Please click "Refresh GPS".';
+          }
+          setLocationError(msg);
+          setDistanceMeters(999999);
+          setIsLocationLoaded(true);
           setIsRefreshingGps(false);
         },
-        { enableHighAccuracy: true, timeout: 4000 }
+        { enableHighAccuracy: true, timeout: 6000, maximumAge: 10000 }
       );
     } else {
-      setTimeout(() => {
-        setDistanceMeters(Math.round(allowed * 0.77));
-        setIsRefreshingGps(false);
-      }, 500);
+      setLocationError('Geolocation is not supported by your browser.');
+      setDistanceMeters(999999);
+      setIsLocationLoaded(true);
+      setIsRefreshingGps(false);
     }
   }, [activeBranch]);
+
+  // Trigger GPS resolution on mount & active branch change
+  useEffect(() => {
+    handleRefreshGps();
+  }, [handleRefreshGps]);
 
   // 6. Interactive Map View Controls
   const [mapZoom, setMapZoom] = useState<number>(1);
@@ -470,6 +493,22 @@ export default function OperationalComplianceHub({
 
   // 7. Execute Capture & Clock In / Clock Out
   const handleExecuteClockAction = async () => {
+    if (!isLocationLoaded) {
+      setPunchFeedback({
+        type: 'error',
+        message: 'Detecting your GPS location, please wait...',
+      });
+      return;
+    }
+
+    if (!isWithinPerimeter || !userLocationCoords) {
+      setPunchFeedback({
+        type: 'error',
+        message: `You are outside the office perimeter (${distanceMeters > 50000 ? '>50km' : `${distanceMeters}m`} away; maximum allowed radius is ${maxAllowedMeters}m). You cannot clock in or out while outside the perimeter.`,
+      });
+      return;
+    }
+
     let finalPhoto = capturedPhoto;
 
     // If photo is not captured yet, capture it inline
@@ -547,18 +586,12 @@ export default function OperationalComplianceHub({
       setPunchFeedback(null);
 
       const action = isClockedIn ? 'punch_out' : 'punch_in';
-      const destLat = activeBranch?.lat ?? ITPL_OFFICE_LOCATION.latitude;
-      const destLng = activeBranch?.lng ?? ITPL_OFFICE_LOCATION.longitude;
-      const finalLat = userLocationCoords?.lat ?? (destLat + 0.0003);
-      const finalLng = userLocationCoords?.lng ?? (destLng + 0.0003);
-      const isWithin = distanceMeters <= maxAllowedMeters;
 
       const locationPayload = {
-        latitude: finalLat,
-        longitude: finalLng,
+        latitude: userLocationCoords.lat,
+        longitude: userLocationCoords.lng,
         distanceMeters,
-        isWithinPerimeter: isWithin,
-        isSimulated: !userLocationCoords,
+        isWithinPerimeter: true,
         branchId: activeBranch?._id || activeBranch?.id,
         branchName: targetOfficeName,
         allowedRadiusMeters: maxAllowedMeters,
@@ -903,18 +936,40 @@ export default function OperationalComplianceHub({
             <button
               type="button"
               onClick={handleExecuteClockAction}
-              disabled={submittingPunch}
-              className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#4F46E5] to-[#6366F1] hover:from-[#4338CA] hover:to-[#4F46E5] text-white text-sm font-bold shadow-lg shadow-indigo-500/25 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 select-none"
+              disabled={submittingPunch || !isWithinPerimeter}
+              className={`w-full py-3.5 px-6 rounded-2xl text-sm font-bold shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 select-none ${
+                !isWithinPerimeter
+                  ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed border border-slate-300/60 dark:border-slate-700/60'
+                  : 'bg-gradient-to-r from-[#4F46E5] to-[#6366F1] hover:from-[#4338CA] hover:to-[#4F46E5] text-white shadow-indigo-500/25 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer'
+              }`}
             >
-              <Camera className="w-4 h-4 text-white" />
+              <Camera className={`w-4 h-4 ${!isWithinPerimeter ? 'text-slate-400' : 'text-white'}`} />
               <span>
                 {submittingPunch
                   ? 'Verifying & Submitting...'
+                  : !isLocationLoaded
+                  ? 'Locating Office Perimeter...'
+                  : !isWithinPerimeter
+                  ? 'Outside Office Perimeter - Clocking Disabled'
                   : isClockedIn
                   ? 'Capture & Clock Out'
                   : 'Capture & Clock In'}
               </span>
             </button>
+
+            {isLocationLoaded && !isWithinPerimeter && (
+              <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/60 text-xs text-rose-700 dark:text-rose-300 flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                <div className="leading-snug space-y-1">
+                  <p className="font-bold">Clocking Disabled: Outside Office Boundary</p>
+                  <p className="text-[11px] text-rose-600 dark:text-rose-300">
+                    {locationError
+                      ? locationError
+                      : `You are currently ${distanceMeters > 50000 ? '>50km' : `${distanceMeters}m`} away from ${targetOfficeName}. Maximum allowed radius is ${maxAllowedMeters}m. Employees cannot punch in or out while outside the perimeter.`}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Secondary Utility Controls */}
             <div className="flex items-center justify-between gap-2">
@@ -1017,24 +1072,35 @@ export default function OperationalComplianceHub({
           <div className="mb-4 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-200/70 dark:border-slate-800">
             <div className="flex items-center justify-between text-xs mb-1.5">
               <div className="flex items-center space-x-1.5">
-                <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">
-                  {distanceMeters}m away
+                <span className={`font-bold text-sm ${isWithinPerimeter ? 'text-slate-800 dark:text-slate-200' : 'text-rose-600 dark:text-rose-400'}`}>
+                  {distanceMeters > 50000 ? '>50km' : `${distanceMeters}m`} away
                 </span>
                 <span className="text-slate-400 text-[11px]">
                   (Max allowed: {maxAllowedMeters}m)
                 </span>
               </div>
-              <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>{safeThresholdPercent}% within safe threshold</span>
-              </span>
+              {isWithinPerimeter ? (
+                <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>{safeThresholdPercent}% within safe threshold</span>
+                </span>
+              ) : (
+                <span className="font-bold text-rose-600 dark:text-rose-400 text-xs flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>Outside radius ({distanceMeters > 50000 ? '>50km' : `${Math.max(0, distanceMeters - maxAllowedMeters)}m beyond`})</span>
+                </span>
+              )}
             </div>
 
             {/* Animated Progress Bar */}
             <div className="h-2.5 w-full bg-slate-200/70 dark:bg-slate-700/60 rounded-full overflow-hidden p-0.5">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-teal-400 to-indigo-500 transition-all duration-700 ease-out shadow-xs relative"
-                style={{ width: `${Math.min(100, Math.max(15, safeThresholdPercent))}%` }}
+                className={`h-full rounded-full transition-all duration-700 ease-out shadow-xs relative ${
+                  isWithinPerimeter
+                    ? 'bg-gradient-to-r from-emerald-500 via-teal-400 to-indigo-500'
+                    : 'bg-gradient-to-r from-rose-500 to-rose-600'
+                }`}
+                style={{ width: isWithinPerimeter ? `${Math.min(100, Math.max(15, safeThresholdPercent))}%` : '100%' }}
               >
                 <div className="absolute inset-0 bg-white/20 animate-pulse" />
               </div>
@@ -1083,7 +1149,7 @@ export default function OperationalComplianceHub({
                   <Building2 className="w-4 h-4" />
                 </div>
                 <div className="mt-1 bg-slate-900/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-md whitespace-nowrap backdrop-blur-sm border border-slate-700">
-                  ITPL Tech Park, Block B
+                  {targetOfficeName}
                 </div>
               </div>
 
@@ -1092,23 +1158,30 @@ export default function OperationalComplianceHub({
                 <line
                   x1="50%"
                   y1="50%"
-                  x2="65%"
-                  y2="38%"
-                  stroke="#6366F1"
+                  x2={isWithinPerimeter ? '65%' : '88%'}
+                  y2={isWithinPerimeter ? '38%' : '18%'}
+                  stroke={isWithinPerimeter ? '#6366F1' : '#F43F5E'}
                   strokeWidth="2"
                   strokeDasharray="4 4"
                 />
               </svg>
 
               {/* Pulsing User Location Blue Dot */}
-              <div className="absolute top-[38%] left-[65%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none z-20">
+              <div
+                className="absolute flex flex-col items-center pointer-events-none z-20"
+                style={{
+                  top: isWithinPerimeter ? '38%' : '18%',
+                  left: isWithinPerimeter ? '65%' : '88%',
+                  transform: 'translate(-50%, -50%)',
+                }}
+              >
                 <div className="relative flex items-center justify-center">
-                  <span className="absolute w-8 h-8 rounded-full bg-blue-500/40 animate-ping" />
-                  <span className="absolute w-5 h-5 rounded-full bg-indigo-500/60 animate-pulse" />
-                  <span className="w-3.5 h-3.5 rounded-full bg-[#4F46E5] border-2 border-white shadow-md" />
+                  <span className={`absolute w-8 h-8 rounded-full animate-ping ${isWithinPerimeter ? 'bg-blue-500/40' : 'bg-rose-500/40'}`} />
+                  <span className={`absolute w-5 h-5 rounded-full animate-pulse ${isWithinPerimeter ? 'bg-indigo-500/60' : 'bg-rose-500/60'}`} />
+                  <span className={`w-3.5 h-3.5 rounded-full border-2 border-white shadow-md ${isWithinPerimeter ? 'bg-[#4F46E5]' : 'bg-[#E11D48]'}`} />
                 </div>
-                <div className="mt-1 bg-indigo-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full shadow-sm whitespace-nowrap">
-                  You ({distanceMeters}m)
+                <div className={`mt-1 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full shadow-sm whitespace-nowrap ${isWithinPerimeter ? 'bg-indigo-600' : 'bg-rose-600'}`}>
+                  You ({distanceMeters > 50000 ? '>50km' : `${distanceMeters}m`})
                 </div>
               </div>
             </div>
@@ -1200,7 +1273,7 @@ export default function OperationalComplianceHub({
                   Accuracy
                 </p>
                 <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  High (&plusmn; 4.2m)
+                  {gpsAccuracy}
                 </h4>
                 <p className="text-[10px] text-slate-400 truncate">Dual-band GNSS L1+L5</p>
               </div>

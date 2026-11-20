@@ -6,6 +6,7 @@ export interface IAttendanceLocation {
   distanceMeters: number;
   address?: string;
   isWithinPerimeter?: boolean;
+  allowedRadiusMeters?: number;
   calibratedOffice?: {
     latitude: number;
     longitude: number;
