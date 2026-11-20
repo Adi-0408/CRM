@@ -18,16 +18,13 @@ import {
   KeyRound,
   Trash2,
   Edit,
-  ExternalLink,
   ShieldAlert,
-  ArrowRight,
   Sparkles,
   ChevronRight,
   SlidersHorizontal,
   Layers,
   MapPin,
   Phone,
-  ArrowUpRight,
 } from 'lucide-react';
 
 export interface CompanyItem {
@@ -62,10 +59,10 @@ interface StatsSummary {
 }
 
 interface SuperAdminViewProps {
-  onEnterWorkspace?: (company: CompanyItem) => void;
+  // onEnterWorkspace removed: Super Admin manages tenant access only, not company data
 }
 
-export default function SuperAdminView({ onEnterWorkspace }: SuperAdminViewProps) {
+export default function SuperAdminView(_props: SuperAdminViewProps) {
   const { user } = useAuth();
 
   const [companies, setCompanies] = useState<CompanyItem[]>([]);
@@ -546,10 +543,12 @@ export default function SuperAdminView({ onEnterWorkspace }: SuperAdminViewProps
                   </td>
                 </tr>
               ) : (
-                filteredCompanies.map((comp) => {
-                  const compId = comp.id || comp._id;
+                filteredCompanies.filter(Boolean).map((comp) => {
+                  if (!comp) return null;
+                  const compId = comp.id || comp._id || 'unknown';
                   const isActive = comp.status === 'active';
                   const isMenuOpen = activeMenuId === compId;
+                  const displayName = String(comp.name || comp.brand_name || comp.slug || 'CO');
 
                   return (
                     <tr
@@ -560,14 +559,14 @@ export default function SuperAdminView({ onEnterWorkspace }: SuperAdminViewProps
                       <td className="py-3.5 px-4 sm:px-6">
                         <div className="flex items-center space-x-3">
                           <div className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs uppercase shrink-0">
-                            {(comp.name || comp.brand_name || comp.slug || 'CO').slice(0, 2).toUpperCase()}
+                            {displayName.slice(0, 2).toUpperCase()}
                           </div>
                           <div className="min-w-0">
                             <div className="font-bold text-slate-900 truncate">
-                              {comp.name || comp.brand_name}
+                              {displayName}
                             </div>
                             <div className="text-[11px] font-mono text-purple-600 truncate">
-                              /{comp.slug}
+                              /{comp.slug || compId}
                             </div>
                           </div>
                         </div>
@@ -625,18 +624,8 @@ export default function SuperAdminView({ onEnterWorkspace }: SuperAdminViewProps
                       {/* Actions */}
                       <td className="py-3.5 px-4 sm:px-6 text-right">
                         <div className="flex items-center justify-end space-x-1.5">
-                          {/* Enter Workspace Button */}
-                          {onEnterWorkspace && (
-                            <button
-                              type="button"
-                              onClick={() => onEnterWorkspace(comp)}
-                              className="px-2.5 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-[11px] inline-flex items-center gap-1 border border-purple-200 transition-colors shadow-2xs"
-                              title="Enter and manage this company workspace"
-                            >
-                              <ArrowUpRight className="w-3.5 h-3.5" />
-                              <span>Enter Workspace</span>
-                            </button>
-                          )}
+                          {/* Enter Workspace removed - Super Admin manages tenants only */}
+
 
                           <button
                             type="button"

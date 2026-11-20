@@ -81,7 +81,6 @@ export default function CRMWorkspace({
   const [activeTab, setActiveTab] = useState(
     role === 'platform_super_admin' ? 'super_admin' : initialTab
   );
-  const [previewCompany, setPreviewCompany] = useState<any>(null);
   const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -97,12 +96,12 @@ export default function CRMWorkspace({
     setVisitedTabs((prev) => (prev[activeTab] ? prev : { ...prev, [activeTab]: true }));
   }, [activeTab]);
 
-  // If role is Super Admin and no preview company is active, default to super_admin
+  // If role is Super Admin, always default to super_admin tab
   useEffect(() => {
-    if (role === 'platform_super_admin' && !previewCompany && initialTab === 'overview') {
+    if (role === 'platform_super_admin' && initialTab === 'overview') {
       setActiveTab('super_admin');
     }
-  }, [role, previewCompany, initialTab]);
+  }, [role, initialTab]);
 
   // If initialTab changes due to deep-linking or route change, sync activeTab
   useEffect(() => {
@@ -377,39 +376,10 @@ export default function CRMWorkspace({
             </div>
           ) : (
             <>
-              {/* Super Admin Company Preview Header Banner */}
-              {previewCompany && role === 'platform_super_admin' && (
-                <div className="mb-5 p-3.5 bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 border border-purple-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-purple-900 shadow-xs animate-in fade-in duration-150">
-                  <div className="flex items-center space-x-2.5">
-                    <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse" />
-                    <span className="font-bold">Super Admin Testing Mode:</span>
-                    <span className="font-semibold bg-white px-2.5 py-0.5 rounded-lg border border-purple-200 text-purple-950">
-                      {previewCompany.name || previewCompany.brand_name}
-                    </span>
-                    <span className="text-purple-600 font-mono text-[11px]">/{previewCompany.slug}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPreviewCompany(null);
-                      setActiveTab('super_admin');
-                    }}
-                    className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs transition-all active:scale-95 shadow-xs whitespace-nowrap self-start sm:self-auto"
-                  >
-                    Return to Super Admin Console
-                  </button>
-                </div>
-              )}
-
               {/* 0. Super Admin Platform Console Section */}
               {(visitedTabs.super_admin || role === 'platform_super_admin') && (
                 <div className={activeTab === 'super_admin' ? 'block' : 'hidden'}>
-                  <SuperAdminView
-                    onEnterWorkspace={(comp) => {
-                      setPreviewCompany(comp);
-                      setActiveTab('overview');
-                    }}
-                  />
+                  <SuperAdminView />
                 </div>
               )}
 

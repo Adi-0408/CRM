@@ -6,11 +6,13 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { slug: string } }
+  context: { params: Promise<{ slug: string }> | { slug: string } }
 ) {
   try {
     await connectToDatabase();
-    const slug = String(params.slug || '').trim().toLowerCase();
+    // Next.js 14/15 compatibility: params may be a Promise on Vercel
+    const resolvedParams = await Promise.resolve(context.params);
+    const slug = String(resolvedParams?.slug || '').trim().toLowerCase();
 
     if (!slug) {
       return NextResponse.json({ error: 'Company slug required' }, { status: 400 });
