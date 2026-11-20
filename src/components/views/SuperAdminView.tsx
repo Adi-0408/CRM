@@ -25,7 +25,9 @@ import {
   Layers,
   MapPin,
   Phone,
+  Inbox,
 } from 'lucide-react';
+import InquiriesPanel from './InquiriesPanel';
 
 export interface CompanyItem {
   id: string;
@@ -76,6 +78,24 @@ export default function SuperAdminView(_props: SuperAdminViewProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
+  const [subTab, setSubTab] = useState<'organizations' | 'inquiries'>('organizations');
+  const [newInquiriesCount, setNewInquiriesCount] = useState<number>(0);
+
+  const fetchInquiryBadge = async () => {
+    try {
+      const res = await fetch('/api/super-admin/inquiries?status=new', {
+        headers: {
+          'x-user-id': user?.id || '',
+          'x-user-email': user?.email || '',
+          'x-user-role': user?.role || '',
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNewInquiriesCount(data.counts?.new || 0);
+      }
+    } catch (_) {}
+  };
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -159,6 +179,9 @@ export default function SuperAdminView(_props: SuperAdminViewProps) {
 
   useEffect(() => {
     fetchCompanies();
+    fetchInquiryBadge();
+    const badgeTimer = setInterval(fetchInquiryBadge, 30000);
+    return () => clearInterval(badgeTimer);
   }, []);
 
   const handleNameChange = (val: string) => {
@@ -443,7 +466,51 @@ export default function SuperAdminView(_props: SuperAdminViewProps) {
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* Segmented Sub-Tab Control: Organizations vs Inquiries */}
+      <div className="flex items-center gap-2 border-b border-slate-200/80 pb-2">
+        <button
+          type="button"
+          onClick={() => setSubTab('organizations')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+            subTab === 'organizations'
+              ? 'bg-purple-600 text-white shadow-xs'
+              : 'bg-white/80 hover:bg-white text-slate-600 hover:text-slate-900 border border-slate-200/70'
+          }`}
+        >
+          <Building2 className="w-4 h-4" />
+          <span>Organizations & Tenants</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSubTab('inquiries')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all relative ${
+            subTab === 'inquiries'
+              ? 'bg-purple-600 text-white shadow-xs'
+              : 'bg-white/80 hover:bg-white text-slate-600 hover:text-slate-900 border border-slate-200/70'
+          }`}
+        >
+          <Inbox className="w-4 h-4" />
+          <span>Inquiries</span>
+          {newInquiriesCount > 0 && (
+            <span
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                subTab === 'inquiries'
+                  ? 'bg-white text-purple-700'
+                  : 'bg-purple-600 text-white'
+              }`}
+            >
+              {newInquiriesCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {subTab === 'inquiries' ? (
+        <InquiriesPanel onCountChange={(cnt) => setNewInquiriesCount(cnt)} />
+      ) : (
+        <>
+          {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl border border-slate-150 p-4 sm:p-5 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
@@ -682,6 +749,7 @@ export default function SuperAdminView(_props: SuperAdminViewProps) {
           </table>
         </div>
       </div>
+      </>)}
 
       {/* MODAL 1: Create Company & Admin */}
       {showCreateModal && (
