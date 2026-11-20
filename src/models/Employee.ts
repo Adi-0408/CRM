@@ -4,6 +4,7 @@ import { UserRole } from '@/types/auth';
 export interface IEmployee {
   _id?: string;
   id?: string;
+  company_id?: string | null;
   name: string;
   email: string;
   password?: string;
@@ -12,6 +13,7 @@ export interface IEmployee {
   department: string;
   avatar?: string;
   status: 'active' | 'inactive' | 'on_leave' | 'suspended' | 'Active' | 'Suspended';
+  must_change_password?: boolean;
   salary: number;
   baseSalary: number;
   joinDate?: Date | string;

@@ -1,4 +1,6 @@
 export type UserRole =
+  | 'platform_super_admin'
+  | 'company_admin'
   | 'admin_manager'
   | 'team_lead'
   | 'hr'
@@ -19,6 +21,8 @@ export interface AuthUser {
   phone?: string;
   salary?: number;
   baseSalary?: number;
+  company_id?: string | null;
+  must_change_password?: boolean;
 }
 
 export interface RoleConfig {
@@ -35,6 +39,100 @@ export interface RoleConfig {
 }
 
 export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
+  platform_super_admin: {
+    role: 'platform_super_admin',
+    label: 'Platform Super Admin',
+    shortLabel: 'Super Admin',
+    description: 'Global SaaS platform owner, tenant management & cross-organization oversight',
+    badgeBg: 'bg-purple-100',
+    badgeText: 'text-purple-900',
+    badgeBorder: 'border-purple-300',
+    sidebarTabs: [
+      'dashboard',
+      'tasks',
+      'leads',
+      'projects',
+      'attendance',
+      'payroll',
+      'leave',
+      'support',
+      'employees',
+      'management',
+    ],
+    biNavTabs: [
+      'overview',
+      'tasks',
+      'leads',
+      'projects',
+      'attendance',
+      'support',
+      'payroll',
+      'employees',
+      'branches',
+    ],
+    allowedViews: [
+      'overview',
+      'dashboard',
+      'tasks',
+      'leads',
+      'projects',
+      'attendance',
+      'branches',
+      'support',
+      'payroll',
+      'leave',
+      'employees',
+      'management',
+    ],
+  },
+
+  company_admin: {
+    role: 'company_admin',
+    label: 'Company Admin',
+    shortLabel: 'Admin',
+    description: 'Company owner, executive management, team delegation, organization oversight & full tenant control',
+    badgeBg: 'bg-[#F0EEFF]',
+    badgeText: 'text-[#635BFF]',
+    badgeBorder: 'border-purple-200',
+    sidebarTabs: [
+      'dashboard',
+      'tasks',
+      'leads',
+      'projects',
+      'attendance',
+      'payroll',
+      'leave',
+      'support',
+      'employees',
+      'management',
+    ],
+    biNavTabs: [
+      'overview',
+      'tasks',
+      'leads',
+      'projects',
+      'attendance',
+      'support',
+      'payroll',
+      'employees',
+      'branches',
+    ],
+    allowedViews: [
+      'overview',
+      'dashboard',
+      'tasks',
+      'leads',
+      'projects',
+      'attendance',
+      'branches',
+      'support',
+      'payroll',
+      'leave',
+      'employees',
+      'management',
+    ],
+  },
+
   admin_manager: {
     role: 'admin_manager',
     label: 'Admin (Manager)',
@@ -188,9 +286,25 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
 };
 
 /**
- * Demo user credentials for all 9 organizational roles
+ * Demo user credentials for all organizational roles
  */
 export const DEMO_CREDENTIALS = [
+  {
+    role: 'platform_super_admin' as UserRole,
+    roleTitle: 'Platform Super Admin',
+    displayRole: 'superadmin',
+    name: 'Platform Super Admin',
+    email: 'superadmin@crm.com',
+    password: 'pass123',
+    baseSalary: 150000,
+    department: 'Platform Engineering',
+    icon: 'Shield',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
+    accentColor: '#7C3AED',
+    badgeBg: 'bg-purple-100',
+    badgeText: 'text-purple-900',
+    company_id: null,
+  },
   {
     role: 'admin_manager' as UserRole,
     roleTitle: 'Admin (Manager)',
@@ -206,6 +320,7 @@ export const DEMO_CREDENTIALS = [
     accentColor: '#635BFF',
     badgeBg: 'bg-[#F0EEFF]',
     badgeText: 'text-[#635BFF]',
+    company_id: 'company_unique_digital',
   },
   {
     role: 'team_lead' as UserRole,
@@ -221,6 +336,7 @@ export const DEMO_CREDENTIALS = [
     accentColor: '#4F46E5',
     badgeBg: 'bg-indigo-50',
     badgeText: 'text-indigo-700',
+    company_id: 'company_unique_digital',
   },
   {
     role: 'hr' as UserRole,
@@ -236,6 +352,7 @@ export const DEMO_CREDENTIALS = [
     accentColor: '#059669',
     badgeBg: 'bg-emerald-50',
     badgeText: 'text-emerald-700',
+    company_id: 'company_unique_digital',
   },
   {
     role: 'accounts' as UserRole,
@@ -251,6 +368,7 @@ export const DEMO_CREDENTIALS = [
     accentColor: '#2563EB',
     badgeBg: 'bg-blue-50',
     badgeText: 'text-blue-700',
+    company_id: 'company_unique_digital',
   },
   {
     role: 'sales' as UserRole,
@@ -266,6 +384,7 @@ export const DEMO_CREDENTIALS = [
     accentColor: '#D97706',
     badgeBg: 'bg-amber-50',
     badgeText: 'text-amber-800',
+    company_id: 'company_unique_digital',
   },
   {
     role: 'web_developer' as UserRole,
@@ -281,6 +400,7 @@ export const DEMO_CREDENTIALS = [
     accentColor: '#0891B2',
     badgeBg: 'bg-cyan-50',
     badgeText: 'text-cyan-800',
+    company_id: 'company_unique_digital',
   },
   {
     role: 'android_developer' as UserRole,
@@ -296,6 +416,7 @@ export const DEMO_CREDENTIALS = [
     accentColor: '#0D9488',
     badgeBg: 'bg-teal-50',
     badgeText: 'text-teal-800',
+    company_id: 'company_unique_digital',
   },
   {
     role: 'tech_support' as UserRole,
@@ -311,6 +432,7 @@ export const DEMO_CREDENTIALS = [
     accentColor: '#4F46E5',
     badgeBg: 'bg-indigo-50',
     badgeText: 'text-indigo-800',
+    company_id: 'company_unique_digital',
   },
   {
     role: 'intern' as UserRole,
@@ -326,5 +448,6 @@ export const DEMO_CREDENTIALS = [
     accentColor: '#7C3AED',
     badgeBg: 'bg-violet-50',
     badgeText: 'text-violet-800',
+    company_id: 'company_unique_digital',
   },
 ];

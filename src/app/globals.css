@@ -5,6 +5,20 @@
 :root {
   --background: #f6f5fb;
   --foreground: #0f172a;
+  --color-primary: #635BFF;
+  --color-accent: #00D4B2;
+}
+
+.bg-brand-primary {
+  background-color: var(--color-primary, #635BFF);
+}
+
+.text-brand-primary {
+  color: var(--color-primary, #635BFF);
+}
+
+.border-brand-primary {
+  border-color: var(--color-primary, #635BFF);
 }
 
 html,

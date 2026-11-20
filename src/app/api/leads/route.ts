@@ -1,22 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Lead from '@/models/Lead';
-import Employee from '@/models/Employee';
-import { requireRoles } from '@/lib/apiAuth';
+import { requireRoles, requireTenantAuth, buildTenantFilter, DEFAULT_COMPANY_ID } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    const authResult = await requireTenantAuth(req);
+    if (authResult.errorResponse) return authResult.errorResponse;
+
     await connectToDatabase();
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
-    const query: any = {};
+    let query: any = {};
     if (status && status !== 'all') {
       query.status = status;
     }
 
-    const leads = await Lead.find(query)
+    const scopedQuery = buildTenantFilter(authResult.user!, query);
+    const leads = await Lead.find(scopedQuery)
       .sort({ createdAt: -1 })
       .populate('assignedTo', 'name email avatar role');
 
@@ -28,11 +31,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const authResult = await requireRoles(req, ['admin_manager', 'sales']);
+    const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'sales', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
     const body = await req.json();
+
+    const companyId = authResult.companyId || (authResult.isSuperAdmin ? (body.company_id || DEFAULT_COMPANY_ID) : DEFAULT_COMPANY_ID);
+    body.company_id = companyId;
 
     if (!body.name || !body.company || !body.email) {
       return NextResponse.json(

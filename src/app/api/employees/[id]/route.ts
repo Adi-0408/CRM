@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Employee from '@/models/Employee';
+import User from '@/models/User';
 import { getAuthUser, requireRoles } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
@@ -11,18 +12,40 @@ export async function PUT(
 ) {
   try {
     const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized: Session required' }, { status: 401 });
+    }
+    if (authUser.isCompanySuspended) {
+      return NextResponse.json({ error: 'Forbidden: Organization suspended' }, { status: 403 });
+    }
+
+    await connectToDatabase();
+    const existing = await Employee.findById(params.id);
+    if (!existing) {
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+    }
+
+    // IDOR check: cannot modify employee of another tenant
+    if (!authUser.isDemo && authUser.role !== 'platform_super_admin' && existing.company_id && existing.company_id !== authUser.company_id) {
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+    }
+
     const body = await req.json();
+    delete body.company_id; // Never let client alter company_id
 
-    const isSelf = authUser && (authUser.id === params.id || authUser.email === body.email);
-    const isAdminOrHR = authUser?.role === 'admin_manager' || authUser?.role === 'hr';
+    const isSelf = authUser.id === params.id || authUser.email === existing.email;
+    const isAdminOrHR =
+      authUser.role === 'admin_manager' ||
+      authUser.role === 'company_admin' ||
+      authUser.role === 'platform_super_admin' ||
+      authUser.role === 'hr';
 
-    // If updating sensitive fields (role, status, salary, baseSalary, password), must be admin or hr
+    // If updating sensitive fields (role, status, salary, baseSalary), must be admin or hr
     const hasSensitiveFields =
       body.role !== undefined ||
       body.status !== undefined ||
       body.salary !== undefined ||
-      body.baseSalary !== undefined ||
-      body.password !== undefined;
+      body.baseSalary !== undefined;
 
     if (body.phone) {
       const cleanPhone = String(body.phone).replace(/\D/g, '');
@@ -37,7 +60,7 @@ export async function PUT(
 
     if (hasSensitiveFields && !isAdminOrHR) {
       return NextResponse.json(
-        { error: 'Forbidden: Only HR and Admin (Manager) can update employee credentials, status, and role.' },
+        { error: 'Forbidden: Only HR and Admin can update employee credentials, status, and role.' },
         { status: 403 }
       );
     }
@@ -49,7 +72,11 @@ export async function PUT(
       );
     }
 
-    await connectToDatabase();
+    // If changing password, must_change_password should be marked false if previously required
+    if (body.password) {
+      body.must_change_password = false;
+    }
+
     const updated = await Employee.findByIdAndUpdate(params.id, body, {
       new: true,
       runValidators: true,
@@ -57,6 +84,26 @@ export async function PUT(
 
     if (!updated) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+    }
+
+    // Sync to User collection
+    try {
+      await User.updateOne(
+        { email: existing.email },
+        {
+          $set: {
+            name: updated.name,
+            role: updated.role,
+            department: updated.department,
+            status: updated.status,
+            phone: updated.phone,
+            ...(body.password ? { password: body.password, must_change_password: false } : {}),
+            updatedAt: new Date(),
+          },
+        }
+      );
+    } catch (e) {
+      console.warn('Sync to user error on employee update:', e);
     }
 
     return NextResponse.json(updated);
@@ -70,15 +117,31 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
-    // Only Admin (Manager) can delete an employee account
-    const authResult = await requireRoles(req, ['admin_manager']);
+    const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
+    const existing = await Employee.findById(params.id);
+    if (!existing) {
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+    }
+
+    // IDOR Guard
+    if (!authResult.isSuperAdmin && existing.company_id && existing.company_id !== authResult.companyId) {
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+    }
+
     const deleted = await Employee.findByIdAndDelete(params.id);
     if (!deleted) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
+
+    try {
+      await User.deleteMany({ email: existing.email });
+    } catch (e) {
+      // Non-fatal
+    }
+
     return NextResponse.json({ message: 'Employee deleted successfully' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

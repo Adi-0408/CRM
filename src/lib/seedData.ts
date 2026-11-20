@@ -1,4 +1,5 @@
 import { connectToDatabase } from '@/lib/db';
+import Company from '@/models/Company';
 import Employee from '@/models/Employee';
 import User from '@/models/User';
 import Lead from '@/models/Lead';
@@ -13,29 +14,63 @@ import Invoice from '@/models/Invoice';
 import Quotation from '@/models/Quotation';
 import Notification from '@/models/Notification';
 import Standup from '@/models/Standup';
-import { DEMO_CREDENTIALS } from '@/types/auth';
+import { DEFAULT_COMPANY_ID } from '@/lib/apiAuth';
 import { invalidatePayrollCache } from '@/lib/payrollEngine';
 
-export async function wipeAndSeedDatabase() {
+export const DEFAULT_COMPANY = {
+  _id: DEFAULT_COMPANY_ID,
+  id: DEFAULT_COMPANY_ID,
+  name: 'Unique Digital Services',
+  slug: 'unique-digital-services',
+  status: 'active' as const,
+  brand_name: 'Unique Digital Services',
+  logo_url: '',
+  favicon_url: '',
+  primary_color: '#635BFF',
+  accent_color: '#00D4B2',
+  currency_code: 'INR',
+  currency_symbol: '₹',
+  timezone: 'Asia/Kolkata',
+  support_email: 'support@uniquedigital.com',
+  phone: '+91 98200 12345',
+  address: 'Pearl Enclave, MSEB Rd, Vishrambag, Sangli, Maharashtra 416415',
+  createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+};
+
+/**
+ * Seeds or reseeds tenant data with strict tenant isolation.
+ * If targetCompanyId is specified, wipes and seeds ONLY records for that company.
+ * If isPlatformWipe is true, also initializes/refreshes the default company and Platform Super Admin.
+ */
+export async function wipeAndSeedDatabase(targetCompanyId: string = DEFAULT_COMPANY_ID, isPlatformWipe: boolean = true) {
   await connectToDatabase();
 
-  // 1. Wipe all collections completely
+  const filter = { company_id: targetCompanyId };
+
+  // 1. Wipe collections scoped strictly to targetCompanyId
   await Promise.all([
-    Employee.deleteMany({}),
-    User.deleteMany({}),
-    Lead.deleteMany({}),
-    Project.deleteMany({}),
-    Task.deleteMany({}),
-    Ticket.deleteMany({}),
-    Attendance.deleteMany({}),
-    Leave.deleteMany({}),
-    Payroll.deleteMany({}),
-    Branch.deleteMany({}),
-    Invoice.deleteMany({}),
-    Quotation.deleteMany({}),
-    Notification.deleteMany({}),
-    Standup.deleteMany({}),
+    Employee.deleteMany(filter),
+    User.deleteMany(filter),
+    Lead.deleteMany(filter),
+    Project.deleteMany(filter),
+    Task.deleteMany(filter),
+    Ticket.deleteMany(filter),
+    Attendance.deleteMany(filter),
+    Leave.deleteMany(filter),
+    Payroll.deleteMany(filter),
+    Branch.deleteMany(filter),
+    Invoice.deleteMany(filter),
+    Quotation.deleteMany(filter),
+    Notification.deleteMany(filter),
+    Standup.deleteMany(filter),
   ]);
+
+  if (isPlatformWipe) {
+    // Delete any previous global superadmin before recreating
+    await User.deleteMany({ email: 'superadmin@crm.com' });
+    await Employee.deleteMany({ email: 'superadmin@crm.com' });
+  }
 
   try {
     invalidatePayrollCache();
@@ -43,10 +78,58 @@ export async function wipeAndSeedDatabase() {
     // Non-fatal if cache already clear
   }
 
-  // 2. Seed single central HQ Branch
-  const centralBranch = await Branch.create({
-    _id: 'branch_sangli_hq',
-    id: 'branch_sangli_hq',
+  // 2. Ensure default Company exists
+  const existingCompany = await Company.findById(targetCompanyId);
+  if (!existingCompany) {
+    await Company.create({
+      ...DEFAULT_COMPANY,
+      _id: targetCompanyId,
+      id: targetCompanyId,
+    });
+  }
+
+  // 3. Seed Platform Super Admin Account (Global, company_id = null)
+  if (isPlatformWipe) {
+    await User.create({
+      _id: 'user_superadmin',
+      id: 'user_superadmin',
+      name: 'Platform Super Admin',
+      email: 'superadmin@crm.com',
+      password: 'pass123',
+      role: 'platform_super_admin',
+      department: 'Platform Engineering',
+      company_id: null,
+      must_change_password: false,
+      status: 'active',
+      phone: '+91 99999 00000',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    });
+
+    await Employee.create({
+      _id: 'emp_superadmin',
+      id: 'emp_superadmin',
+      name: 'Platform Super Admin',
+      email: 'superadmin@crm.com',
+      password: 'pass123',
+      role: 'platform_super_admin',
+      department: 'Platform Engineering',
+      company_id: null,
+      must_change_password: false,
+      status: 'active',
+      salary: 150000,
+      baseSalary: 150000,
+      phone: '+91 99999 00000',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
+      joinDate: '2026-01-01T00:00:00.000Z',
+    });
+  }
+
+  // 4. Seed single central HQ Branch with GPS geofence
+  await Branch.create({
+    _id: `branch_sangli_hq_${targetCompanyId}`,
+    id: `branch_sangli_hq_${targetCompanyId}`,
+    company_id: targetCompanyId,
     name: 'Sangli Central HQ',
     city: 'Sangli',
     address: 'IT Park, Miraj Road, Sangli - 416416',
@@ -56,14 +139,18 @@ export async function wipeAndSeedDatabase() {
     activeEmployees: '9 active staff',
     status: 'Head Office',
     isHeadOffice: true,
+    lat: 16.84582,
+    lng: 74.60055,
+    radius_meters: 250,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
   });
 
-  // 3. Seed exactly 9 employees - 1 for each role
+  // 5. Seed exactly 9 employees - 1 for each role
   const seedEmployeeList = [
     {
-      _id: 'emp_admin',
-      id: 'emp_admin',
+      _id: `emp_admin_${targetCompanyId}`,
+      id: `emp_admin_${targetCompanyId}`,
+      company_id: targetCompanyId,
       name: 'Aditya Varma',
       email: 'admin@crm.com',
       password: 'pass123',
@@ -72,13 +159,15 @@ export async function wipeAndSeedDatabase() {
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
       salary: 100000,
       baseSalary: 100000,
-      status: 'active',
+      status: 'active' as const,
       phone: '+91 98200 12345',
+      must_change_password: false,
       joinDate: '2026-01-15T00:00:00.000Z',
     },
     {
-      _id: 'emp_lead',
-      id: 'emp_lead',
+      _id: `emp_lead_${targetCompanyId}`,
+      id: `emp_lead_${targetCompanyId}`,
+      company_id: targetCompanyId,
       name: 'Vikram Malhotra',
       email: 'lead@crm.com',
       password: 'pass123',
@@ -87,13 +176,15 @@ export async function wipeAndSeedDatabase() {
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
       salary: 75000,
       baseSalary: 75000,
-      status: 'active',
+      status: 'active' as const,
       phone: '+91 98200 12346',
+      must_change_password: false,
       joinDate: '2026-02-01T00:00:00.000Z',
     },
     {
-      _id: 'emp_hr',
-      id: 'emp_hr',
+      _id: `emp_hr_${targetCompanyId}`,
+      id: `emp_hr_${targetCompanyId}`,
+      company_id: targetCompanyId,
       name: 'Pooja Sharma',
       email: 'hr@crm.com',
       password: 'pass123',
@@ -102,13 +193,15 @@ export async function wipeAndSeedDatabase() {
       avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
       salary: 55000,
       baseSalary: 55000,
-      status: 'active',
+      status: 'active' as const,
       phone: '+91 98200 12347',
+      must_change_password: false,
       joinDate: '2026-03-01T00:00:00.000Z',
     },
     {
-      _id: 'emp_accounts',
-      id: 'emp_accounts',
+      _id: `emp_accounts_${targetCompanyId}`,
+      id: `emp_accounts_${targetCompanyId}`,
+      company_id: targetCompanyId,
       name: 'Rohan Mehta',
       email: 'accounts@crm.com',
       password: 'pass123',
@@ -117,13 +210,15 @@ export async function wipeAndSeedDatabase() {
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80',
       salary: 50000,
       baseSalary: 50000,
-      status: 'active',
+      status: 'active' as const,
       phone: '+91 98200 12348',
+      must_change_password: false,
       joinDate: '2026-03-15T00:00:00.000Z',
     },
     {
-      _id: 'emp_sales',
-      id: 'emp_sales',
+      _id: `emp_sales_${targetCompanyId}`,
+      id: `emp_sales_${targetCompanyId}`,
+      company_id: targetCompanyId,
       name: 'Siddharth Rao',
       email: 'sales@crm.com',
       password: 'pass123',
@@ -132,13 +227,15 @@ export async function wipeAndSeedDatabase() {
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&auto=format&fit=crop&q=80',
       salary: 45000,
       baseSalary: 45000,
-      status: 'active',
+      status: 'active' as const,
       phone: '+91 98200 12349',
+      must_change_password: false,
       joinDate: '2026-04-01T00:00:00.000Z',
     },
     {
-      _id: 'emp_web',
-      id: 'emp_web',
+      _id: `emp_web_${targetCompanyId}`,
+      id: `emp_web_${targetCompanyId}`,
+      company_id: targetCompanyId,
       name: 'Aarav Patel',
       email: 'web@crm.com',
       password: 'pass123',
@@ -147,13 +244,15 @@ export async function wipeAndSeedDatabase() {
       avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80',
       salary: 60000,
       baseSalary: 60000,
-      status: 'active',
+      status: 'active' as const,
       phone: '+91 98200 12350',
+      must_change_password: false,
       joinDate: '2026-05-01T00:00:00.000Z',
     },
     {
-      _id: 'emp_android',
-      id: 'emp_android',
+      _id: `emp_android_${targetCompanyId}`,
+      id: `emp_android_${targetCompanyId}`,
+      company_id: targetCompanyId,
       name: 'Neha Kulkarni',
       email: 'android@crm.com',
       password: 'pass123',
@@ -162,13 +261,15 @@ export async function wipeAndSeedDatabase() {
       avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&auto=format&fit=crop&q=80',
       salary: 60000,
       baseSalary: 60000,
-      status: 'active',
+      status: 'active' as const,
       phone: '+91 98200 12351',
+      must_change_password: false,
       joinDate: '2026-05-15T00:00:00.000Z',
     },
     {
-      _id: 'emp_support',
-      id: 'emp_support',
+      _id: `emp_support_${targetCompanyId}`,
+      id: `emp_support_${targetCompanyId}`,
+      company_id: targetCompanyId,
       name: 'Kunal Joshi',
       email: 'support@crm.com',
       password: 'pass123',
@@ -177,13 +278,15 @@ export async function wipeAndSeedDatabase() {
       avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=400&auto=format&fit=crop&q=80',
       salary: 35000,
       baseSalary: 35000,
-      status: 'active',
+      status: 'active' as const,
       phone: '+91 98200 12352',
+      must_change_password: false,
       joinDate: '2026-06-01T00:00:00.000Z',
     },
     {
-      _id: 'emp_intern',
-      id: 'emp_intern',
+      _id: `emp_intern_${targetCompanyId}`,
+      id: `emp_intern_${targetCompanyId}`,
+      company_id: targetCompanyId,
       name: 'Ananya Sen',
       email: 'intern@crm.com',
       password: 'pass123',
@@ -192,9 +295,9 @@ export async function wipeAndSeedDatabase() {
       avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80',
       salary: 15000,
       baseSalary: 15000,
-      status: 'active',
+      status: 'active' as const,
       phone: '+91 98200 12353',
-      // Joined mid-month to demo payroll proration!
+      must_change_password: false,
       joinDate: '2026-11-15T00:00:00.000Z',
     },
   ];
@@ -204,6 +307,7 @@ export async function wipeAndSeedDatabase() {
     await User.create({
       _id: empData._id,
       id: empData._id,
+      company_id: targetCompanyId,
       name: empData.name,
       email: empData.email,
       role: empData.role,
@@ -212,29 +316,43 @@ export async function wipeAndSeedDatabase() {
       salary: empData.salary,
       baseSalary: empData.baseSalary,
       status: 'active',
+      must_change_password: false,
       createdAt: empData.joinDate,
     });
   }
 
-  // Also support admin@gmail.com login alias
-  await User.create({
-    _id: 'emp_admin_alias',
-    id: 'emp_admin_alias',
-    name: 'Aditya Varma',
-    email: 'admin@gmail.com',
-    role: 'admin_manager',
-    department: 'Executive Management',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
-    salary: 100000,
-    baseSalary: 100000,
-    status: 'active',
-    createdAt: '2026-01-15T00:00:00.000Z',
-  });
+  // Also support admin@gmail.com login alias for default company
+  if (targetCompanyId === DEFAULT_COMPANY_ID) {
+    await User.create({
+      _id: `emp_admin_alias_${targetCompanyId}`,
+      id: `emp_admin_alias_${targetCompanyId}`,
+      company_id: targetCompanyId,
+      name: 'Aditya Varma',
+      email: 'admin@gmail.com',
+      role: 'admin_manager',
+      department: 'Executive Management',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+      salary: 100000,
+      baseSalary: 100000,
+      status: 'active',
+      must_change_password: false,
+      createdAt: '2026-01-15T00:00:00.000Z',
+    });
+  }
 
-  // 4. Seed 2 Focused Projects
+  const leadEmpId = `emp_lead_${targetCompanyId}`;
+  const webEmpId = `emp_web_${targetCompanyId}`;
+  const androidEmpId = `emp_android_${targetCompanyId}`;
+  const supportEmpId = `emp_support_${targetCompanyId}`;
+  const salesEmpId = `emp_sales_${targetCompanyId}`;
+  const internEmpId = `emp_intern_${targetCompanyId}`;
+  const hrEmpId = `emp_hr_${targetCompanyId}`;
+
+  // 6. Seed 2 Focused Projects
   const project1 = await Project.create({
-    _id: 'proj_enterprise_web',
-    id: 'proj_enterprise_web',
+    _id: `proj_enterprise_web_${targetCompanyId}`,
+    id: `proj_enterprise_web_${targetCompanyId}`,
+    company_id: targetCompanyId,
     title: 'Enterprise Web Portal',
     client: 'Phoenix Logistics',
     description: 'Modern B2B supply chain dashboard with real-time tracking.',
@@ -243,17 +361,19 @@ export async function wipeAndSeedDatabase() {
     progress: 65,
     priority: 'high',
     deadline: new Date('2026-12-15T00:00:00.000Z'),
-    projectLead: 'emp_lead',
-    teamMembers: ['emp_lead', 'emp_web'],
-    clientRequirements: 'Client requested real-time GPS fleet tracking, driver dispatch console, and automated Excel audit reports for monthly GST filing.',
-    salesRep: 'emp_sales',
-    leadId: 'lead_phoenix',
+    projectLead: leadEmpId,
+    teamMembers: [leadEmpId, webEmpId],
+    clientRequirements:
+      'Client requested real-time GPS fleet tracking, driver dispatch console, and automated Excel audit reports for monthly GST filing.',
+    salesRep: salesEmpId,
+    leadId: `lead_phoenix_${targetCompanyId}`,
     createdAt: new Date('2026-10-01T00:00:00.000Z'),
   });
 
   const project2 = await Project.create({
-    _id: 'proj_mobile_crm',
-    id: 'proj_mobile_crm',
+    _id: `proj_mobile_crm_${targetCompanyId}`,
+    id: `proj_mobile_crm_${targetCompanyId}`,
+    company_id: targetCompanyId,
     title: 'Mobile CRM App v2',
     client: 'Nexus Health Labs',
     description: 'Cross-platform mobile CRM app for healthcare reps.',
@@ -262,21 +382,23 @@ export async function wipeAndSeedDatabase() {
     progress: 25,
     priority: 'medium',
     deadline: new Date('2026-12-30T00:00:00.000Z'),
-    projectLead: 'emp_lead',
-    leadId: 'lead_nexus',
-    salesRep: 'emp_sales',
-    clientRequirements: 'Client requires offline visit logging, biometric check-in for clinic visits, and drug sample inventory barcode scanning.',
-    teamMembers: ['emp_lead', 'emp_android', 'emp_intern'],
+    projectLead: leadEmpId,
+    leadId: `lead_nexus_${targetCompanyId}`,
+    salesRep: salesEmpId,
+    clientRequirements:
+      'Client requires offline visit logging, biometric check-in for clinic visits, and drug sample inventory barcode scanning.',
+    teamMembers: [leadEmpId, androidEmpId, internEmpId],
     createdAt: new Date('2026-10-15T00:00:00.000Z'),
   });
 
-  // 5. Seed 4 Tasks (covering Web Dev, Android Dev, Support, Intern)
+  // 7. Seed 4 Tasks
   await Task.create({
-    _id: 'task_auth_redesign',
-    id: 'task_auth_redesign',
+    _id: `task_auth_redesign_${targetCompanyId}`,
+    id: `task_auth_redesign_${targetCompanyId}`,
+    company_id: targetCompanyId,
     title: 'Redesign Authentication & RBAC Gateways',
-    project: 'proj_enterprise_web',
-    assignedTo: 'emp_web',
+    project: project1._id,
+    assignedTo: webEmpId,
     priority: 'high',
     status: 'in_progress',
     dueDate: new Date('2026-11-20T00:00:00.000Z'),
@@ -285,11 +407,12 @@ export async function wipeAndSeedDatabase() {
   });
 
   await Task.create({
-    _id: 'task_offline_sync',
-    id: 'task_offline_sync',
+    _id: `task_offline_sync_${targetCompanyId}`,
+    id: `task_offline_sync_${targetCompanyId}`,
+    company_id: targetCompanyId,
     title: 'Implement Room DB Offline Cache in Compose',
-    project: 'proj_mobile_crm',
-    assignedTo: 'emp_android',
+    project: project2._id,
+    assignedTo: androidEmpId,
     priority: 'urgent',
     status: 'on_hold',
     dueDate: new Date('2026-11-22T00:00:00.000Z'),
@@ -298,11 +421,12 @@ export async function wipeAndSeedDatabase() {
   });
 
   await Task.create({
-    _id: 'task_sla_monitor',
-    id: 'task_sla_monitor',
+    _id: `task_sla_monitor_${targetCompanyId}`,
+    id: `task_sla_monitor_${targetCompanyId}`,
+    company_id: targetCompanyId,
     title: 'Resolve Customer SLA Warnings',
-    project: 'proj_enterprise_web',
-    assignedTo: 'emp_support',
+    project: project1._id,
+    assignedTo: supportEmpId,
     priority: 'medium',
     status: 'new',
     dueDate: new Date('2026-11-18T00:00:00.000Z'),
@@ -311,11 +435,12 @@ export async function wipeAndSeedDatabase() {
   });
 
   await Task.create({
-    _id: 'task_onboarding_docs',
-    id: 'task_onboarding_docs',
+    _id: `task_onboarding_docs_${targetCompanyId}`,
+    id: `task_onboarding_docs_${targetCompanyId}`,
+    company_id: targetCompanyId,
     title: 'Complete Onboarding & Environment Setup',
-    project: 'proj_mobile_crm',
-    assignedTo: 'emp_intern',
+    project: project2._id,
+    assignedTo: internEmpId,
     priority: 'low',
     status: 'completed',
     completedAt: new Date('2026-11-16T10:00:00.000Z'),
@@ -324,10 +449,11 @@ export async function wipeAndSeedDatabase() {
     createdAt: new Date('2026-11-15T00:00:00.000Z'),
   });
 
-  // 6. Seed 2 Leads (for Sales demo)
+  // 8. Seed 2 Leads
   await Lead.create({
-    _id: 'lead_phoenix',
-    id: 'lead_phoenix',
+    _id: `lead_phoenix_${targetCompanyId}`,
+    id: `lead_phoenix_${targetCompanyId}`,
+    company_id: targetCompanyId,
     name: 'Rajesh Singhania',
     company: 'Phoenix Logistics',
     email: 'rajesh@phoenixlogistics.com',
@@ -335,16 +461,17 @@ export async function wipeAndSeedDatabase() {
     value: 350000,
     status: 'won',
     source: 'Website',
-    assignedTo: 'emp_sales',
+    assignedTo: salesEmpId,
     notes: 'Approved proposal for supply chain portal.',
-    projectId: 'proj_enterprise_web',
+    projectId: project1._id,
     projectTitle: 'Enterprise Web Portal',
     createdAt: new Date('2026-10-10T00:00:00.000Z'),
   });
 
   await Lead.create({
-    _id: 'lead_nexus',
-    id: 'lead_nexus',
+    _id: `lead_nexus_${targetCompanyId}`,
+    id: `lead_nexus_${targetCompanyId}`,
+    company_id: targetCompanyId,
     name: 'Dr. Sunita Rao',
     company: 'Nexus Health Labs',
     email: 'sunita@nexushealth.org',
@@ -352,21 +479,22 @@ export async function wipeAndSeedDatabase() {
     value: 280000,
     status: 'proposal',
     source: 'Referral',
-    assignedTo: 'emp_sales',
+    assignedTo: salesEmpId,
     notes: 'Discussed requirements for mobile field representative tracking.',
-    quotationId: 'quot_qt_101',
+    quotationId: `quot_qt_101_${targetCompanyId}`,
     quotationNumber: 'QT-2026-101',
-    projectId: 'proj_mobile_crm',
+    projectId: project2._id,
     projectTitle: 'Mobile CRM App v2',
     createdAt: new Date('2026-10-25T00:00:00.000Z'),
   });
 
-  // 7. Seed 1 Quotation
+  // 9. Seed 1 Quotation
   await Quotation.create({
-    _id: 'quot_qt_101',
-    id: 'quot_qt_101',
+    _id: `quot_qt_101_${targetCompanyId}`,
+    id: `quot_qt_101_${targetCompanyId}`,
+    company_id: targetCompanyId,
     quotationNumber: 'QT-2026-101',
-    leadId: 'lead_nexus',
+    leadId: `lead_nexus_${targetCompanyId}`,
     clientCompany: 'Nexus Health Labs',
     clientName: 'Dr. Sunita Rao',
     clientEmail: 'sunita@nexushealth.org',
@@ -401,14 +529,15 @@ export async function wipeAndSeedDatabase() {
     createdAt: new Date('2026-11-01T00:00:00.000Z'),
   });
 
-  // 8. Seed 1 Invoice (Paid)
+  // 10. Seed 1 Invoice (Paid)
   await Invoice.create({
-    _id: 'inv_2026_001',
-    id: 'inv_2026_001',
+    _id: `inv_2026_001_${targetCompanyId}`,
+    id: `inv_2026_001_${targetCompanyId}`,
+    company_id: targetCompanyId,
     invoiceNumber: 'INV-2026-001',
-    projectId: 'proj_enterprise_web',
+    projectId: project1._id,
     projectTitle: 'Enterprise Web Portal',
-    leadId: 'lead_phoenix',
+    leadId: `lead_phoenix_${targetCompanyId}`,
     clientName: 'Rajesh Singhania',
     clientEmail: 'rajesh@phoenixlogistics.com',
     clientCompany: 'Phoenix Logistics',
@@ -434,10 +563,11 @@ export async function wipeAndSeedDatabase() {
     createdAt: new Date('2026-11-01T00:00:00.000Z'),
   });
 
-  // 9. Seed 2 Support Tickets (for Tech Support demo)
+  // 11. Seed 2 Support Tickets
   await Ticket.create({
-    _id: 'tick_2026_081',
-    id: 'tick_2026_081',
+    _id: `tick_2026_081_${targetCompanyId}`,
+    id: `tick_2026_081_${targetCompanyId}`,
+    company_id: targetCompanyId,
     ticketNumber: 'TCK-2026-081',
     title: 'API Rate limit exceeded on batch sync',
     customerName: 'Rajesh Singhania',
@@ -445,14 +575,15 @@ export async function wipeAndSeedDatabase() {
     priority: 'high',
     status: 'in_progress',
     category: 'API & Integration',
-    assignedTo: 'emp_support',
+    assignedTo: supportEmpId,
     description: 'Sync webhook is getting HTTP 429 when processing more than 100 shipment manifests.',
     createdAt: new Date('2026-11-02T08:30:00.000Z'),
   });
 
   await Ticket.create({
-    _id: 'tick_2026_082',
-    id: 'tick_2026_082',
+    _id: `tick_2026_082_${targetCompanyId}`,
+    id: `tick_2026_082_${targetCompanyId}`,
+    company_id: targetCompanyId,
     ticketNumber: 'TCK-2026-082',
     title: 'PostgreSQL connection pool exhausted on reports query',
     customerName: 'Dr. Sunita Rao',
@@ -460,39 +591,41 @@ export async function wipeAndSeedDatabase() {
     priority: 'urgent',
     status: 'open',
     category: 'Server & Performance',
-    assignedTo: 'emp_support',
+    assignedTo: supportEmpId,
     description: 'Concurrent export queries causing connection pool starvation and 504 Gateway Timeouts.',
     createdAt: new Date('2026-11-02T11:15:00.000Z'),
   });
 
-  // 10. Seed 1 Approved Leave (for HR demo)
+  // 12. Seed 1 Approved Leave
   await Leave.create({
-    _id: 'leave_2026_01',
-    id: 'leave_2026_01',
-    employee: 'emp_web',
+    _id: `leave_2026_01_${targetCompanyId}`,
+    id: `leave_2026_01_${targetCompanyId}`,
+    company_id: targetCompanyId,
+    employee: webEmpId,
     type: 'casual',
     startDate: new Date('2026-11-25T00:00:00.000Z'),
     endDate: new Date('2026-11-26T00:00:00.000Z'),
     days: 2,
     reason: 'Attending family wedding.',
     status: 'approved',
-    approvedBy: 'emp_hr',
+    approvedBy: hrEmpId,
     remarks: 'Approved. Ensure sprint tasks are handed over.',
     createdAt: new Date('2026-11-02T09:00:00.000Z'),
   });
 
-  // 11. Seed 4 Clean Attendance Records (Yesterday's Date)
+  // 13. Seed Attendance Records
   const attendanceLogs = [
-    { empId: 'emp_admin', inHour: '09:15', outHour: '18:30', mins: 555 },
-    { empId: 'emp_lead', inHour: '09:20', outHour: '18:35', mins: 555 },
-    { empId: 'emp_web', inHour: '09:25', outHour: '18:40', mins: 555 },
-    { empId: 'emp_android', inHour: '09:18', outHour: '18:32', mins: 554 },
+    { empId: `emp_admin_${targetCompanyId}`, inHour: '09:15', outHour: '18:30', mins: 555 },
+    { empId: `emp_lead_${targetCompanyId}`, inHour: '09:20', outHour: '18:35', mins: 555 },
+    { empId: `emp_web_${targetCompanyId}`, inHour: '09:25', outHour: '18:40', mins: 555 },
+    { empId: `emp_android_${targetCompanyId}`, inHour: '09:18', outHour: '18:32', mins: 554 },
   ];
 
   for (const log of attendanceLogs) {
     await Attendance.create({
       _id: `att_${log.empId}_20261102`,
       id: `att_${log.empId}_20261102`,
+      company_id: targetCompanyId,
       employee: log.empId,
       date: '2026-11-02',
       checkIn: new Date(`2026-11-02T${log.inHour}:00.000Z`),
@@ -514,18 +647,17 @@ export async function wipeAndSeedDatabase() {
     });
   }
 
-  // 12. Seed Clean November 2026 Payroll for all 9 Employees
-  // Includes Proration Demo for Intern Ananya Sen (joined Nov 15 => ₹8,000 prorated from ₹15,000)
+  // 14. Seed November 2026 Payroll for all 9 Employees
   for (const emp of seedEmployeeList) {
     const isIntern = emp.role === 'intern';
     const isProrated = isIntern;
     const baseSal = emp.baseSalary;
-    // For 30 days in Nov, Nov 15 to Nov 30 is 16 days: 15,000 * (16 / 30) = 8,000
     const netSal = isProrated ? 8000 : baseSal;
 
     await Payroll.create({
       _id: `pay_${emp._id}_2026_11`,
       id: `pay_${emp._id}_2026_11`,
+      company_id: targetCompanyId,
       employeeId: emp._id,
       employee: emp._id,
       month: '2026-11',
@@ -543,13 +675,16 @@ export async function wipeAndSeedDatabase() {
       proratedDays: isProrated ? 16 : undefined,
       totalDaysInMonth: isProrated ? 30 : undefined,
       joinDate: emp.joinDate,
-      notes: isProrated ? 'Prorated salary for mid-month joining (Nov 15). Disbursal on 1st Dec.' : 'Regular monthly salary. Disbursal on 1st Dec.',
+      notes: isProrated
+        ? 'Prorated salary for mid-month joining (Nov 15). Disbursal on 1st Dec.'
+        : 'Regular monthly salary. Disbursal on 1st Dec.',
       createdAt: new Date('2026-11-01T00:00:00.000Z'),
     });
   }
 
-  // 12. Seed Sample In-App Notifications
+  // 15. Seed Sample In-App Notifications
   await Notification.create({
+    company_id: targetCompanyId,
     userId: 'all',
     title: 'Project On Hold: Mobile CRM App v2',
     message: 'Nexus Health Labs CRM app has been put on hold pending client API integration specs.',
@@ -560,6 +695,7 @@ export async function wipeAndSeedDatabase() {
   });
 
   await Notification.create({
+    company_id: targetCompanyId,
     userId: 'all',
     title: 'Deal Won: Phoenix Logistics',
     message: 'Aditya Patil closed Enterprise Web Portal deal worth ₹3,50,000!',
@@ -569,13 +705,14 @@ export async function wipeAndSeedDatabase() {
     createdAt: new Date('2026-11-03T09:30:00.000Z'),
   });
 
-  // 13. Seed Daily EOD Standups
+  // 16. Seed Daily EOD Standups
   await Standup.create({
-    employeeId: 'emp_web',
-    employeeName: 'Rohan Joshi',
-    employeeEmail: 'rohan.developer@gmail.com',
+    company_id: targetCompanyId,
+    employeeId: webEmpId,
+    employeeName: 'Aarav Patel',
+    employeeEmail: 'web@crm.com',
     employeeRole: 'Web Developer',
-    employeeAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
+    employeeAvatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80',
     date: '2026-11-03',
     completedToday: '• Built glassmorphic navigation header\n• Integrated real-time notification drawer with unread badges',
     plannedTomorrow: '• Implement Quotation PDF direct export\n• Unit test leave request approvals',
@@ -586,11 +723,13 @@ export async function wipeAndSeedDatabase() {
 
   return {
     success: true,
-    message: 'Database cleanly wiped and seeded with minimal demo dataset for all 9 roles.',
+    company_id: targetCompanyId,
+    message: `Database cleanly wiped and seeded for tenant '${targetCompanyId}'.`,
     counts: {
+      companies: 1,
       branches: 1,
       employees: 9,
-      users: 10, // 9 roles + 1 admin@gmail.com alias
+      users: targetCompanyId === DEFAULT_COMPANY_ID ? 10 : 9,
       projects: 2,
       tasks: 4,
       leads: 2,
@@ -600,9 +739,10 @@ export async function wipeAndSeedDatabase() {
       leaves: 1,
       attendance: 4,
       payroll: 9,
+      notifications: 2,
+      standups: 1,
     },
   };
 }
 
 export const seedDatabase = wipeAndSeedDatabase;
-

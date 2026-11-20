@@ -3,6 +3,7 @@ import { createFirestoreModel } from '@/lib/firestoreModel';
 export interface ITask {
   _id?: string;
   id?: string;
+  company_id?: string;
   title: string;
   project?: any;
   assignedTo?: any;

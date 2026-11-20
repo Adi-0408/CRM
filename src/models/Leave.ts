@@ -3,6 +3,7 @@ import { createFirestoreModel } from '@/lib/firestoreModel';
 export interface ILeave {
   _id?: string;
   id?: string;
+  company_id?: string;
   employee: any;
   type: 'casual' | 'sick' | 'annual' | 'unpaid';
   startDate: Date | string;

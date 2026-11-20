@@ -3,17 +3,18 @@ import { connectToDatabase } from '@/lib/db';
 import Payroll from '@/models/Payroll';
 import Employee from '@/models/Employee';
 import { calculateEmployeePayroll, invalidatePayrollCache } from '@/lib/payrollEngine';
-import { requireRoles, isValidDocId } from '@/lib/apiAuth';
+import { requireRoles, isValidDocId, DEFAULT_COMPANY_ID } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function PATCH(req: NextRequest) {
   try {
-    // SECURITY ENFORCEMENT: Only Admin (Manager) and Accounts can modify payroll
-    const authResult = await requireRoles(req, ['admin_manager', 'accounts']);
+    const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'accounts', 'platform_super_admin']);
     if (authResult.errorResponse) {
       return authResult.errorResponse;
     }
+
+    const tenantCompanyId = authResult.companyId || DEFAULT_COMPANY_ID;
 
     await connectToDatabase();
     let body: any = {};
@@ -47,6 +48,11 @@ export async function PATCH(req: NextRequest) {
     // 1. If baseSalary is provided, update Employee.baseSalary & Employee.salary in DB
     let targetEmployee = null;
     if (isValidDocId(employeeId)) {
+      const emp = await Employee.findById(employeeId);
+      if (emp && (!authResult.isSuperAdmin && emp.company_id && emp.company_id !== tenantCompanyId)) {
+        return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+      }
+
       if (baseSalary !== undefined && baseSalary !== null) {
         targetEmployee = await Employee.findByIdAndUpdate(
           employeeId,
@@ -59,12 +65,12 @@ export async function PATCH(req: NextRequest) {
           { new: true }
         );
       } else {
-        targetEmployee = await Employee.findById(employeeId);
+        targetEmployee = emp;
       }
     } else {
-      // Find by email or name if demo ID passed
       const found = await Employee.findOne({
         $or: [{ email: employeeId }, { name: employeeId }],
+        company_id: tenantCompanyId,
       });
       if (found) {
         if (baseSalary !== undefined && baseSalary !== null) {
@@ -88,11 +94,16 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
-    // 2. Fetch existing Payroll document to preserve existing fields/overrides
-    const existing = await Payroll.findOne({
+    // 2. Fetch existing Payroll document with tenant check
+    const payrollFilter: any = {
       employeeId: targetEmployee._id,
       month,
-    });
+    };
+    if (!authResult.isSuperAdmin) {
+      payrollFilter.company_id = tenantCompanyId;
+    }
+
+    const existing = await Payroll.findOne(payrollFilter);
 
     const mergeData: any = {
       ...(existing ? existing.toObject() : {}),
@@ -124,8 +135,9 @@ export async function PATCH(req: NextRequest) {
       mergeData
     );
 
-    // 4. Update or upsert monthly Payroll document
+    // 4. Update or upsert monthly Payroll document scoped to tenant
     const updateDoc: any = {
+      company_id: tenantCompanyId,
       employeeId: targetEmployee._id,
       employee: targetEmployee._id,
       month,
@@ -167,7 +179,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updatedPayroll = await Payroll.findOneAndUpdate(
-      { employeeId: targetEmployee._id, month },
+      { employeeId: targetEmployee._id, month, company_id: tenantCompanyId },
       { $set: updateDoc },
       { upsert: true, new: true }
     ).populate('employee', 'name email role department avatar baseSalary salary');
@@ -179,6 +191,7 @@ export async function PATCH(req: NextRequest) {
       data: {
         ...calculated,
         _id: updatedPayroll._id,
+        company_id: tenantCompanyId,
         status: updateDoc.status,
         paidAt: updateDoc.paidAt,
       },

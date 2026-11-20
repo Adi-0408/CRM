@@ -2,18 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Standup from '@/models/Standup';
 import Notification from '@/models/Notification';
-import { getAuthUser } from '@/lib/apiAuth';
+import { requireTenantAuth, buildTenantFilter, DEFAULT_COMPANY_ID } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    const authResult = await requireTenantAuth(req);
+    if (authResult.errorResponse) return authResult.errorResponse;
+
     await connectToDatabase();
     const { searchParams } = new URL(req.url);
     const date = searchParams.get('date');
     const employeeId = searchParams.get('employeeId');
 
-    const query: any = {};
+    let query: any = {};
     if (date && date !== 'all') {
       query.date = date;
     }
@@ -21,7 +24,8 @@ export async function GET(req: NextRequest) {
       query.employeeId = employeeId;
     }
 
-    const standups = await Standup.find(query).sort({ createdAt: -1 });
+    const scopedQuery = buildTenantFilter(authResult.user!, query);
+    const standups = await Standup.find(scopedQuery).sort({ createdAt: -1 });
     return NextResponse.json(standups);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -30,10 +34,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const authResult = await requireTenantAuth(req);
+    if (authResult.errorResponse) return authResult.errorResponse;
+    const authUser = authResult.user!;
+
     await connectToDatabase();
-    const authUser = await getAuthUser(req);
     const body = await req.json();
 
+    const companyId = authUser.company_id || DEFAULT_COMPANY_ID;
     const employeeId = body.employeeId || authUser?.id || (authUser as any)?._id || 'unknown';
     const employeeName = body.employeeName || authUser?.name || 'Staff Member';
     const employeeEmail = body.employeeEmail || authUser?.email || '';
@@ -51,8 +59,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Upsert or create standup for today
-    const existing = await Standup.findOne({ employeeId, date: todayStr });
+    // Upsert or create standup for today within company
+    const existing = await Standup.findOne({ employeeId, date: todayStr, company_id: companyId });
     let result;
     if (existing) {
       result = await Standup.findByIdAndUpdate(
@@ -71,6 +79,7 @@ export async function POST(req: NextRequest) {
       );
     } else {
       result = await Standup.create({
+        company_id: companyId,
         employeeId,
         employeeName,
         employeeEmail,
@@ -85,9 +94,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Trigger in-app notification for Team Leads & Managers
+    // Trigger in-app notification within the same tenant
     try {
       await Notification.create({
+        company_id: companyId,
         userId: 'all',
         title: body.hasBlockers
           ? `⚠️ Standup Blocker: ${employeeName}`

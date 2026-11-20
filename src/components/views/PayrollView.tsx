@@ -25,6 +25,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useTenant } from '@/context/TenantContext';
 import { authFetch } from '@/lib/apiClient';
 import ClientInvoicesTab from '@/components/invoices/ClientInvoicesTab';
 
@@ -87,6 +88,7 @@ interface PayrollViewProps {
 
 export default function PayrollView({ employees = [], projects = [], onRefresh }: PayrollViewProps) {
   const { user: currentUser, role } = useAuth();
+  const { branding, formatCurrency } = useTenant();
   const isAdminOrHR = role === 'admin_manager' || role === 'accounts';
 
   // Accounts sub-tab: Staff Payroll vs Client Invoicing
@@ -1328,15 +1330,22 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center space-x-2.5">
-                <div className="w-9 h-9 rounded-xl bg-violet-600 text-white flex items-center justify-center font-black text-base shadow-sm">
-                  P
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-base shadow-sm overflow-hidden"
+                  style={{ backgroundColor: branding.primary_color || '#635BFF' }}
+                >
+                  {branding.logo_url ? (
+                    <img src={branding.logo_url} alt="Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    (branding.brand_name || 'C').charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-slate-900 tracking-tight">
-                    Prism<span className="text-violet-600">CRM</span> • Official Payslip
+                    {branding.brand_name || 'Enterprise CRM'} • Official Payslip
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Unique Digital Services • Central HQ Sangli
+                    {branding.brand_name || 'Corporate Workspace'} • {branding.address || 'Corporate Headquarters'}
                   </p>
                 </div>
               </div>
@@ -1388,19 +1397,19 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
                 <div>
                   <span className="text-slate-400">Email Address:</span>
                   <p className="font-bold text-slate-800">
-                    {payslipRecord.employee?.email || 'employee@uniquedigital.com'}
+                    {payslipRecord.employee?.email || 'staff@company.com'}
                   </p>
                 </div>
                 <div>
                   <span className="text-slate-400">Designation / Role:</span>
                   <p className="font-bold text-slate-800">
-                    {payslipRecord.employee?.role || 'Developer'}
+                    {payslipRecord.employee?.role || 'Staff'}
                   </p>
                 </div>
                 <div>
                   <span className="text-slate-400">Department / Office:</span>
                   <p className="font-bold text-slate-800">
-                    {payslipRecord.employee?.department || 'Engineering'} • Sangli HQ
+                    {payslipRecord.employee?.department || 'Operations'} • Headquarters
                   </p>
                 </div>
               </div>
@@ -1498,7 +1507,7 @@ export default function PayrollView({ employees = [], projects = [], onRefresh }
 
               {/* Footer Note */}
               <p className="text-[11px] text-slate-400 text-center">
-                This is a computer-generated payslip generated automatically by PrismCRM for{' '}
+                This is an official computer-generated payslip issued by {branding.brand_name || 'Enterprise Workspace'} for{' '}
                 {payslipRecord.employee?.name || 'Employee'}.
               </p>
             </div>

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, Printer, CheckCircle2, Building2, Calendar, Mail, FileText, Check } from 'lucide-react';
 import { IInvoice } from '@/models/Invoice';
 import { authFetch } from '@/lib/apiClient';
+import { useTenant } from '@/context/TenantContext';
 
 interface InvoiceReceiptModalProps {
   invoice: IInvoice | null;
@@ -20,6 +21,7 @@ export default function InvoiceReceiptModal({
   onStatusUpdate,
   canManage = true,
 }: InvoiceReceiptModalProps) {
+  const { branding, formatCurrency } = useTenant();
   const [updating, setUpdating] = useState(false);
 
   if (!isOpen || !invoice) return null;
@@ -105,15 +107,26 @@ export default function InvoiceReceiptModal({
           <div className="flex items-start justify-between border-b border-slate-100 pb-6">
             <div>
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-xl bg-[#635BFF] flex items-center justify-center text-white font-black text-sm">
-                  P
+                <div
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-sm overflow-hidden"
+                  style={{ backgroundColor: branding.primary_color || '#635BFF' }}
+                >
+                  {branding.logo_url ? (
+                    <img src={branding.logo_url} alt="Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    (branding.brand_name || 'C').charAt(0).toUpperCase()
+                  )}
                 </div>
-                <h1 className="text-xl font-black text-slate-900 tracking-tight">PrismCRM</h1>
+                <h1 className="text-xl font-black text-slate-900 tracking-tight">
+                  {branding.brand_name || 'Enterprise CRM'}
+                </h1>
               </div>
               <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wider">
-                ITPL Solutions Pvt. Ltd.
+                {branding.address || 'Corporate Headquarters'}
               </p>
-              <p className="text-xs text-slate-500 mt-0.5">finance@prismcrm.io • +91 (800) 123-4567</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {branding.support_email} {branding.phone ? `• ${branding.phone}` : ''}
+              </p>
             </div>
 
             <div className="text-right">
@@ -195,9 +208,9 @@ export default function InvoiceReceiptModal({
                       {item.description}
                     </td>
                     <td className="py-3 px-3 text-right">{item.quantity}</td>
-                    <td className="py-3 px-4 text-right">₹{item.rate.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right">{formatCurrency(item.rate)}</td>
                     <td className="py-3 px-4 text-right font-bold text-slate-900">
-                      ₹{item.amount.toLocaleString()}
+                      {formatCurrency(item.amount)}
                     </td>
                   </tr>
                 ))}
@@ -210,15 +223,15 @@ export default function InvoiceReceiptModal({
             <div className="w-64 space-y-2 text-xs">
               <div className="flex justify-between py-1 border-b border-slate-100 text-slate-600 font-semibold">
                 <span>Subtotal</span>
-                <span className="text-slate-900 font-bold">₹{invoice.subtotal.toLocaleString()}</span>
+                <span className="text-slate-900 font-bold">{formatCurrency(invoice.subtotal)}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-100 text-slate-600 font-semibold">
                 <span>Tax ({invoice.taxPercent}%)</span>
-                <span className="text-slate-900 font-bold">₹{invoice.taxAmount.toLocaleString()}</span>
+                <span className="text-slate-900 font-bold">{formatCurrency(invoice.taxAmount)}</span>
               </div>
               <div className="flex justify-between py-2 text-sm font-black text-slate-900">
                 <span>Total Due</span>
-                <span className="text-base text-[#635BFF]">₹{invoice.totalAmount.toLocaleString()}</span>
+                <span className="text-base text-[#635BFF] font-bold">{formatCurrency(invoice.totalAmount)}</span>
               </div>
             </div>
           </div>

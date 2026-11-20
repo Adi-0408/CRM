@@ -11,6 +11,7 @@ export type TicketCategory =
 export interface ITicket {
   _id?: string;
   id?: string;
+  company_id?: string;
   ticketNumber?: string;
   title: string;
   customerName: string;

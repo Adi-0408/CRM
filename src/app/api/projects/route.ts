@@ -3,17 +3,20 @@ import { connectToDatabase } from '@/lib/db';
 import Project from '@/models/Project';
 import Employee from '@/models/Employee';
 import Lead from '@/models/Lead';
-import { getAuthUser, requireRoles, isValidDocId } from '@/lib/apiAuth';
+import { requireRoles, requireTenantAuth, buildTenantFilter, DEFAULT_COMPANY_ID, isValidDocId } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    const authResult = await requireTenantAuth(req);
+    if (authResult.errorResponse) return authResult.errorResponse;
+    const authUser = authResult.user!;
+
     await connectToDatabase();
-    const authUser = await getAuthUser(req);
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
-    const query: any = {};
+    let query: any = {};
     if (status && status !== 'all') {
       if (status === 'new') {
         query.status = { $in: ['new', 'planning'] };
@@ -22,19 +25,20 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // DATA SCOPING: Admin (Manager), Team Lead, and Sales can view all company projects.
+    // DATA SCOPING: Admin, Team Lead, and Sales can view all company projects.
     // Developers see only projects where they are assigned in teamMembers.
-    const hasBroadAccess = ['admin_manager', 'team_lead', 'sales'].includes(authUser?.role || '');
-    if (authUser && !hasBroadAccess) {
+    const hasBroadAccess = ['admin_manager', 'company_admin', 'platform_super_admin', 'team_lead', 'sales'].includes(authUser.role);
+    if (!hasBroadAccess) {
       if (isValidDocId(authUser.id)) {
         query.teamMembers = authUser.id;
       } else {
-        const found = await Employee.findOne({ email: authUser.email.toLowerCase() });
+        const found = await Employee.findOne({ email: authUser.email.toLowerCase(), company_id: authUser.company_id });
         if (found) query.teamMembers = found._id;
       }
     }
 
-    const projects = await Project.find(query)
+    const scopedQuery = buildTenantFilter(authUser, query);
+    const projects = await Project.find(scopedQuery)
       .sort({ deadline: 1 })
       .populate('teamMembers', 'name email avatar role')
       .populate('salesRep', 'name email avatar role');
@@ -56,12 +60,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    // Admin (Manager) & Team Lead can create company projects
-    const authResult = await requireRoles(req, ['admin_manager', 'team_lead']);
+    const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'team_lead', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
     const body = await req.json();
+
+    const companyId = authResult.companyId || (authResult.isSuperAdmin ? (body.company_id || DEFAULT_COMPANY_ID) : DEFAULT_COMPANY_ID);
+    body.company_id = companyId;
 
     if (!body.title || !body.client || !body.deadline) {
       return NextResponse.json(

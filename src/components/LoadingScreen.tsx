@@ -12,6 +12,28 @@ export default function LoadingScreen({
   message = 'Loading your workspace...',
   isFading = false,
 }: LoadingScreenProps) {
+  const [cachedBrand, setCachedBrand] = React.useState<{ name: string; color: string; logo: string }>({
+    name: 'Workspace',
+    color: '#635BFF',
+    logo: '',
+  });
+
+  React.useEffect(() => {
+    try {
+      const stored = localStorage.getItem('crm_active_branding');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.brand_name) {
+          setCachedBrand({
+            name: parsed.brand_name,
+            color: parsed.primary_color || '#635BFF',
+            logo: parsed.logo_url || '',
+          });
+        }
+      }
+    } catch {}
+  }, []);
+
   return (
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#F4F3FA] via-[#FAF9FE] to-[#EFEBFD] transition-opacity duration-300 ${
@@ -27,9 +49,16 @@ export default function LoadingScreen({
       <div className="relative z-10 flex flex-col items-center text-center p-8 max-w-sm w-full mx-4">
         {/* Floating Glass/White Logo Badge */}
         <div className="relative mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-white shadow-[0_10px_30px_-5px_rgba(99,91,255,0.15)] border border-slate-100 flex items-center justify-center p-3 animate-bounce duration-1000">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-purple-500 flex items-center justify-center text-white font-extrabold text-xl shadow-sm shadow-indigo-500/30">
-              P
+          <div className="w-16 h-16 rounded-2xl bg-white shadow-[0_10px_30px_-5px_rgba(99,91,255,0.15)] border border-slate-100 flex items-center justify-center p-3 animate-bounce duration-1000 overflow-hidden">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-extrabold text-xl shadow-sm shrink-0 overflow-hidden"
+              style={{ backgroundColor: cachedBrand.color }}
+            >
+              {cachedBrand.logo ? (
+                <img src={cachedBrand.logo} alt="Logo" className="w-full h-full object-cover" />
+              ) : (
+                cachedBrand.name.charAt(0).toUpperCase()
+              )}
             </div>
           </div>
           <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#EEF2FF] border border-indigo-100 flex items-center justify-center text-[#635BFF]">
@@ -39,7 +68,7 @@ export default function LoadingScreen({
 
         {/* Brand Name */}
         <h3 className="text-base font-bold tracking-tight text-slate-900 mb-1">
-          Prism<span className="text-violet-600 font-extrabold">CRM</span>
+          {cachedBrand.name}
         </h3>
 
         {/* Dynamic Status Subtext */}

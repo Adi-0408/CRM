@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import EditCredentialsModal from '@/components/modals/EditCredentialsModal';
 import { useAuth } from '@/context/AuthContext';
+import { useTenant } from '@/context/TenantContext';
 import { authFetch } from '@/lib/apiClient';
 
 interface EmployeesViewProps {
@@ -31,6 +32,7 @@ export default function EmployeesView({
   onRefresh,
 }: EmployeesViewProps) {
   const { user: currentUser } = useAuth();
+  const { branding, formatCurrency } = useTenant();
   const isAdmin = currentUser?.role === 'admin_manager';
   const isAdminOrHR = isAdmin || currentUser?.role === 'hr';
 
@@ -319,7 +321,7 @@ export default function EmployeesView({
                           {isAdminOrHR ? (
                             editingSalaryEmpId === emp._id ? (
                               <div className="flex items-center space-x-1.5">
-                                <span className="text-xs font-bold text-slate-400">₹</span>
+                                <span className="text-xs font-bold text-slate-400">{branding.currency_symbol || '₹'}</span>
                                 <input
                                   type="text"
                                   inputMode="numeric"
@@ -351,14 +353,14 @@ export default function EmployeesView({
                                 title="Click to edit Base Salary"
                               >
                                 <span className="font-mono font-bold text-slate-900">
-                                  ₹{(emp.baseSalary || emp.salary || 45000).toLocaleString()}
+                                  {formatCurrency(emp.baseSalary || emp.salary || 45000)}
                                 </span>
                                 <span className="text-[10px] text-slate-400 font-mono">/mo</span>
                               </button>
                             )
                           ) : (
                             <span className="font-mono font-bold text-slate-700">
-                              ₹{(emp.baseSalary || emp.salary || 45000).toLocaleString()}
+                              {formatCurrency(emp.baseSalary || emp.salary || 45000)}
                               <span className="text-[10px] text-slate-400 font-mono">/mo</span>
                             </span>
                           )}

@@ -34,6 +34,7 @@ export interface IAttendanceSession {
 export interface IAttendance {
   _id?: string;
   id?: string;
+  company_id?: string;
   employee: any;
   date: string; // YYYY-MM-DD
   checkIn?: Date | string;

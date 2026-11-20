@@ -10,11 +10,22 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await requireRoles(req, ['admin_manager', 'accounts']);
+    const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'accounts', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
+    const existing = await Invoice.findById(params.id);
+    if (!existing) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+
+    // IDOR Protection: Tenant boundary check
+    if (!authResult.isSuperAdmin && existing.company_id && existing.company_id !== authResult.companyId) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+
     const body = await req.json();
+    delete body.company_id;
 
     if (body.status === 'paid' && !body.paidAt) {
       body.paidAt = new Date();
@@ -24,10 +35,6 @@ export async function PUT(
       new: true,
       runValidators: true,
     });
-
-    if (!updated) {
-      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
-    }
 
     return NextResponse.json(updated);
   } catch (error: any) {
@@ -40,15 +47,21 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await requireRoles(req, ['admin_manager', 'accounts']);
+    const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'accounts', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
-    const deleted = await Invoice.findByIdAndDelete(params.id);
-    if (!deleted) {
+    const existing = await Invoice.findById(params.id);
+    if (!existing) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
+    // IDOR Protection: Tenant boundary check
+    if (!authResult.isSuperAdmin && existing.company_id && existing.company_id !== authResult.companyId) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+
+    await Invoice.findByIdAndDelete(params.id);
     return NextResponse.json({ message: 'Invoice deleted successfully' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

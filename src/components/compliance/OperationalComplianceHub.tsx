@@ -27,9 +27,7 @@ import {
   SwitchCamera,
   ChevronRight,
   ExternalLink,
-  CameraOff,
   X,
-  Minimize2,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
@@ -90,28 +88,12 @@ export default function OperationalComplianceHub({
   // 2. Active Tab & Dark Mode States
   const [activeTab, setActiveTab] = useState<'attendance' | 'standups'>(activeSection);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
-  // Close / Collapse state: Allows closing this section so camera hardware does NOT stay on all the time
-  const [isHubCollapsed, setIsHubCollapsed] = useState<boolean>(false);
 
   useEffect(() => {
     setActiveTab(activeSection);
   }, [activeSection]);
 
-  // Stop Camera Stream and release hardware access immediately
-  const stopCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    setStream(null);
-    setIsCameraActive(false);
-    setIsCameraLoading(false);
-  }, []);
-
   const handleTabSelect = (tab: 'attendance' | 'standups') => {
-    if (tab === 'standups') {
-      stopCamera();
-    }
     setActiveTab(tab);
     if (onSectionChange) onSectionChange(tab);
   };
@@ -125,6 +107,9 @@ export default function OperationalComplianceHub({
     message: string;
   } | null>(null);
   const [showStandupModal, setShowStandupModal] = useState<boolean>(false);
+
+  // 3.1. Hub Open/Closed state (allows employee to close camera section so camera access does not stay on all day)
+  const [isHubOpen, setIsHubOpen] = useState<boolean>(true);
 
   // Fetch today's attendance state
   const fetchTodayAttendance = useCallback(async () => {
@@ -141,13 +126,17 @@ export default function OperationalComplianceHub({
           if (activeSess) {
             setIsClockedIn(true);
             setActiveSessionStart(activeSess.checkIn ? String(activeSess.checkIn) : null);
+            // If already clocked in, keep camera hub closed by default to protect battery & privacy
+            setIsHubOpen(false);
           } else {
             setIsClockedIn(false);
             setActiveSessionStart(null);
+            setIsHubOpen(true);
           }
         } else {
           setIsClockedIn(false);
           setActiveSessionStart(null);
+          setIsHubOpen(true);
         }
       }
     } catch (err) {
@@ -245,9 +234,42 @@ export default function OperationalComplianceHub({
     }
   }, [facingMode]);
 
-  // Initialize or stop camera based on tab, collapse state, and captured photo
+  // Stop Camera Stream (releases hardware so browser camera light turns OFF)
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch {}
+      });
+      streamRef.current = null;
+    }
+    setStream(null);
+    setIsCameraActive(false);
+    setIsCameraLoading(false);
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  }, []);
+
+  // Open Hub Handler: resets old photo so fresh selfie is required and starts camera
+  const handleOpenHub = useCallback(() => {
+    setCapturedPhoto(null);
+    setPunchFeedback(null);
+    setIsHubOpen(true);
+    startCamera();
+  }, [startCamera]);
+
+  // Close Hub Handler: releases camera hardware so camera does not stay on
+  const handleCloseHub = useCallback(() => {
+    stopCamera();
+    setCapturedPhoto(null);
+    setIsHubOpen(false);
+  }, [stopCamera]);
+
+  // Camera lifecycle: only start when hub is explicitly OPEN on attendance tab without a frozen photo
   useEffect(() => {
-    if (activeTab === 'attendance' && !isHubCollapsed && !capturedPhoto) {
+    if (activeTab === 'attendance' && isHubOpen && !capturedPhoto) {
       startCamera();
     } else {
       stopCamera();
@@ -255,7 +277,7 @@ export default function OperationalComplianceHub({
     return () => {
       stopCamera();
     };
-  }, [activeTab, isHubCollapsed, startCamera, stopCamera, capturedPhoto]);
+  }, [activeTab, isHubOpen, capturedPhoto, startCamera, stopCamera]);
 
   // Connect video element to stream when stream changes
   useEffect(() => {
@@ -472,20 +494,18 @@ export default function OperationalComplianceHub({
       setIsClockedIn(nowClockedIn);
       setActiveSessionStart(activeSess?.checkIn ? String(activeSess.checkIn) : null);
 
-      // 1. Reset photo state so the next punch (clock-out or clock-in) requires a fresh photo
+      // 1. Reset captured photo so it is NEVER reused for the next clock-in or clock-out
       setCapturedPhoto(null);
-
-      // 2. Stop camera stream and release hardware
+      // 2. Stop camera hardware immediately so camera access does not stay on
       stopCamera();
-
-      // 3. Automatically close/collapse this section so camera does not stay on
-      setIsHubCollapsed(true);
+      // 3. Automatically close/minimize the verification hub section
+      setIsHubOpen(false);
 
       setPunchFeedback({
         type: 'success',
         message: action === 'punch_out'
-          ? 'Successfully Clocked Out! Photo saved & camera turned off.'
-          : 'Successfully Clocked In! Photo saved & camera turned off. You can reopen anytime to clock out.',
+          ? 'Successfully Clocked Out! Biometric selfie & geofence telemetry verified. Camera access deactivated.'
+          : 'Successfully Clocked In! Biometric selfie & geofence telemetry verified. Camera access deactivated.',
       });
 
       if (onPunchSuccess) {
@@ -576,38 +596,6 @@ export default function OperationalComplianceHub({
             </div>
           </div>
 
-          {/* Close Section / Open Camera Controls */}
-          {activeTab === 'attendance' && (
-            !isHubCollapsed ? (
-              <button
-                type="button"
-                onClick={() => {
-                  stopCamera();
-                  setIsHubCollapsed(true);
-                }}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 shadow-2xs hover:scale-105"
-                title="Close section and turn off camera"
-              >
-                <CameraOff className="w-3.5 h-3.5 text-rose-500" />
-                <span className="hidden sm:inline">Close Camera</span>
-                <span className="sm:hidden">Close</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setCapturedPhoto(null);
-                  setIsHubCollapsed(false);
-                }}
-                className="px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 shadow-2xs hover:scale-105"
-                title="Open verification section and start camera"
-              >
-                <Camera className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>{isClockedIn ? 'Open Camera (Clock Out)' : 'Open Camera (Clock In)'}</span>
-              </button>
-            )
-          )}
-
           {/* Theme Toggle (Light / Dark) */}
           <button
             type="button"
@@ -617,6 +605,20 @@ export default function OperationalComplianceHub({
           >
             {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
           </button>
+
+          {/* Close Camera Hub Button */}
+          {activeTab === 'attendance' && isHubOpen && (
+            <button
+              type="button"
+              onClick={handleCloseHub}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-300 hover:border-rose-200 dark:hover:border-rose-800 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-95"
+              title="Close Verification Hub & Turn Off Camera Access"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Close Camera</span>
+              <span className="sm:hidden">Close</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -660,7 +662,8 @@ export default function OperationalComplianceHub({
           2. MAIN WORKSPACE (2-COLUMN RESPONSIVE GRID)
           ========================================================================= */}
       {activeTab === 'attendance' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        isHubOpen ? (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch animate-in fade-in duration-200">
         {/* -----------------------------------------------------------------------
             LEFT COLUMN (Biometric Face Verification Card - 5 cols)
             ----------------------------------------------------------------------- */}
@@ -710,6 +713,16 @@ export default function OperationalComplianceHub({
                   <Radio className="w-2.5 h-2.5 text-indigo-500 animate-pulse" />
                   <span>AI Biometric</span>
                 </span>
+
+                {/* Close Button to stop camera & minimize hub */}
+                <button
+                  type="button"
+                  onClick={handleCloseHub}
+                  className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-500 hover:text-rose-600 dark:hover:text-rose-300 flex items-center justify-center transition-colors cursor-pointer border border-transparent hover:border-rose-200"
+                  title="Close Camera Hub & Stop Webcam"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
           </div>
@@ -1134,8 +1147,72 @@ export default function OperationalComplianceHub({
         </section>
       </div>
     ) : (
-      children
-    )}
+      /* Docked / Closed State Card: Camera is powered off, safe & non-intrusive */
+      <div className="bg-white/95 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 animate-in fade-in duration-200">
+        <div className="flex items-center space-x-3.5">
+          <div
+            className={`w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-sm shrink-0 ${
+              isClockedIn
+                ? 'bg-gradient-to-tr from-emerald-500 to-teal-600 shadow-emerald-500/20'
+                : 'bg-gradient-to-tr from-indigo-600 to-violet-600 shadow-indigo-500/20'
+            }`}
+          >
+            {isClockedIn ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+          </div>
+          <div>
+            <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight">
+                {isClockedIn ? 'Active Work Session in Progress' : 'Currently Off Shift'}
+              </h3>
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                  isClockedIn
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    isClockedIn ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                  }`}
+                />
+                <span>{isClockedIn ? 'Camera Access Offline' : 'Ready to Clock In'}</span>
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              {isClockedIn
+                ? `Clocked in at ${
+                    activeSessionStart
+                      ? new Date(activeSessionStart).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : 'today'
+                  } • Office Perimeter Verified (${distanceMeters}m). Camera hardware is turned off.`
+                : 'Camera hardware is powered off. Click below to open verification hub and clock in.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2.5">
+          <button
+            type="button"
+            onClick={handleOpenHub}
+            className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center space-x-2 cursor-pointer ${
+              isClockedIn
+                ? 'bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 shadow-rose-500/25'
+                : 'bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 shadow-indigo-500/25'
+            }`}
+          >
+            <Camera className="w-4 h-4 text-white" />
+            <span>{isClockedIn ? 'Open Camera & Clock Out' : 'Open Camera & Clock In'}</span>
+          </button>
+        </div>
+      </div>
+    )
+  ) : (
+    children
+  )}
 
       {/* Daily EOD Standup Modal (Prompted on Clock Out) */}
       <DailyStandupModal

@@ -18,6 +18,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useTenant } from '@/context/TenantContext';
 import { formatTimeAmPm } from '@/lib/attendanceEngine';
 
 interface HRDashboardViewProps {
@@ -27,6 +28,7 @@ interface HRDashboardViewProps {
 
 export default function HRDashboardView({ onNavigate, onOpenAddEmployee }: HRDashboardViewProps) {
   const { user } = useAuth();
+  const { formatCurrency } = useTenant();
   const [employees, setEmployees] = useState<any[]>([]);
   const [attendances, setAttendances] = useState<any[]>([]);
   const [leaves, setLeaves] = useState<any[]>([]);
@@ -225,7 +227,7 @@ export default function HRDashboardView({ onNavigate, onOpenAddEmployee }: HRDas
                 Est. Monthly Payroll
               </p>
               <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight mt-1.5">
-                ₹{totalPayrollCost.toLocaleString()}
+                {formatCurrency(totalPayrollCost)}
               </h3>
               <p className="text-[11px] text-slate-400 mt-1">
                 Monthly disbursements

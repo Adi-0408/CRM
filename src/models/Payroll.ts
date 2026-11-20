@@ -3,6 +3,7 @@ import { createFirestoreModel } from '@/lib/firestoreModel';
 export interface IPayroll {
   _id?: string;
   id?: string;
+  company_id?: string;
   employeeId: any;
   employee?: any;
   month: string; // Format: YYYY-MM

@@ -11,6 +11,7 @@ export interface IInvoiceLineItem {
 export interface IInvoice {
   _id?: string;
   id?: string;
+  company_id?: string;
   invoiceNumber: string;
   projectId?: any;
   projectTitle?: string;

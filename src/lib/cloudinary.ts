@@ -35,7 +35,7 @@ export interface UploadResult {
  */
 export async function uploadToCloudinary(
   fileData: string,
-  folder: 'avatars' | 'projects' | 'tasks' | 'leads' | 'attendance' = 'avatars',
+  folder: 'avatars' | 'projects' | 'tasks' | 'leads' | 'attendance' | string = 'avatars',
   options?: UploadOptions
 ): Promise<UploadResult> {
   const client = configureCloudinary();

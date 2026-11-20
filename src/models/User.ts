@@ -4,6 +4,7 @@ import { UserRole } from '@/types/auth';
 export interface IUser {
   _id?: string;
   id?: string;
+  company_id?: string | null;
   name: string;
   email: string;
   password?: string;
@@ -13,6 +14,7 @@ export interface IUser {
   phone?: string;
   avatar?: any;
   status?: string;
+  must_change_password?: boolean;
   joiningDate?: Date | string;
   baseSalary?: number;
   salary?: any;

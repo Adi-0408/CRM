@@ -16,6 +16,7 @@ import {
   Share2,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useTenant } from '@/context/TenantContext';
 import { authFetch } from '@/lib/apiClient';
 import CustomSelect from '@/components/common/CustomSelect';
 import { canDistributeProject, canSalesEditProject } from '@/lib/permissions';
@@ -42,6 +43,7 @@ export default function ProjectsView({
   onRefresh,
 }: ProjectsViewProps) {
   const { user, role } = useAuth();
+  const { formatCurrency } = useTenant();
   const isAdminOrManager = role === 'admin_manager';
   const canManageProjects = role === 'admin_manager' || role === 'team_lead';
   const canDistribute = canDistributeProject(user);
@@ -316,7 +318,7 @@ export default function ProjectsView({
 
                   <div className="flex items-center justify-between text-xs text-slate-600">
                     <span className="flex items-center space-x-1 font-bold text-slate-900">
-                      <span>${(project.budget || 0).toLocaleString()}</span>
+                      <span>{formatCurrency(project.budget || 0)}</span>
                     </span>
                     <span className="flex items-center space-x-1 text-slate-500">
                       <Clock className="w-3.5 h-3.5 text-slate-400" />

@@ -2,26 +2,33 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Leave from '@/models/Leave';
 import Employee from '@/models/Employee';
-import { getAuthUser, isValidDocId } from '@/lib/apiAuth';
+import { requireTenantAuth, buildTenantFilter, DEFAULT_COMPANY_ID, isValidDocId } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    const authResult = await requireTenantAuth(req);
+    if (authResult.errorResponse) return authResult.errorResponse;
+    const authUser = authResult.user!;
+
     await connectToDatabase();
-    const authUser = await getAuthUser(req);
     const { searchParams } = new URL(req.url);
     const employeeParam = searchParams.get('employeeId');
 
-    const query: any = {};
-    const isAdminOrHR = authUser?.role === 'admin_manager' || authUser?.role === 'hr';
+    let query: any = {};
+    const isAdminOrHR =
+      authUser.role === 'admin_manager' ||
+      authUser.role === 'company_admin' ||
+      authUser.role === 'platform_super_admin' ||
+      authUser.role === 'hr';
 
-    // Data Scoping: If user is neither admin_manager nor hr, restrict strictly to their own leave requests
-    if (!isAdminOrHR && authUser) {
+    // Data Scoping: If user is neither admin nor hr, restrict strictly to their own leave requests
+    if (!isAdminOrHR) {
       if (isValidDocId(authUser.id)) {
         query.employee = authUser.id;
       } else {
-        const found = await Employee.findOne({ email: authUser.email.toLowerCase() });
+        const found = await Employee.findOne({ email: authUser.email.toLowerCase(), company_id: authUser.company_id });
         if (found) {
           query.employee = found._id;
         }
@@ -32,7 +39,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const leaves = await Leave.find(query)
+    const scopedQuery = buildTenantFilter(authUser, query);
+    const leaves = await Leave.find(scopedQuery)
       .populate('employee', 'name email role department avatar')
       .populate('approvedBy', 'name email role')
       .sort({ createdAt: -1 });
@@ -45,8 +53,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const authResult = await requireTenantAuth(req);
+    if (authResult.errorResponse) return authResult.errorResponse;
+    const authUser = authResult.user!;
+
     await connectToDatabase();
-    const authUser = await getAuthUser(req);
     const body = await req.json();
 
     if (!body.startDate || !body.endDate || !body.reason) {
@@ -56,19 +67,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Determine target employee:
-    // If requester is not admin_manager, STRICTLY FORCE their own ID
-    let targetEmployeeId = body.employee;
-    const isAdminManager = authUser?.role === 'admin_manager';
+    const companyId = authUser.company_id || DEFAULT_COMPANY_ID;
+    const isAdmin =
+      authUser.role === 'admin_manager' ||
+      authUser.role === 'company_admin' ||
+      authUser.role === 'platform_super_admin';
 
-    if (!isAdminManager && authUser) {
+    let targetEmployeeId = body.employee;
+
+    if (!isAdmin) {
       if (isValidDocId(authUser.id)) {
         targetEmployeeId = authUser.id;
       } else {
-        const found = await Employee.findOne({ email: authUser.email.toLowerCase() });
+        const found = await Employee.findOne({ email: authUser.email.toLowerCase(), company_id: companyId });
         if (found) targetEmployeeId = found._id;
       }
-    } else if (!targetEmployeeId && authUser) {
+    } else if (!targetEmployeeId) {
       targetEmployeeId = authUser.id;
     }
 
@@ -76,13 +90,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Employee ID is required' }, { status: 400 });
     }
 
-    // Resolve target employee if demo ID
     if (!isValidDocId(targetEmployeeId)) {
       const found = await Employee.findOne({
         $or: [
-          { email: authUser?.email?.toLowerCase() },
-          { role: authUser?.role },
+          { email: authUser.email.toLowerCase() },
+          { role: authUser.role },
         ],
+        company_id: companyId,
       });
       if (found) targetEmployeeId = found._id;
     }
@@ -92,16 +106,15 @@ export async function POST(req: NextRequest) {
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const days = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
 
-    // SECURITY ENFORCEMENT: Force status to strictly 'pending' on creation
-    // Never allow an employee or client to inject 'approved' or 'Approved'
     const newLeave = await Leave.create({
+      company_id: companyId,
       employee: targetEmployeeId,
       type: body.type || 'casual',
       startDate: start,
       endDate: end,
       days: body.days || days,
       reason: body.reason,
-      status: 'pending', // FORCED
+      status: 'pending',
     });
 
     const populated = await Leave.findById(newLeave._id).populate(
@@ -117,8 +130,11 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
+    const authResult = await requireTenantAuth(req);
+    if (authResult.errorResponse) return authResult.errorResponse;
+    const authUser = authResult.user!;
+
     await connectToDatabase();
-    const authUser = await getAuthUser(req);
     const body = await req.json();
     const { id, status, remarks } = body;
 
@@ -131,17 +147,25 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Leave request not found' }, { status: 404 });
     }
 
+    // IDOR Protection: Tenant boundary check
+    if (!authResult.isSuperAdmin && leave.company_id && leave.company_id !== authUser.company_id) {
+      return NextResponse.json({ error: 'Leave request not found' }, { status: 404 });
+    }
+
     const normalizedStatus = status.toLowerCase();
 
     // 1. CANCELLATION FLOW: An employee can cancel ONLY their own pending request
     if (normalizedStatus === 'cancelled') {
       const empIdStr = (leave.employee as any)?._id?.toString() || (leave.employee ? String(leave.employee) : '');
       const isOwner =
-        authUser &&
-        (empIdStr === authUser.id ||
-          (leave.employee as any)?.email?.toLowerCase() === authUser.email?.toLowerCase());
+        empIdStr === authUser.id ||
+        (leave.employee as any)?.email?.toLowerCase() === authUser.email?.toLowerCase();
 
-      const isAdminOrHR = authUser?.role === 'admin_manager' || authUser?.role === 'hr';
+      const isAdminOrHR =
+        authUser.role === 'admin_manager' ||
+        authUser.role === 'company_admin' ||
+        authUser.role === 'platform_super_admin' ||
+        authUser.role === 'hr';
 
       if (!isOwner && !isAdminOrHR) {
         return NextResponse.json(
@@ -164,11 +188,17 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json(leave);
     }
 
-    // 2. APPROVAL / REJECTION FLOW: Strictly restricted to Admin (Manager) & HR
+    // 2. APPROVAL / REJECTION FLOW: Strictly restricted to Admin & HR
     if (normalizedStatus === 'approved' || normalizedStatus === 'rejected') {
-      if (!authUser || (authUser.role !== 'admin_manager' && authUser.role !== 'hr')) {
+      const isAdminOrHR =
+        authUser.role === 'admin_manager' ||
+        authUser.role === 'company_admin' ||
+        authUser.role === 'platform_super_admin' ||
+        authUser.role === 'hr';
+
+      if (!isAdminOrHR) {
         return NextResponse.json(
-          { error: 'Forbidden: Only HR and Admin (Manager) can approve or reject leave requests.' },
+          { error: 'Forbidden: Only HR and Admin can approve or reject leave requests.' },
           { status: 403 }
         );
       }
@@ -179,11 +209,16 @@ export async function PUT(req: NextRequest) {
         empIdStr === authUser.id ||
         (leave.employee as any)?.email?.toLowerCase() === authUser.email?.toLowerCase();
 
-      if (isSelf && authUser.role !== 'admin_manager') {
+      const isExecutiveAdmin =
+        authUser.role === 'admin_manager' ||
+        authUser.role === 'company_admin' ||
+        authUser.role === 'platform_super_admin';
+
+      if (isSelf && !isExecutiveAdmin) {
         return NextResponse.json(
           {
             error:
-              'Forbidden: Self-approval is strictly prohibited. HR leave requests must be approved by Admin (Manager).',
+              'Forbidden: Self-approval is strictly prohibited. HR leave requests must be approved by Admin.',
           },
           { status: 403 }
         );
@@ -192,10 +227,9 @@ export async function PUT(req: NextRequest) {
       leave.status = normalizedStatus;
       if (remarks) leave.remarks = remarks;
 
-      // Assign approver
       let approverId: string | undefined = authUser.id;
       if (!approverId || !isValidDocId(approverId)) {
-        const found = await Employee.findOne({ email: authUser.email.toLowerCase() });
+        const found = await Employee.findOne({ email: authUser.email.toLowerCase(), company_id: authUser.company_id });
         if (found) approverId = String(found._id);
       }
       if (approverId && isValidDocId(approverId)) {
@@ -219,8 +253,11 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    const authResult = await requireTenantAuth(req);
+    if (authResult.errorResponse) return authResult.errorResponse;
+    const authUser = authResult.user!;
+
     await connectToDatabase();
-    const authUser = await getAuthUser(req);
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 
@@ -233,19 +270,32 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Leave not found' }, { status: 404 });
     }
 
+    // IDOR Protection: Tenant boundary check
+    if (!authResult.isSuperAdmin && leave.company_id && leave.company_id !== authUser.company_id) {
+      return NextResponse.json({ error: 'Leave not found' }, { status: 404 });
+    }
+
     const empIdStr = (leave.employee as any)?._id?.toString() || (leave.employee ? String(leave.employee) : '');
     const isOwner =
-      authUser &&
-      (empIdStr === authUser.id ||
-        (leave.employee as any)?.email?.toLowerCase() === authUser.email?.toLowerCase());
+      empIdStr === authUser.id ||
+      (leave.employee as any)?.email?.toLowerCase() === authUser.email?.toLowerCase();
 
-    const isAdminOrHR = authUser?.role === 'admin_manager' || authUser?.role === 'hr';
+    const isAdminOrHR =
+      authUser.role === 'admin_manager' ||
+      authUser.role === 'company_admin' ||
+      authUser.role === 'platform_super_admin' ||
+      authUser.role === 'hr';
 
     if (!isOwner && !isAdminOrHR) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    if (leave.status !== 'pending' && authUser?.role !== 'admin_manager') {
+    const isExecutiveAdmin =
+      authUser.role === 'admin_manager' ||
+      authUser.role === 'company_admin' ||
+      authUser.role === 'platform_super_admin';
+
+    if (leave.status !== 'pending' && !isExecutiveAdmin) {
       return NextResponse.json(
         { error: 'Cannot delete processed leave request.' },
         { status: 400 }

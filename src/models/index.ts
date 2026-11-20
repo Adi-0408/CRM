@@ -1,3 +1,4 @@
+export * from './Company';
 export * from './Employee';
 export * from './Project';
 export * from './Task';
@@ -10,3 +11,5 @@ export * from './Branch';
 export * from './User';
 export * from './Invoice';
 export * from './Quotation';
+export * from './Notification';
+export * from './Standup';

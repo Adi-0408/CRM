@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Lock,
   Mail,
@@ -15,15 +16,64 @@ import { DEMO_CREDENTIALS } from '@/types/auth';
 
 interface LoginPageProps {
   onSuccess?: () => void;
+  companySlug?: string;
+  initialBranding?: {
+    brand_name?: string;
+    logo_url?: string;
+    primary_color?: string;
+    currency_symbol?: string;
+  };
 }
 
-export default function LoginPage({ onSuccess }: LoginPageProps) {
+export default function LoginPage({
+  onSuccess,
+  companySlug,
+  initialBranding,
+}: LoginPageProps) {
+  const router = useRouter();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Dynamic Company Branding State
+  const [tenantBrand, setTenantBrand] = useState<{
+    brand_name: string;
+    logo_url: string;
+    primary_color: string;
+  }>({
+    brand_name: initialBranding?.brand_name || 'PrismCRM',
+    logo_url: initialBranding?.logo_url || '',
+    primary_color: initialBranding?.primary_color || '#635BFF',
+  });
+
+  useEffect(() => {
+    if (companySlug) {
+      const fetchPublicBranding = async () => {
+        try {
+          const res = await fetch(`/api/companies/public/${companySlug}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.brand_name) {
+              setTenantBrand({
+                brand_name: data.brand_name,
+                logo_url: data.logo_url || '',
+                primary_color: data.primary_color || '#635BFF',
+              });
+              if (typeof document !== 'undefined') {
+                document.title = `${data.brand_name} - Login`;
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching public branding:', err);
+        }
+      };
+      fetchPublicBranding();
+    }
+  }, [companySlug]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +86,12 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
       setLoading(true);
       setError('');
       const res = await login(email.trim(), password.trim());
-      if (res.success) {
+      if (res.success && res.user) {
+        if (res.user.role === 'platform_super_admin') {
+          router.push('/super-admin');
+        } else {
+          router.push('/dashboard');
+        }
         if (onSuccess) onSuccess();
       } else {
         setError(res.error || 'Invalid credentials. Please verify your email & password.');
@@ -47,6 +102,11 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
       setLoading(false);
     }
   };
+
+  // Only show demo credentials on generic platform login, NOT for specific branded client companies
+  const showDemoGrid =
+    !companySlug &&
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN !== 'false';
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-gradient-to-br from-[#F4F3FA] via-[#FAF9FE] to-[#EFEBFD] flex items-center justify-center p-4 sm:p-6 select-none">
@@ -59,14 +119,21 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
       <div className="relative z-10 bg-white/95 backdrop-blur-xl rounded-3xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 sm:p-8 max-w-md w-full animate-in fade-in zoom-in-95 duration-200">
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#635BFF] text-white font-extrabold text-xl shadow-md shadow-indigo-500/20 mb-3.5">
-            P
+          <div
+            className="inline-flex items-center justify-center w-12 h-12 rounded-2xl text-white font-extrabold text-xl shadow-md mb-3.5 overflow-hidden"
+            style={{ backgroundColor: tenantBrand.primary_color }}
+          >
+            {tenantBrand.logo_url ? (
+              <img src={tenantBrand.logo_url} alt="Logo" className="w-full h-full object-cover" />
+            ) : (
+              tenantBrand.brand_name.charAt(0).toUpperCase()
+            )}
           </div>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-            Prism<span className="text-[#635BFF]">CRM</span>
+            {tenantBrand.brand_name}
           </h2>
           <p className="text-xs text-slate-400 font-medium mt-1">
-            Sign in to access your workspace
+            Sign in to access your organization workspace
           </p>
         </div>
 
@@ -93,7 +160,7 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@company.com"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white placeholder:text-slate-400 focus:outline-none focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/15 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/15 transition-all"
               />
             </div>
           </div>
@@ -113,7 +180,7 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white placeholder:text-slate-400 focus:outline-none focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/15 transition-all"
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/15 transition-all"
               />
               <button
                 type="button"
@@ -130,53 +197,56 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-2 rounded-full bg-[#635BFF] hover:bg-[#5249E5] text-white text-xs font-semibold py-3 shadow-sm hover:shadow-md transition-all active:scale-[0.99] flex items-center justify-center space-x-2 disabled:opacity-50 min-h-[44px]"
+            style={{ backgroundColor: tenantBrand.primary_color }}
+            className="w-full mt-2 rounded-full text-white text-xs font-semibold py-3 shadow-sm hover:opacity-90 transition-all active:scale-[0.99] flex items-center justify-center space-x-2 disabled:opacity-50 min-h-[44px]"
           >
             <span>{loading ? 'Authenticating...' : 'Sign In to Workspace'}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </form>
 
-        {/* 1-Click Demo Roles Section */}
-        <div className="mt-5 pt-4 border-t border-slate-100">
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-[#635BFF]" />
-              Demo Roles (1-Click Fill)
-            </span>
-            <span className="text-[10px] text-slate-400 font-medium">9 Roles</span>
+        {/* 1-Click Demo Roles Section (Only rendered on platform root login if enabled) */}
+        {showDemoGrid && (
+          <div className="mt-5 pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-[#635BFF]" />
+                Demo Roles (1-Click Fill)
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium">9 Roles</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
+              {DEMO_CREDENTIALS.map((cred) => {
+                const isSelected = email.toLowerCase() === cred.email.toLowerCase();
+                return (
+                  <button
+                    key={cred.role}
+                    type="button"
+                    onClick={() => {
+                      setEmail(cred.email);
+                      setPassword(cred.password);
+                      setError('');
+                    }}
+                    className={`text-left px-2 py-1.5 rounded-lg border text-[11px] font-medium transition-all ${
+                      isSelected
+                        ? 'border-[#635BFF] bg-[#F0EEFF] text-[#635BFF] shadow-xs'
+                        : 'border-slate-150 bg-slate-50/70 hover:bg-slate-100/80 text-slate-700'
+                    }`}
+                    title={`${cred.name} (${cred.email}) - ${cred.department}`}
+                  >
+                    <div className="truncate font-semibold">{cred.roleTitle.split(' ')[0]}</div>
+                    <div className="truncate text-[9.5px] text-slate-400">{cred.role.replace('_', ' ')}</div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-1.5">
-            {DEMO_CREDENTIALS.map((cred) => {
-              const isSelected = email.toLowerCase() === cred.email.toLowerCase();
-              return (
-                <button
-                  key={cred.role}
-                  type="button"
-                  onClick={() => {
-                    setEmail(cred.email);
-                    setPassword(cred.password);
-                    setError('');
-                  }}
-                  className={`text-left px-2 py-1.5 rounded-lg border text-[11px] font-medium transition-all ${
-                    isSelected
-                      ? 'border-[#635BFF] bg-[#F0EEFF] text-[#635BFF] shadow-xs'
-                      : 'border-slate-150 bg-slate-50/70 hover:bg-slate-100/80 text-slate-700'
-                  }`}
-                  title={`${cred.name} (${cred.email}) - ${cred.department}`}
-                >
-                  <div className="truncate font-semibold">{cred.roleTitle.split(' ')[0]}</div>
-                  <div className="truncate text-[9.5px] text-slate-400">{cred.role.replace('_', ' ')}</div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        )}
 
         {/* Footer */}
         <div className="mt-5 text-center">
           <p className="text-[11px] text-slate-400 font-medium">
-            Strict Role-Based Separation of Privileges • PrismCRM v2.0
+            Strict Role-Based Multi-Tenant Separation • {tenantBrand.brand_name}
           </p>
         </div>
       </div>

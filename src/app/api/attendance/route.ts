@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Attendance from '@/models/Attendance';
 import Employee from '@/models/Employee';
-import { getAuthUser } from '@/lib/apiAuth';
+import { requireTenantAuth, buildTenantFilter, DEFAULT_COMPANY_ID } from '@/lib/apiAuth';
 import {
   evaluateDailyAttendance,
   getLocalTodayStr,
@@ -17,13 +17,16 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    const authResult = await requireTenantAuth(req);
+    if (authResult.errorResponse) return authResult.errorResponse;
+    const authUser = authResult.user!;
+
     await connectToDatabase();
     initAutoClockOutJob();
     // Run auto clock-out and 30-day expired photo cleanup in background without blocking response
     triggerAutoClockOutIfDue().catch(() => {});
     triggerPhotoCleanupIfDue().catch(() => {});
 
-    const authUser = await getAuthUser(req);
     const { searchParams } = new URL(req.url);
     const dateParam = searchParams.get('date');
     const monthParam = searchParams.get('month');
@@ -40,15 +43,21 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // DATA SCOPING: Admin (Manager) and HR can view all logs; others view ONLY their own attendance
-    const isAdminOrHR = authUser?.role === 'admin_manager' || authUser?.role === 'hr';
-    if (!isAdminOrHR && authUser) {
+    // DATA SCOPING: Admin and HR can view all logs in tenant; others view ONLY their own attendance
+    const isAdminOrHR =
+      authUser.role === 'admin_manager' ||
+      authUser.role === 'company_admin' ||
+      authUser.role === 'platform_super_admin' ||
+      authUser.role === 'hr';
+
+    if (!isAdminOrHR) {
       query.employee = authUser.id;
     } else if (employeeId) {
       query.employee = employeeId;
     }
 
-    const records = await Attendance.find(query)
+    const scopedQuery = buildTenantFilter(authUser, query);
+    const records = await Attendance.find(scopedQuery)
       .populate('employee', 'name email role department avatar')
       .populate('overriddenBy', 'name email')
       .sort({ date: -1, updatedAt: -1 });
@@ -59,7 +68,6 @@ export async function GET(req: NextRequest) {
     const evaluatedRecords = records.map((record: any) => {
       let sessions: AttendanceSession[] = (record.sessions || []) as any;
 
-      // Backward compatibility: If no sessions but checkIn exists, synthesize 1 session
       if (sessions.length === 0 && record.checkIn) {
         sessions = [
           {
@@ -98,13 +106,15 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const authResult = await requireTenantAuth(req);
+    if (authResult.errorResponse) return authResult.errorResponse;
+    const authUser = authResult.user!;
+
     await connectToDatabase();
     initAutoClockOutJob();
-    // Run auto clock-out and 30-day expired photo cleanup in background without blocking response
     triggerAutoClockOutIfDue().catch(() => {});
     triggerPhotoCleanupIfDue().catch(() => {});
 
-    const authUser = await getAuthUser(req);
     const body = await req.json();
     const {
       employeeId,
@@ -123,11 +133,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Employee ID is required' }, { status: 400 });
     }
 
-    // Resolve employeeId to a valid MongoDB ObjectId if a string or email was provided
-    let targetEmployeeId = employeeId;
+    const companyId = authUser.company_id || DEFAULT_COMPANY_ID;
 
-    if (authUser && authUser.role !== 'admin_manager' && authUser.role !== 'hr') {
-      // Non-HR staff can only clock in/out for themselves
+    // Resolve employeeId to a valid employee
+    let targetEmployeeId = employeeId;
+    const isAdminOrHR =
+      authUser.role === 'admin_manager' ||
+      authUser.role === 'company_admin' ||
+      authUser.role === 'platform_super_admin' ||
+      authUser.role === 'hr';
+
+    if (!isAdminOrHR) {
       targetEmployeeId = authUser.id;
     } else {
       const found = await Employee.findOne({
@@ -137,6 +153,7 @@ export async function POST(req: NextRequest) {
           ...(typeof employeeId === 'string' && employeeId.startsWith('demo_') ? [{ role: employeeId.replace('demo_', '') }] : []),
           ...(typeof employeeId === 'string' && employeeId.startsWith('user_') ? [{ role: employeeId.replace('user_', '') }] : []),
         ],
+        company_id: companyId,
       });
       if (found) {
         targetEmployeeId = String(found._id || found.id);
@@ -147,7 +164,10 @@ export async function POST(req: NextRequest) {
     if (overriddenById) {
       validOverriddenById = String(overriddenById);
     } else {
-      const adminEmp = await Employee.findOne({ role: 'admin_manager' });
+      const adminEmp = await Employee.findOne({
+        role: { $in: ['admin_manager', 'company_admin'] },
+        company_id: companyId,
+      });
       if (adminEmp) {
         validOverriddenById = String(adminEmp._id || adminEmp.id);
       }
@@ -158,14 +178,18 @@ export async function POST(req: NextRequest) {
 
     // 1. ADMIN / HR REGULARIZATION & OVERRIDE
     if (action === 'regularize' || action === 'override') {
-      if (!authUser || (authUser.role !== 'admin_manager' && authUser.role !== 'hr')) {
+      if (!isAdminOrHR) {
         return NextResponse.json(
-          { error: 'Forbidden: Only HR and Admin (Manager) can regularize attendance.' },
+          { error: 'Forbidden: Only HR and Admin can regularize attendance.' },
           { status: 403 }
         );
       }
 
-      let record = await Attendance.findOne({ employee: targetEmployeeId, date: todayStr });
+      let record = await Attendance.findOne({
+        employee: targetEmployeeId,
+        date: todayStr,
+        company_id: companyId,
+      });
 
       const newSessions: AttendanceSession[] = Array.isArray(reqSessions)
         ? reqSessions
@@ -181,11 +205,13 @@ export async function POST(req: NextRequest) {
 
       if (!record) {
         record = new Attendance({
+          company_id: companyId,
           employee: targetEmployeeId,
           date: todayStr,
         });
       }
 
+      record.company_id = companyId;
       record.sessions = newSessions as any;
       record.checkIn = evaluation.firstCheckIn || null;
       record.checkOut = evaluation.lastCheckOut || null;
@@ -212,7 +238,11 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. CLOCK IN / OUT FLOW
-    let record = await Attendance.findOne({ employee: targetEmployeeId, date: todayStr });
+    let record = await Attendance.findOne({
+      employee: targetEmployeeId,
+      date: todayStr,
+      company_id: companyId,
+    });
 
     if (action === 'clock_out' || action === 'punch_out') {
       if (!record || !record.sessions || record.sessions.length === 0) {
@@ -222,7 +252,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Find active session (checkOut is null or missing)
       const lastSessionIndex = record.sessions.length - 1;
       const lastSession = record.sessions[lastSessionIndex];
 
@@ -233,7 +262,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Enforce Live Selfie Photo Verification
       if (!photo || typeof photo !== 'string' || !photo.startsWith('data:image/')) {
         return NextResponse.json(
           { error: 'Live photo verification is required. Please capture a live selfie to clock out.' },
@@ -241,7 +269,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Enforce GPS Location & Office Geofence Perimeter (≤ 250m)
       if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
         return NextResponse.json(
           { error: 'GPS coordinates are required to verify the office perimeter before clocking out.' },
@@ -259,7 +286,6 @@ export async function POST(req: NextRequest) {
 
       let geoCheck = evaluateGeofence(location.latitude, location.longitude, customOffice);
       if (!geoCheck.isWithinPerimeter && customOffice) {
-        // Fallback check against default office
         const fallbackCheck = evaluateGeofence(location.latitude, location.longitude);
         if (fallbackCheck.isWithinPerimeter) {
           geoCheck = fallbackCheck;
@@ -269,7 +295,7 @@ export async function POST(req: NextRequest) {
       if (!geoCheck.isWithinPerimeter) {
         return NextResponse.json(
           {
-            error: `Location verification failed: You are ${geoCheck.distanceMeters}m away from the office. You must be within ${geoCheck.allowedRadiusMeters}m of Pearl Enclave, Sangli to clock out.`,
+            error: `Location verification failed: You are ${geoCheck.distanceMeters}m away from the office. You must be within ${geoCheck.allowedRadiusMeters}m of ${geoCheck.officeAddress || 'the office perimeter'} to clock out.`,
             distanceMeters: geoCheck.distanceMeters,
             allowedRadiusMeters: geoCheck.allowedRadiusMeters,
           },
@@ -277,12 +303,10 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Upload selfie to Cloudinary storage
       let uploadedCheckOutPhoto = photo;
       let checkOutPhotoPublicId: string | undefined = undefined;
       const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-      // Resolve employee name for readable Cloudinary public ID & display name
       let employeeName = authUser?.name || 'Employee';
       try {
         const empDoc = await Employee.findById(targetEmployeeId);
@@ -303,7 +327,6 @@ export async function POST(req: NextRequest) {
         console.warn('Cloudinary upload warning:', err);
       }
 
-      // Close the active session with verified photo and location
       lastSession.checkOut = now;
       lastSession.checkOutPhoto = uploadedCheckOutPhoto;
       lastSession.checkOutPhotoPublicId = checkOutPhotoPublicId;
@@ -317,8 +340,8 @@ export async function POST(req: NextRequest) {
       };
       if (notes) lastSession.notes = notes;
       record.checkOut = now;
+      record.company_id = companyId;
 
-      // Re-evaluate
       const evaluation = evaluateDailyAttendance(record.sessions, todayStr, now);
       record.totalMinutes = evaluation.totalWorkedMinutes;
       record.effectiveMinutes = evaluation.effectiveWorkedMinutes;
@@ -352,7 +375,6 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Enforce Live Selfie Photo Verification
       if (!photo || typeof photo !== 'string' || !photo.startsWith('data:image/')) {
         return NextResponse.json(
           { error: 'Live photo verification is required. Please capture a live selfie to clock in.' },
@@ -360,7 +382,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Enforce GPS Location & Office Geofence Perimeter (≤ 250m)
       if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
         return NextResponse.json(
           { error: 'GPS coordinates are required to verify the office perimeter before clocking in.' },
@@ -378,7 +399,6 @@ export async function POST(req: NextRequest) {
 
       let geoCheck = evaluateGeofence(location.latitude, location.longitude, customOffice);
       if (!geoCheck.isWithinPerimeter && customOffice) {
-        // Fallback check against default office
         const fallbackCheck = evaluateGeofence(location.latitude, location.longitude);
         if (fallbackCheck.isWithinPerimeter) {
           geoCheck = fallbackCheck;
@@ -388,7 +408,7 @@ export async function POST(req: NextRequest) {
       if (!geoCheck.isWithinPerimeter) {
         return NextResponse.json(
           {
-            error: `Location verification failed: You are ${geoCheck.distanceMeters}m away from the office. You must be within ${geoCheck.allowedRadiusMeters}m of Pearl Enclave, Sangli to clock in.`,
+            error: `Location verification failed: You are ${geoCheck.distanceMeters}m away from the office. You must be within ${geoCheck.allowedRadiusMeters}m of ${geoCheck.officeAddress || 'the office perimeter'} to clock in.`,
             distanceMeters: geoCheck.distanceMeters,
             allowedRadiusMeters: geoCheck.allowedRadiusMeters,
           },
@@ -396,12 +416,10 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Upload selfie to Cloudinary storage
       let uploadedCheckInPhoto = photo;
       let checkInPhotoPublicId: string | undefined = undefined;
       const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-      // Resolve employee name for readable Cloudinary public ID & display name
       let employeeName = authUser?.name || 'Employee';
       try {
         const empDoc = await Employee.findById(targetEmployeeId);
@@ -424,13 +442,15 @@ export async function POST(req: NextRequest) {
 
       if (!record) {
         record = new Attendance({
+          company_id: companyId,
           employee: targetEmployeeId,
           date: todayStr,
           sessions: [],
         });
       }
 
-      // Push new active session with verified photo and location
+      record.company_id = companyId;
+
       record.sessions.push({
         checkIn: now,
         checkOut: null,
@@ -450,11 +470,7 @@ export async function POST(req: NextRequest) {
       if (!record.checkIn) {
         record.checkIn = now;
       }
-      record.checkOut = null;
-      record.isAutoClockOut = false;
-      record.autoClockOutReason = undefined;
 
-      // Evaluate
       const evaluation = evaluateDailyAttendance(record.sessions, todayStr, now);
       record.totalMinutes = evaluation.totalWorkedMinutes;
       record.effectiveMinutes = evaluation.effectiveWorkedMinutes;

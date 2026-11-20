@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { useAuth } from '@/context/AuthContext';
+import { useTenant } from '@/context/TenantContext';
 import { canManageTasks, canManageProjects, canManageLeads } from '@/lib/permissions';
 
 interface ManagerDashboardViewProps {
@@ -35,6 +36,7 @@ export default function ManagerDashboardView({
   onOpenCreateProject,
 }: ManagerDashboardViewProps) {
   const { user, role } = useAuth();
+  const { formatCurrency } = useTenant();
   const canCreateTask = canManageTasks(user);
   const canCreateProject = canManageProjects(user);
   const canAddLead = canManageLeads(user);
@@ -225,7 +227,7 @@ export default function ManagerDashboardView({
                 Pipeline Value
               </p>
               <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight mt-1.5">
-                ${(stats?.totalPipelineValue ?? 0).toLocaleString()}
+                {formatCurrency(stats?.totalPipelineValue ?? 0)}
               </h3>
               <p className="text-[11px] text-indigo-600 font-semibold mt-1">
                 {stats?.totalLeads ?? 0} active client prospects

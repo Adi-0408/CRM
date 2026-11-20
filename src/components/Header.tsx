@@ -14,6 +14,7 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useTenant } from '@/context/TenantContext';
 import NotificationDrawer from '@/components/notifications/NotificationDrawer';
 
 interface HeaderProps {
@@ -36,6 +37,7 @@ export default function Header({
   onToggleMobileMenu,
 }: HeaderProps) {
   const { user, role, roleConfig, logout } = useAuth();
+  const { branding } = useTenant();
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
 
@@ -234,6 +236,14 @@ export default function Header({
           >
             <span>{roleConfig.label}</span>
           </span>
+
+          {branding.brand_name && (
+            <span
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full border hidden md:inline-flex items-center flex-shrink-0 bg-indigo-50/70 text-indigo-700 border-indigo-150"
+            >
+              <span>{branding.brand_name}</span>
+            </span>
+          )}
         </div>
 
         {/* Right Actions */}

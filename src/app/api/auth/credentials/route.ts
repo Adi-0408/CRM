@@ -2,13 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Employee from '@/models/Employee';
 import { User } from '@/models/User';
+import { requireRoles, DEFAULT_COMPANY_ID } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
+    const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'hr']);
+    if (authResult.errorResponse) {
+      return authResult.errorResponse;
+    }
+
+    const companyId = authResult.companyId || DEFAULT_COMPANY_ID;
+
     const body = await req.json();
-    const { name, email, password, role, department, salary, phone, avatar } = body;
+    const { name, email, password, role, department, salary, phone, avatar, must_change_password } = body;
 
     if (!email || !name) {
       return NextResponse.json(
@@ -35,20 +43,32 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
+    // Guard against modifying employee belonging to a different tenant
+    const existing = await Employee.findOne({ email: cleanEmail });
+    if (existing && existing.company_id && existing.company_id !== companyId && !authResult.isSuperAdmin) {
+      return NextResponse.json(
+        { error: 'Forbidden: Cannot manage credentials for another tenant organization.' },
+        { status: 403 }
+      );
+    }
+
     // Upsert into Employee collection
     const employee = await Employee.findOneAndUpdate(
       { email: cleanEmail },
       {
         $set: {
+          company_id: companyId,
           name,
           email: cleanEmail,
           password: cleanPassword,
           role: cleanRole,
           department: department || 'Engineering',
           salary: Number(salary) || 50000,
+          baseSalary: Number(salary) || 50000,
           phone: cleanPhone,
           avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
           status: cleanStatus,
+          must_change_password: must_change_password !== undefined ? !!must_change_password : true,
           updatedAt: new Date(),
         },
         $setOnInsert: {
@@ -65,6 +85,7 @@ export async function POST(req: NextRequest) {
       { email: cleanEmail },
       {
         $set: {
+          company_id: companyId,
           name,
           email: cleanEmail,
           password: cleanPassword,
@@ -73,6 +94,7 @@ export async function POST(req: NextRequest) {
           designation: cleanRole,
           status: cleanStatus,
           phone: cleanPhone,
+          must_change_password: must_change_password !== undefined ? !!must_change_password : true,
           updatedAt: new Date(),
         },
         $setOnInsert: {
@@ -92,6 +114,8 @@ export async function POST(req: NextRequest) {
         email: employee.email,
         role: employee.role,
         department: employee.department,
+        company_id: companyId,
+        must_change_password: employee.must_change_password,
       },
     });
   } catch (error: any) {

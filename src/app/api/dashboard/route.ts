@@ -1,22 +1,29 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
-
-export const dynamic = 'force-dynamic';
 import Employee from '@/models/Employee';
 import Project from '@/models/Project';
 import Task from '@/models/Task';
 import Ticket from '@/models/Ticket';
 import Lead from '@/models/Lead';
 import Attendance from '@/models/Attendance';
+import { requireTenantAuth, buildTenantFilter } from '@/lib/apiAuth';
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+export async function GET(req: NextRequest) {
   try {
+    const authResult = await requireTenantAuth(req);
+    if (authResult.errorResponse) {
+      return authResult.errorResponse;
+    }
+
     await connectToDatabase();
 
     const todayStr = new Date().toISOString().split('T')[0];
     const now = new Date();
+    const baseFilter = buildTenantFilter(authResult.user!);
 
-    // Execute consolidated queries in parallel via Promise.all
+    // Execute consolidated queries in parallel with strict tenant isolation
     const [
       totalEmployees,
       todayAttendance,
@@ -26,19 +33,19 @@ export async function GET() {
       allLeads,
       allTasks,
     ] = await Promise.all([
-      Employee.countDocuments(),
-      Attendance.find({ date: todayStr }),
-      Employee.find({ completedTasksCount: { $gt: 0 } })
+      Employee.countDocuments(baseFilter),
+      Attendance.find({ ...baseFilter, date: todayStr }),
+      Employee.find({ ...baseFilter, completedTasksCount: { $gt: 0 } })
         .sort({ completedTasksCount: -1, createdAt: 1 })
         .limit(5)
         .select('name role department avatar completedTasksCount'),
-      Project.find(),
-      Ticket.find()
+      Project.find(baseFilter),
+      Ticket.find(baseFilter)
         .sort({ createdAt: -1 })
         .limit(5)
         .populate('assignedTo', 'name avatar'),
-      Lead.find(),
-      Task.find().populate('project', 'status').select('status project'),
+      Lead.find(baseFilter),
+      Task.find(baseFilter).populate('project', 'status').select('status project'),
     ]);
 
     const presentToday = todayAttendance.filter((a: any) => a.status === 'present').length;

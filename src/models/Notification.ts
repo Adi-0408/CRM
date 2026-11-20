@@ -3,6 +3,7 @@ import { createFirestoreModel } from '@/lib/firestoreModel';
 export interface INotification {
   _id?: string;
   id?: string;
+  company_id?: string;
   userId?: string; // Recipient employee ID or email; 'all' for company-wide
   title: string;
   message: string;

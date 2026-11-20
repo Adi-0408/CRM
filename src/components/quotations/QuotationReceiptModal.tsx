@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { IQuotation } from '@/models/Quotation';
 import { authFetch } from '@/lib/apiClient';
+import { useTenant } from '@/context/TenantContext';
 
 interface QuotationReceiptModalProps {
   quotation: IQuotation | null;
@@ -41,6 +42,7 @@ export default function QuotationReceiptModal({
   onStatusUpdate,
   canManage = true,
 }: QuotationReceiptModalProps) {
+  const { branding, formatCurrency } = useTenant();
   const [updating, setUpdating] = useState(false);
   const [showSendDrawer, setShowSendDrawer] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -89,22 +91,22 @@ export default function QuotationReceiptModal({
   const handleCopyProposalText = () => {
     const text = `=========================================
 COMMERCIAL PROPOSAL: ${quotation.quotationNumber}
-ISSUED BY: ITPL Solutions Pvt. Ltd.
+ISSUED BY: ${branding.brand_name || 'Enterprise Workspace'}
 PREPARED FOR: ${quotation.clientCompany} (Attn: ${quotation.clientName || 'Representative'})
 =========================================
 
-Total Quoted Fee: ₹${(quotation.totalAmount || 0).toLocaleString()} (incl. GST)
+Total Quoted Fee: ${formatCurrency(quotation.totalAmount)} (incl. GST)
 Proposal Valid Until: ${formatDate(quotation.validUntil)}
 
 SCOPE & DELIVERABLES:
-${(quotation.items || []).map((it, idx) => `${idx + 1}. ${it.description} — ₹${(it.amount || 0).toLocaleString()}`).join('\n')}
+${(quotation.items || []).map((it, idx) => `${idx + 1}. ${it.description} — ${formatCurrency(it.amount)}`).join('\n')}
 
 MILESTONE SCHEDULE:
-- Phase 1 (40% Mobilization): ₹${Math.round((quotation.totalAmount || 0) * 0.4).toLocaleString()}
-- Phase 2 (40% Beta Demo): ₹${Math.round((quotation.totalAmount || 0) * 0.4).toLocaleString()}
-- Phase 3 (20% Production Sign-off): ₹${Math.round((quotation.totalAmount || 0) * 0.2).toLocaleString()}
+- Phase 1 (40% Mobilization): ${formatCurrency(Math.round((quotation.totalAmount || 0) * 0.4))}
+- Phase 2 (40% Beta Demo): ${formatCurrency(Math.round((quotation.totalAmount || 0) * 0.4))}
+- Phase 3 (20% Production Sign-off): ${formatCurrency(Math.round((quotation.totalAmount || 0) * 0.2))}
 
-For inquiries or approval, please contact proposals@prismcrm.io or reply to this notice.`;
+For inquiries or approval, please contact ${branding.support_email || 'our team'} or reply to this notice.`;
 
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -116,10 +118,10 @@ For inquiries or approval, please contact proposals@prismcrm.io or reply to this
     setSendSuccess(true);
 
     const subject = encodeURIComponent(
-      `Commercial Proposal: ${quotation.quotationNumber} - ITPL Solutions`
+      `Commercial Proposal: ${quotation.quotationNumber} - ${branding.brand_name || 'Corporate Proposal'}`
     );
     const body = encodeURIComponent(
-      `Dear ${quotation.clientName || quotation.clientCompany},\n\nPlease find attached our commercial proposal (${quotation.quotationNumber}) for your upcoming software deliverable.\n\nProject Deliverable Total: ₹${(quotation.totalAmount || 0).toLocaleString()} (inclusive of taxes)\nProposal Validity: ${formatDate(quotation.validUntil)}\n\nKindly review the scope and milestone schedule at your earliest convenience.\n\nWarm regards,\nITPL Commercials & Solutions Team\nproposals@prismcrm.io`
+      `Dear ${quotation.clientName || quotation.clientCompany},\n\nPlease find attached our commercial proposal (${quotation.quotationNumber}) for your upcoming software deliverable.\n\nProject Deliverable Total: ${formatCurrency(quotation.totalAmount)} (inclusive of taxes)\nProposal Validity: ${formatDate(quotation.validUntil)}\n\nKindly review the scope and milestone schedule at your earliest convenience.\n\nWarm regards,\n${branding.brand_name || 'Commercials Team'}\n${branding.support_email || ''}`
     );
     window.open(`mailto:${quotation.clientEmail || ''}?subject=${subject}&body=${body}`, '_blank');
   };
@@ -252,21 +254,27 @@ For inquiries or approval, please contact proposals@prismcrm.io or reply to this
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 border-b border-slate-100 pb-7">
             <div>
               <div className="flex items-center space-x-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500 flex items-center justify-center text-white font-black text-base shadow-sm shadow-amber-500/20">
-                  P
+                <div
+                  className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black text-base shadow-sm overflow-hidden"
+                  style={{ backgroundColor: branding.primary_color || '#635BFF' }}
+                >
+                  {branding.logo_url ? (
+                    <img src={branding.logo_url} alt="Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    (branding.brand_name || 'C').charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div>
-                  <h1 className="text-2xl font-black text-slate-900 tracking-tight">PrismCRM</h1>
+                  <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+                    {branding.brand_name || 'Enterprise CRM'}
+                  </h1>
                   <span className="text-[10px] font-black uppercase tracking-widest text-[#635BFF] block -mt-1">
-                    ITPL Solutions Pvt. Ltd.
+                    {branding.address || 'Corporate Headquarters'}
                   </span>
                 </div>
               </div>
-              <p className="text-xs text-slate-400 font-medium mt-2">
-                Corporate Reg: ITPL-MH-2024-88412 • GSTIN: 27AABCT1330L1ZT
-              </p>
-              <p className="text-xs text-slate-500">
-                proposals@prismcrm.io • +91 (800) 123-4567 • Pune & Mumbai Tech Hub
+              <p className="text-xs text-slate-500 mt-2">
+                {branding.support_email} {branding.phone ? `• ${branding.phone}` : ''}
               </p>
             </div>
 
@@ -359,7 +367,7 @@ For inquiries or approval, please contact proposals@prismcrm.io or reply to this
                     <th className="py-3 px-4">Deliverable Scope & Description</th>
                     <th className="py-3 px-3 text-right">Units / Sprints</th>
                     <th className="py-3 px-4 text-right">Rate (₹)</th>
-                    <th className="py-3 px-4 text-right">Amount (₹)</th>
+                    <th className="py-3 px-4 text-right">Amount ({branding.currency_symbol || '₹'})</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -370,10 +378,10 @@ For inquiries or approval, please contact proposals@prismcrm.io or reply to this
                       </td>
                       <td className="py-3.5 px-3 text-right font-mono">{item.quantity}</td>
                       <td className="py-3.5 px-4 text-right font-mono">
-                        ₹{item.rate.toLocaleString()}
+                        {formatCurrency(item.rate)}
                       </td>
                       <td className="py-3.5 px-4 text-right font-bold text-slate-900 font-mono">
-                        ₹{item.amount.toLocaleString()}
+                        {formatCurrency(item.amount)}
                       </td>
                     </tr>
                   ))}
@@ -387,22 +395,22 @@ For inquiries or approval, please contact proposals@prismcrm.io or reply to this
             <div className="w-80 space-y-2.5 text-xs bg-slate-50/90 p-5 rounded-2xl border border-slate-200 shadow-2xs">
               <div className="flex justify-between py-1 border-b border-slate-200/60 text-slate-600 font-semibold">
                 <span>Subtotal Gross Fee</span>
-                <span className="text-slate-900 font-bold font-mono">₹{subtotal.toLocaleString()}</span>
+                <span className="text-slate-900 font-bold font-mono">{formatCurrency(subtotal)}</span>
               </div>
               {discountAmount > 0 && (
                 <div className="flex justify-between py-1 border-b border-slate-200/60 text-rose-600 font-semibold">
                   <span>Special Client Discount ({quotation.discountPercent}%)</span>
-                  <span className="font-mono">-₹{discountAmount.toLocaleString()}</span>
+                  <span className="font-mono">-{formatCurrency(discountAmount)}</span>
                 </div>
               )}
               <div className="flex justify-between py-1 border-b border-slate-200/60 text-slate-600 font-semibold">
                 <span>GST Compliance ({quotation.taxPercent}%)</span>
-                <span className="text-slate-900 font-bold font-mono">₹{taxAmount.toLocaleString()}</span>
+                <span className="text-slate-900 font-bold font-mono">{formatCurrency(taxAmount)}</span>
               </div>
               <div className="flex justify-between py-2 text-sm font-black text-slate-900">
                 <span>Net Proposal Amount</span>
-                <span className="text-base text-amber-600 font-mono">
-                  ₹{totalAmount.toLocaleString()}
+                <span className="text-base text-amber-600 font-mono font-bold">
+                  {formatCurrency(totalAmount)}
                 </span>
               </div>
             </div>

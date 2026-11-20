@@ -13,19 +13,39 @@ export async function PUT(
 ) {
   try {
     const authUser = await getAuthUser(req);
-    await connectToDatabase();
-    const body = await req.json();
-    if (body.status === 'todo') {
-      body.status = 'new';
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized: Session required' }, { status: 401 });
+    }
+    if (authUser.isCompanySuspended) {
+      return NextResponse.json({ error: 'Forbidden: Organization suspended' }, { status: 403 });
     }
 
+    await connectToDatabase();
     const oldTask = await Task.findById(params.id);
     if (!oldTask) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
+    // IDOR Protection: Tenant boundary check
+    if (!authUser.isDemo && authUser.role !== 'platform_super_admin' && oldTask.company_id && oldTask.company_id !== authUser.company_id) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
+
+    const body = await req.json();
+    delete body.company_id;
+
+    if (body.status === 'todo') {
+      body.status = 'new';
+    }
+
+    const isPrivileged =
+      authUser.role === 'admin_manager' ||
+      authUser.role === 'company_admin' ||
+      authUser.role === 'platform_super_admin' ||
+      authUser.role === 'team_lead';
+
     // Role check: Non-admin & Non-TeamLead users can ONLY update status on their assigned task
-    if (authUser && authUser.role !== 'admin_manager' && authUser.role !== 'team_lead') {
+    if (!isPrivileged) {
       const isAssigned =
         oldTask.assignedTo?.toString() === authUser.id ||
         (authUser.email && (oldTask as any).assignedTo?.email === authUser.email);
@@ -37,7 +57,6 @@ export async function PUT(
         );
       }
 
-      // Disallow reassigning task or changing project/title by non-admin
       const safeUpdate: any = {};
       if (body.status) safeUpdate.status = body.status;
       if (body.status === 'completed') safeUpdate.completedAt = new Date();
@@ -96,13 +115,17 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
-    // Admin (Manager) and Team Leads can delete tasks
-    const authResult = await requireRoles(req, ['admin_manager', 'team_lead']);
+    const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'team_lead', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
     const task = await Task.findById(params.id);
     if (!task) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
+
+    // IDOR Protection: Tenant boundary check
+    if (!authResult.isSuperAdmin && task.company_id && task.company_id !== authResult.companyId) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 

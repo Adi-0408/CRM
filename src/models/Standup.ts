@@ -3,6 +3,7 @@ import { createFirestoreModel } from '@/lib/firestoreModel';
 export interface IStandup {
   _id?: string;
   id?: string;
+  company_id?: string;
   employeeId: string;
   employeeName: string;
   employeeEmail: string;

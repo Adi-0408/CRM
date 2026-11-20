@@ -11,11 +11,23 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await requireRoles(req, ['admin_manager', 'sales']);
+    const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'sales', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
+    const existing = await Lead.findById(params.id);
+    if (!existing) {
+      return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
+    }
+
+    // IDOR Protection: Tenant boundary check
+    if (!authResult.isSuperAdmin && existing.company_id && existing.company_id !== authResult.companyId) {
+      return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
+    }
+
     const body = await req.json();
+    delete body.company_id;
+
     const updated = await Lead.findByIdAndUpdate(params.id, body, {
       new: true,
       runValidators: true,
@@ -25,16 +37,22 @@ export async function PUT(
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
     }
 
-    // Synchronize linked Project lifecycle when Lead status changes
+    // Synchronize linked Project lifecycle within the same tenant
     if (body.status) {
       let linkedProjectId = updated.projectId;
       let matchingProject = linkedProjectId ? await Project.findById(linkedProjectId) : null;
 
       if (!matchingProject) {
-        matchingProject = await Project.findOne({ leadId: params.id });
+        matchingProject = await Project.findOne({
+          leadId: params.id,
+          company_id: existing.company_id,
+        });
       }
       if (!matchingProject && updated.company) {
-        matchingProject = await Project.findOne({ client: updated.company });
+        matchingProject = await Project.findOne({
+          client: updated.company,
+          company_id: existing.company_id,
+        });
       }
 
       if (matchingProject) {
@@ -52,10 +70,8 @@ export async function PUT(
         }
 
         if (body.status !== 'won') {
-          // If lead is moved back to proposal, lost, etc., automatically place Project on hold
           await Project.findByIdAndUpdate(linkedProjectId, { status: 'on_hold' });
         } else if (body.status === 'won') {
-          // If lead is restored to won, restore project to active
           if (matchingProject.status === 'on_hold') {
             const nextStatus = (matchingProject.progress || 0) > 0 ? 'in_progress' : 'new';
             await Project.findByIdAndUpdate(linkedProjectId, { status: nextStatus });
@@ -76,10 +92,20 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await requireRoles(req, ['admin_manager', 'sales']);
+    const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'sales', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
+    const existing = await Lead.findById(params.id);
+    if (!existing) {
+      return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
+    }
+
+    // IDOR Protection: Tenant boundary check
+    if (!authResult.isSuperAdmin && existing.company_id && existing.company_id !== authResult.companyId) {
+      return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
+    }
+
     const deleted = await Lead.findByIdAndDelete(params.id);
     if (!deleted) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 });

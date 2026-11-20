@@ -59,7 +59,39 @@ export default function AttendanceVerificationModal({
   const [geoResult, setGeoResult] = useState<GeofenceResult | null>(null);
   const [isSimulated, setIsSimulated] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [branches, setBranches] = useState<any[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<any | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Dynamic active office derived from selected branch
+  const activeOffice = {
+    name: selectedBranch?.name || ITPL_OFFICE_LOCATION.name,
+    address: selectedBranch?.address || ITPL_OFFICE_LOCATION.address,
+    latitude: typeof selectedBranch?.lat === 'number' ? selectedBranch.lat : ITPL_OFFICE_LOCATION.latitude,
+    longitude: typeof selectedBranch?.lng === 'number' ? selectedBranch.lng : ITPL_OFFICE_LOCATION.longitude,
+    allowedRadiusMeters: typeof selectedBranch?.radius_meters === 'number' ? selectedBranch.radius_meters : ITPL_OFFICE_LOCATION.allowedRadiusMeters,
+  };
+
+  // Fetch branches on modal open
+  useEffect(() => {
+    if (!isOpen) return;
+    const loadBranches = async () => {
+      try {
+        const res = await fetch('/api/branches');
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list) && list.length > 0) {
+            setBranches(list);
+            const primary = list.find((b: any) => b.isHeadOffice) || list[0];
+            setSelectedBranch(primary);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching office branches:', err);
+      }
+    };
+    loadBranches();
+  }, [isOpen]);
 
   // Prevent background page scrolling while modal is open
   useEffect(() => {
@@ -207,7 +239,7 @@ export default function AttendanceVerificationModal({
       if (cached) {
         const { lat, lng, timestamp } = JSON.parse(cached);
         if (Date.now() - timestamp < 5 * 60 * 1000) {
-          const evalResult = evaluateGeofence(lat, lng);
+          const evalResult = evaluateGeofence(lat, lng, activeOffice);
           setGeoResult(evalResult);
           setLocationLoading(false);
           // Return early if within perimeter for instantaneous sub-100ms verification
@@ -225,7 +257,7 @@ export default function AttendanceVerificationModal({
       if (hasResolved) return;
       hasResolved = true;
       const { latitude, longitude } = position.coords;
-      const evaluation = evaluateGeofence(latitude, longitude);
+      const evaluation = evaluateGeofence(latitude, longitude, activeOffice);
       setGeoResult(evaluation);
       setLocationLoading(false);
       try {
@@ -276,9 +308,9 @@ export default function AttendanceVerificationModal({
   const handleSimulateOfficeLocation = () => {
     setIsSimulated(true);
     setLocationError(null);
-    const simulatedLat = ITPL_OFFICE_LOCATION.latitude + 0.0001;
-    const simulatedLng = ITPL_OFFICE_LOCATION.longitude + 0.0001;
-    const evaluation = evaluateGeofence(simulatedLat, simulatedLng);
+    const simulatedLat = activeOffice.latitude + 0.0001;
+    const simulatedLng = activeOffice.longitude + 0.0001;
+    const evaluation = evaluateGeofence(simulatedLat, simulatedLng, activeOffice);
     setGeoResult(evaluation);
     try {
       sessionStorage.setItem(
@@ -334,8 +366,12 @@ export default function AttendanceVerificationModal({
       latitude: geoResult.userLat,
       longitude: geoResult.userLng,
       distanceMeters: geoResult.distanceMeters,
-      address: geoResult.officeAddress,
+      address: activeOffice.address,
       isWithinPerimeter: geoResult.isWithinPerimeter,
+      calibratedOffice: {
+        latitude: activeOffice.latitude,
+        longitude: activeOffice.longitude,
+      },
     };
 
     await onVerified({
@@ -560,18 +596,35 @@ export default function AttendanceVerificationModal({
               </div>
 
               {/* Office Target Card */}
-              <div className="p-2 rounded-xl bg-white border border-slate-200/80 text-xs space-y-0.5">
+              <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 text-xs space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-800 flex items-center gap-1 text-[11px]">
-                    <Navigation className="w-3 h-3 text-[#0D9488]" />
-                    ITPL Sangli Office
-                  </span>
+                  {branches.length > 1 ? (
+                    <select
+                      value={selectedBranch?._id || ''}
+                      onChange={(e) => {
+                        const b = branches.find((item) => item._id === e.target.value);
+                        if (b) setSelectedBranch(b);
+                      }}
+                      className="font-bold text-slate-800 text-[11px] bg-transparent border-none outline-none cursor-pointer pr-1"
+                    >
+                      {branches.map((b) => (
+                        <option key={b._id} value={b._id}>
+                          {b.name} {b.isHeadOffice ? '(HQ)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="font-bold text-slate-800 flex items-center gap-1 text-[11px]">
+                      <Navigation className="w-3 h-3 text-[#0D9488]" />
+                      {activeOffice.name}
+                    </span>
+                  )}
                   <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold bg-teal-50 text-teal-700 border border-teal-200">
-                    &le; {ITPL_OFFICE_LOCATION.allowedRadiusMeters}m Zone
+                    &le; {activeOffice.allowedRadiusMeters}m Zone
                   </span>
                 </div>
                 <p className="text-[9px] text-slate-500 leading-tight">
-                  Pearl Enclave, MSEB Rd, Vishrambag, Sangli
+                  {activeOffice.address}
                 </p>
               </div>
 

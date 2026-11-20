@@ -3,6 +3,7 @@ import { createFirestoreModel } from '@/lib/firestoreModel';
 export interface IProject {
   _id?: string;
   id?: string;
+  company_id?: string;
   title: string;
   client: string;
   description?: string;

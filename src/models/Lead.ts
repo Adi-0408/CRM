@@ -3,6 +3,7 @@ import { createFirestoreModel } from '@/lib/firestoreModel';
 export interface ILead {
   _id?: string;
   id?: string;
+  company_id?: string;
   name: string;
   company: string;
   email: string;

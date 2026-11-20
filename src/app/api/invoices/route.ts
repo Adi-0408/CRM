@@ -1,22 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Invoice from '@/models/Invoice';
-import { getAuthUser, requireRoles } from '@/lib/apiAuth';
+import { requireRoles, requireTenantAuth, buildTenantFilter, DEFAULT_COMPANY_ID } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    const authResult = await requireTenantAuth(req);
+    if (authResult.errorResponse) return authResult.errorResponse;
+
     await connectToDatabase();
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
     const projectId = searchParams.get('projectId');
 
-    const query: any = {};
+    let query: any = {};
     if (status && status !== 'all') query.status = status;
     if (projectId) query.projectId = projectId;
 
-    const invoices = await Invoice.find(query).sort({ createdAt: -1 });
+    const scopedQuery = buildTenantFilter(authResult.user!, query);
+    const invoices = await Invoice.find(scopedQuery).sort({ createdAt: -1 });
     return NextResponse.json(invoices);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -25,12 +29,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    // Only Admin (Manager) and Accounts can generate invoices
-    const authResult = await requireRoles(req, ['admin_manager', 'accounts']);
+    const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'accounts', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
     const body = await req.json();
+
+    const companyId = authResult.companyId || (authResult.isSuperAdmin ? (body.company_id || DEFAULT_COMPANY_ID) : DEFAULT_COMPANY_ID);
+    body.company_id = companyId;
 
     if (!body.clientCompany) {
       return NextResponse.json(
@@ -44,6 +50,7 @@ export async function POST(req: NextRequest) {
 
     const newInvoice = await Invoice.create({
       ...body,
+      company_id: companyId,
       invoiceNumber,
       status: body.status || 'issued',
       issueDate: body.issueDate ? new Date(body.issueDate) : new Date(),

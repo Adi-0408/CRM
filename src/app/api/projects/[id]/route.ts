@@ -15,6 +15,8 @@ export async function PUT(
   try {
     const authResult = await requireRoles(req, [
       'admin_manager',
+      'company_admin',
+      'platform_super_admin',
       'team_lead',
       'sales',
       'web_developer',
@@ -30,7 +32,14 @@ export async function PUT(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
+    // IDOR Protection: Tenant boundary check
+    if (!authResult.isSuperAdmin && currentProject.company_id && currentProject.company_id !== authResult.companyId) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
     const body = await req.json();
+    delete body.company_id;
+
     if (body.status === 'planning') {
       body.status = 'new';
     }
@@ -55,14 +64,13 @@ export async function PUT(
       if (!isOwner) {
         let linkedLead = currentProject.leadId ? await Lead.findById(currentProject.leadId) : null;
         if (!linkedLead && currentProject.client) {
-          linkedLead = await Lead.findOne({ company: currentProject.client });
+          linkedLead = await Lead.findOne({ company: currentProject.client, company_id: currentProject.company_id });
         }
 
         if (linkedLead) {
           const leadAssigned = linkedLead.assignedTo?._id || linkedLead.assignedTo?.id || linkedLead.assignedTo;
           if (leadAssigned && userIds.includes(String(leadAssigned))) {
             isOwner = true;
-            // Backfill salesRep on project
             body.salesRep = leadAssigned;
           } else if (linkedLead.assignedTo?.email && linkedLead.assignedTo.email.toLowerCase().trim() === currentUserEmail) {
             isOwner = true;
@@ -127,10 +135,10 @@ export async function PUT(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    // Cascade on_hold status to associated tasks
+    // Cascade on_hold status to associated tasks in the same company
     if (body.status === 'on_hold') {
       try {
-        const linkedTasks = await Task.find({ project: params.id });
+        const linkedTasks = await Task.find({ project: params.id, company_id: currentProject.company_id });
         for (const t of linkedTasks) {
           if (t.status !== 'completed' && t.status !== 'on_hold') {
             await Task.findByIdAndUpdate(t._id || t.id, { status: 'on_hold' });
@@ -141,7 +149,7 @@ export async function PUT(
       }
     } else if (currentProject.status === 'on_hold' && body.status && body.status !== 'on_hold') {
       try {
-        const linkedTasks = await Task.find({ project: params.id, status: 'on_hold' });
+        const linkedTasks = await Task.find({ project: params.id, company_id: currentProject.company_id, status: 'on_hold' });
         const targetStatus = body.status === 'in_progress' ? 'in_progress' : 'new';
         for (const t of linkedTasks) {
           await Task.findByIdAndUpdate(t._id || t.id, { status: targetStatus });
@@ -165,10 +173,20 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await requireRoles(req, ['admin_manager', 'team_lead']);
+    const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'team_lead', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
+    const existing = await Project.findById(params.id);
+    if (!existing) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    // IDOR Protection: Tenant boundary check
+    if (!authResult.isSuperAdmin && existing.company_id && existing.company_id !== authResult.companyId) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
     const deleted = await Project.findByIdAndDelete(params.id);
     if (!deleted) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });

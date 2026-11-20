@@ -11,6 +11,7 @@ export interface IQuotationLineItem {
 export interface IQuotation {
   _id?: string;
   id?: string;
+  company_id?: string;
   quotationNumber: string; // e.g. QT-2026-1042
   leadId?: any;
   clientCompany: string;

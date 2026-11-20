@@ -1,17 +1,20 @@
 'use client';
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
+import React, { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import LoginPage from '@/components/LoginPage';
 
-export default function LoginRoutePage() {
-  const router = useRouter();
+function LoginContent() {
+  const searchParams = useSearchParams();
+  const companySlug = searchParams.get('company') || undefined;
 
+  return <LoginPage companySlug={companySlug} />;
+}
+
+export default function LoginRoutePage() {
   return (
-    <LoginPage
-      onSuccess={() => {
-        router.push('/');
-      }}
-    />
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
   );
 }

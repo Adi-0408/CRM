@@ -1,14 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Branch from '@/models/Branch';
+import { requireRoles } from '@/lib/apiAuth';
 
 export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'platform_super_admin']);
+    if (authResult.errorResponse) {
+      return authResult.errorResponse;
+    }
+
     await connectToDatabase();
+    const branch = await Branch.findById(params.id);
+    if (!branch) {
+      return NextResponse.json({ error: 'Branch not found' }, { status: 404 });
+    }
+
+    // IDOR Protection: Check tenant match
+    if (!authResult.isSuperAdmin && branch.company_id && branch.company_id !== authResult.companyId) {
+      return NextResponse.json({ error: 'Branch not found' }, { status: 404 });
+    }
+
     const body = await req.json();
+    delete body.company_id; // Never let client change tenant association
 
     if (body.phone) {
       const cleanPhone = String(body.phone).replace(/\D/g, '');
@@ -24,14 +41,13 @@ export async function PUT(
     if (body.isHeadOffice || body.status === 'Head Office') {
       body.isHeadOffice = true;
       body.status = 'Head Office';
-      await Branch.updateMany({ _id: { $ne: params.id } }, { isHeadOffice: false });
+      await Branch.updateMany(
+        { company_id: branch.company_id, _id: { $ne: params.id } },
+        { isHeadOffice: false }
+      );
     }
 
     const updated = await Branch.findByIdAndUpdate(params.id, body, { new: true });
-    if (!updated) {
-      return NextResponse.json({ error: 'Branch not found' }, { status: 404 });
-    }
-
     return NextResponse.json(updated);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -43,6 +59,11 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'platform_super_admin']);
+    if (authResult.errorResponse) {
+      return authResult.errorResponse;
+    }
+
     await connectToDatabase();
     const branch = await Branch.findById(params.id);
 
@@ -50,11 +71,16 @@ export async function DELETE(
       return NextResponse.json({ error: 'Branch not found' }, { status: 404 });
     }
 
-    // Safety check: ensure at least one office remains
-    const totalCount = await Branch.countDocuments();
+    // IDOR Protection: Check tenant match
+    if (!authResult.isSuperAdmin && branch.company_id && branch.company_id !== authResult.companyId) {
+      return NextResponse.json({ error: 'Branch not found' }, { status: 404 });
+    }
+
+    // Safety check: ensure at least one office remains in this company
+    const totalCount = await Branch.countDocuments({ company_id: branch.company_id });
     if (totalCount <= 1) {
       return NextResponse.json(
-        { error: 'Cannot delete the only office location. Please edit it instead.' },
+        { error: 'Cannot delete the only office location for this company. Please edit it instead.' },
         { status: 400 }
       );
     }

@@ -8,40 +8,50 @@ import {
   getEmployeeJoinDateInfo,
   invalidatePayrollCache,
 } from '@/lib/payrollEngine';
-import { requireRoles } from '@/lib/apiAuth';
+import { requireRoles, DEFAULT_COMPANY_ID } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    // SECURITY ENFORCEMENT: Only Admin (Manager) and Accounts can trigger bulk disbursal
-    const authResult = await requireRoles(req, ['admin_manager', 'accounts']);
+    const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'accounts', 'platform_super_admin']);
     if (authResult.errorResponse) {
       return authResult.errorResponse;
     }
+
+    const tenantCompanyId = authResult.companyId || DEFAULT_COMPANY_ID;
 
     await connectToDatabase();
     const body = await req.json().catch(() => ({}));
     const month = body.month || getCurrentMonthStr();
     const paidAt = new Date();
 
-    // 1. Fetch all active employees who have joined on or before this month
-    const allEmployees = await Employee.find({ status: { $ne: 'suspended' } });
+    // 1. Fetch active employees strictly belonging to caller's company
+    const empFilter: any = { status: { $ne: 'suspended' } };
+    if (!authResult.isSuperAdmin) {
+      empFilter.company_id = tenantCompanyId;
+    }
+
+    const allEmployees = await Employee.find(empFilter);
     const employees = allEmployees.filter((emp: any) => {
       const joinInfo = getEmployeeJoinDateInfo(emp);
       if (!joinInfo) return true;
       return joinInfo.joinMonth <= month;
     });
 
-    // 2. Fetch existing payrolls for month
-    const existingPayrolls = await Payroll.find({ month });
+    // 2. Fetch existing payrolls for month within this company
+    const payrollFilter: any = { month };
+    if (!authResult.isSuperAdmin) {
+      payrollFilter.company_id = tenantCompanyId;
+    }
+    const existingPayrolls = await Payroll.find(payrollFilter);
     const existingMap = new Map<string, any>();
     for (const p of existingPayrolls) {
       const empId = (p.employeeId || p.employee)?.toString();
       if (empId) existingMap.set(empId, p);
     }
 
-    // 3. Prepare bulk operations for atomic single-call write
+    // 3. Prepare bulk operations scoped with company_id
     const bulkOps = [];
     const updatedPayrolls = [];
 
@@ -50,6 +60,7 @@ export async function POST(req: NextRequest) {
       const calculated = await calculateEmployeePayroll(emp, month, existing);
 
       const updateFields: any = {
+        company_id: tenantCompanyId,
         employeeId: emp._id,
         employee: emp._id,
         month,
@@ -87,7 +98,7 @@ export async function POST(req: NextRequest) {
 
       bulkOps.push({
         updateOne: {
-          filter: { employeeId: emp._id, month },
+          filter: { employeeId: emp._id, month, company_id: tenantCompanyId },
           update: { $set: updateFields },
           upsert: true,
         },
@@ -95,6 +106,7 @@ export async function POST(req: NextRequest) {
 
       updatedPayrolls.push({
         ...calculated,
+        company_id: tenantCompanyId,
         status: 'Paid',
         paidAt: updateFields.paidAt,
       });
@@ -109,6 +121,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: `All ${bulkOps.length} payroll records disbursed and marked Paid.`,
+      company_id: tenantCompanyId,
       month,
       count: bulkOps.length,
       payrolls: updatedPayrolls,

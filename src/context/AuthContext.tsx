@@ -13,6 +13,7 @@ interface AuthContextType {
   login: (email: string, password?: string) => Promise<{ success: boolean; user?: AuthUser; error?: string }>;
   quickLogin: (targetRole: UserRole) => Promise<void>;
   switchRole: (role: UserRole) => Promise<void>;
+  updateUser: (updates: Partial<AuthUser>) => void;
   logout: () => void;
   roleConfig: RoleConfig;
   hasAccessTo: (tabId: string) => boolean;
@@ -35,6 +36,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (parsed && parsed.email && parsed.role) {
           // If the stored role is one of the old roles, reset or migrate to new 8-roles
           const validRoles: UserRole[] = [
+            'platform_super_admin',
+            'company_admin',
             'admin_manager',
             'team_lead',
             'hr',
@@ -147,13 +150,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       avatar: demo.avatar,
       salary: demo.baseSalary,
       baseSalary: demo.baseSalary,
+      company_id: (demo as any).company_id !== undefined ? (demo as any).company_id : 'company_unique_digital',
+      must_change_password: false,
     };
     setUser(switchedUser);
     localStorage.setItem('crm_auth_user', JSON.stringify(switchedUser));
     setIsAuthenticating(false);
   };
 
-  // 5. Logout
+  // 5. Update User State
+  const updateUser = (updates: Partial<AuthUser>) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      const updated = { ...prev, ...updates };
+      try {
+        localStorage.setItem('crm_auth_user', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Error persisting user update:', err);
+      }
+      return updated;
+    });
+  };
+
+  // 6. Logout
   const logout = () => {
     setUser(null);
     localStorage.removeItem('crm_auth_user');
@@ -164,7 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const roleConfig = ROLE_CONFIGS[role] || ROLE_CONFIGS.admin_manager;
 
   const hasAccessTo = (tabId: string): boolean => {
-    if (role === 'admin_manager') return true;
+    if (role === 'admin_manager' || role === 'company_admin' || role === 'platform_super_admin') return true;
     return roleConfig.allowedViews.includes(tabId);
   };
 
@@ -180,6 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         quickLogin,
         switchRole,
+        updateUser,
         logout,
         roleConfig,
         hasAccessTo,

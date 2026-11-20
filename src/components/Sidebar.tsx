@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import {
   Home,
   List,
@@ -14,9 +15,11 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  Shield,
   X,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useTenant } from '@/context/TenantContext';
 
 interface SidebarProps {
   activeTab: string;
@@ -36,6 +39,7 @@ export default function Sidebar({
   onCloseMobile,
 }: SidebarProps) {
   const { roleConfig, user } = useAuth();
+  const { branding } = useTenant();
 
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
@@ -66,6 +70,35 @@ export default function Sidebar({
 
     return (
       <nav className={`py-3 space-y-1 overflow-y-auto flex-1 no-scrollbar ${isCompact ? 'px-2' : 'px-3'}`}>
+        {user?.role === 'platform_super_admin' && (
+          isCompact ? (
+            <div className="relative group flex justify-center py-1 mb-2 border-b border-purple-100 pb-2">
+              <Link
+                href="/super-admin"
+                className="w-10 h-10 flex items-center justify-center rounded-xl bg-purple-100 text-purple-700 hover:bg-purple-200 transition-all duration-150 active:scale-95 relative shadow-xs"
+                aria-label="Super Admin Console"
+              >
+                <Shield className="w-4 h-4" />
+              </Link>
+              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-slate-900/90 backdrop-blur-xs text-white text-[11px] font-semibold rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-150 z-50 whitespace-nowrap">
+                Super Admin Console
+              </div>
+            </div>
+          ) : (
+            <div className="mb-2.5 pb-2 border-b border-purple-100">
+              <Link
+                href="/super-admin"
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 text-purple-800 hover:from-purple-100 hover:to-indigo-100 transition-all active:scale-[0.99] group shadow-xs"
+              >
+                <Shield className="w-4 h-4 text-purple-700 shrink-0" />
+                <span className="truncate flex-1 tracking-tight">Super Admin</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-200/80 text-purple-900 font-extrabold uppercase">
+                  Global
+                </span>
+              </Link>
+            </div>
+          )
+        )}
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive =
@@ -132,13 +165,20 @@ export default function Sidebar({
           {/* Brand Header - Height 16 (64px) matching Navbar height */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200/50 bg-white/40 backdrop-blur-md flex-shrink-0">
             <div className="flex items-center space-x-2.5 overflow-hidden">
-              <div className="w-8 h-8 rounded-xl bg-[#635BFF] flex items-center justify-center text-white font-extrabold text-sm shadow-xs shrink-0">
-                P
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-extrabold text-sm shadow-xs shrink-0 overflow-hidden"
+                style={{ backgroundColor: branding.primary_color || '#635BFF' }}
+              >
+                {branding.logo_url ? (
+                  <img src={branding.logo_url} alt={branding.brand_name} className="w-full h-full object-cover" />
+                ) : (
+                  (branding.brand_name || 'C').charAt(0).toUpperCase()
+                )}
               </div>
               {!collapsed && (
                 <div className="flex items-center truncate animate-in fade-in duration-150">
-                  <span className="text-slate-900 font-extrabold text-base tracking-tight">
-                    Prism<span className="text-[#635BFF]">CRM</span>
+                  <span className="text-slate-900 font-extrabold text-base tracking-tight truncate">
+                    {branding.brand_name || 'Enterprise CRM'}
                   </span>
                 </div>
               )}
@@ -215,13 +255,20 @@ export default function Sidebar({
             <div className="flex flex-col flex-1 min-h-0">
               {/* Drawer Top Header */}
               <div className="h-16 flex items-center justify-between px-5 border-b border-slate-200/50 bg-white/50 backdrop-blur-md">
-                <div className="flex items-center space-x-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-[#635BFF] flex items-center justify-center text-white font-extrabold text-sm shadow-xs">
-                    P
+                <div className="flex items-center space-x-2.5 overflow-hidden">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-extrabold text-sm shadow-xs shrink-0 overflow-hidden"
+                    style={{ backgroundColor: branding.primary_color || '#635BFF' }}
+                  >
+                    {branding.logo_url ? (
+                      <img src={branding.logo_url} alt={branding.brand_name} className="w-full h-full object-cover" />
+                    ) : (
+                      (branding.brand_name || 'C').charAt(0).toUpperCase()
+                    )}
                   </div>
-                  <div>
-                    <span className="text-slate-900 font-extrabold text-base tracking-tight">
-                      Prism<span className="text-[#635BFF]">CRM</span>
+                  <div className="overflow-hidden">
+                    <span className="text-slate-900 font-extrabold text-base tracking-tight truncate block">
+                      {branding.brand_name || 'Enterprise CRM'}
                     </span>
                   </div>
                 </div>
