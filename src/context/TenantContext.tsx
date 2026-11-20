@@ -65,20 +65,27 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const applyBrandingToDOM = useCallback((b: CompanyBranding) => {
     if (typeof document === 'undefined') return;
 
-    if (b.primary_color) {
-      document.documentElement.style.setProperty('--color-primary', b.primary_color);
-    }
-    if (b.accent_color) {
-      document.documentElement.style.setProperty('--color-accent', b.accent_color);
-    }
+    const primary = b.primary_color || '#635BFF';
+    const accent = b.accent_color || '#00D4B2';
+
+    document.documentElement.style.setProperty('--color-primary', primary);
+    document.documentElement.style.setProperty('--color-primary-hover', primary);
+    document.documentElement.style.setProperty('--color-primary-light', `${primary}1a`);
+    document.documentElement.style.setProperty('--color-primary-border', `${primary}33`);
+    document.documentElement.style.setProperty('--color-accent', accent);
+    document.documentElement.style.setProperty('--color-accent-light', `${accent}25`);
+
     if (b.brand_name) {
       document.title = `${b.brand_name} - Enterprise CRM`;
     }
     if (b.favicon_url) {
-      const link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
-      if (link) {
-        link.href = b.favicon_url;
+      let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'shortcut icon';
+        document.head.appendChild(link);
       }
+      link.href = b.favicon_url;
     }
   }, []);
 

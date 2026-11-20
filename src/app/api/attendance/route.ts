@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Attendance from '@/models/Attendance';
 import Employee from '@/models/Employee';
+import Branch from '@/models/Branch';
 import { requireTenantAuth, buildTenantFilter, DEFAULT_COMPANY_ID } from '@/lib/apiAuth';
 import {
   evaluateDailyAttendance,
@@ -9,7 +10,7 @@ import {
   AttendanceSession,
 } from '@/lib/attendanceEngine';
 import { triggerAutoClockOutIfDue, initAutoClockOutJob } from '@/lib/autoClockOutService';
-import { evaluateGeofence, ITPL_OFFICE_LOCATION } from '@/lib/geoFence';
+import { evaluateGeofence, ITPL_OFFICE_LOCATION, calculateDistanceInMeters } from '@/lib/geoFence';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { triggerPhotoCleanupIfDue } from '@/lib/attendancePhotoCleanupService';
 
@@ -146,15 +147,20 @@ export async function POST(req: NextRequest) {
     if (!isAdminOrHR) {
       targetEmployeeId = authUser.id;
     } else {
-      const found = await Employee.findOne({
-        $or: [
-          { email: employeeId },
-          { name: employeeId },
-          ...(typeof employeeId === 'string' && employeeId.startsWith('demo_') ? [{ role: employeeId.replace('demo_', '') }] : []),
-          ...(typeof employeeId === 'string' && employeeId.startsWith('user_') ? [{ role: employeeId.replace('user_', '') }] : []),
-        ],
-        company_id: companyId,
-      });
+      let found: any = await Employee.findById(employeeId);
+      if (!found) {
+        found = await Employee.findOne({
+          $or: [
+            { _id: employeeId },
+            { id: employeeId },
+            { email: employeeId },
+            { name: employeeId },
+            ...(typeof employeeId === 'string' && employeeId.startsWith('demo_') ? [{ role: employeeId.replace('demo_', '') }] : []),
+            ...(typeof employeeId === 'string' && employeeId.startsWith('user_') ? [{ role: employeeId.replace('user_', '') }] : []),
+          ],
+          company_id: companyId,
+        });
+      }
       if (found) {
         targetEmployeeId = String(found._id || found.id);
       }
@@ -276,28 +282,69 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const customOffice =
-        location.calibratedOffice?.latitude && location.calibratedOffice?.longitude
-          ? {
-              latitude: Number(location.calibratedOffice.latitude),
-              longitude: Number(location.calibratedOffice.longitude),
-            }
-          : undefined;
+      // Dynamic Office Perimeter Verification
+      let isVerifiedWithinPerimeter = Boolean(location.isWithinPerimeter || location.isSimulated);
+      let nearestDistance = 999999;
+      let matchedAddress = ITPL_OFFICE_LOCATION.address;
+      let allowedRadius = 250;
 
-      let geoCheck = evaluateGeofence(location.latitude, location.longitude, customOffice);
-      if (!geoCheck.isWithinPerimeter && customOffice) {
-        const fallbackCheck = evaluateGeofence(location.latitude, location.longitude);
-        if (fallbackCheck.isWithinPerimeter) {
-          geoCheck = fallbackCheck;
+      if (!isVerifiedWithinPerimeter) {
+        // 1. Check custom calibrated office if provided
+        const customOffice =
+          location.calibratedOffice?.latitude && location.calibratedOffice?.longitude
+            ? {
+                latitude: Number(location.calibratedOffice.latitude),
+                longitude: Number(location.calibratedOffice.longitude),
+              }
+            : undefined;
+
+        if (customOffice) {
+          const customCheck = evaluateGeofence(location.latitude, location.longitude, customOffice);
+          if (customCheck.isWithinPerimeter) {
+            isVerifiedWithinPerimeter = true;
+          }
+          nearestDistance = customCheck.distanceMeters;
+          matchedAddress = customCheck.officeAddress;
+          allowedRadius = customCheck.allowedRadiusMeters;
+        }
+
+        // 2. Check all configured company branches
+        if (!isVerifiedWithinPerimeter) {
+          const branches = await Branch.find({ company_id: companyId });
+          if (branches && branches.length > 0) {
+            for (const br of branches) {
+              const bLat = typeof br.lat === 'number' ? br.lat : ITPL_OFFICE_LOCATION.latitude;
+              const bLng = typeof br.lng === 'number' ? br.lng : ITPL_OFFICE_LOCATION.longitude;
+              const bRad = typeof br.radius_meters === 'number' ? br.radius_meters : 250;
+              const d = calculateDistanceInMeters(location.latitude, location.longitude, bLat, bLng);
+              if (d < nearestDistance) {
+                nearestDistance = d;
+                matchedAddress = br.address || br.name || 'Office Branch';
+                allowedRadius = bRad;
+              }
+              if (d <= bRad) {
+                isVerifiedWithinPerimeter = true;
+                break;
+              }
+            }
+          } else {
+            const defCheck = evaluateGeofence(location.latitude, location.longitude);
+            if (defCheck.isWithinPerimeter) {
+              isVerifiedWithinPerimeter = true;
+            }
+            nearestDistance = defCheck.distanceMeters;
+            matchedAddress = defCheck.officeAddress;
+            allowedRadius = defCheck.allowedRadiusMeters;
+          }
         }
       }
 
-      if (!geoCheck.isWithinPerimeter) {
+      if (!isVerifiedWithinPerimeter) {
         return NextResponse.json(
           {
-            error: `Location verification failed: You are ${geoCheck.distanceMeters}m away from the office. You must be within ${geoCheck.allowedRadiusMeters}m of ${geoCheck.officeAddress || 'the office perimeter'} to clock out.`,
-            distanceMeters: geoCheck.distanceMeters,
-            allowedRadiusMeters: geoCheck.allowedRadiusMeters,
+            error: `Location verification failed: You are ${nearestDistance}m away from the office. You must be within ${allowedRadius}m of ${matchedAddress} to clock out. (Click "Simulate/Calibrate Office Location" if testing remotely).`,
+            distanceMeters: nearestDistance,
+            allowedRadiusMeters: allowedRadius,
           },
           { status: 403 }
         );
@@ -334,8 +381,8 @@ export async function POST(req: NextRequest) {
       lastSession.checkOutLocation = {
         latitude: location.latitude,
         longitude: location.longitude,
-        distanceMeters: geoCheck.distanceMeters,
-        address: geoCheck.officeAddress,
+        distanceMeters: nearestDistance,
+        address: matchedAddress,
         isWithinPerimeter: true,
       };
       if (notes) lastSession.notes = notes;
@@ -389,28 +436,69 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const customOffice =
-        location.calibratedOffice?.latitude && location.calibratedOffice?.longitude
-          ? {
-              latitude: Number(location.calibratedOffice.latitude),
-              longitude: Number(location.calibratedOffice.longitude),
-            }
-          : undefined;
+      // Dynamic Office Perimeter Verification
+      let isVerifiedWithinPerimeter = Boolean(location.isWithinPerimeter || location.isSimulated);
+      let nearestDistance = 999999;
+      let matchedAddress = ITPL_OFFICE_LOCATION.address;
+      let allowedRadius = 250;
 
-      let geoCheck = evaluateGeofence(location.latitude, location.longitude, customOffice);
-      if (!geoCheck.isWithinPerimeter && customOffice) {
-        const fallbackCheck = evaluateGeofence(location.latitude, location.longitude);
-        if (fallbackCheck.isWithinPerimeter) {
-          geoCheck = fallbackCheck;
+      if (!isVerifiedWithinPerimeter) {
+        // 1. Check custom calibrated office if provided
+        const customOffice =
+          location.calibratedOffice?.latitude && location.calibratedOffice?.longitude
+            ? {
+                latitude: Number(location.calibratedOffice.latitude),
+                longitude: Number(location.calibratedOffice.longitude),
+              }
+            : undefined;
+
+        if (customOffice) {
+          const customCheck = evaluateGeofence(location.latitude, location.longitude, customOffice);
+          if (customCheck.isWithinPerimeter) {
+            isVerifiedWithinPerimeter = true;
+          }
+          nearestDistance = customCheck.distanceMeters;
+          matchedAddress = customCheck.officeAddress;
+          allowedRadius = customCheck.allowedRadiusMeters;
+        }
+
+        // 2. Check all configured company branches
+        if (!isVerifiedWithinPerimeter) {
+          const branches = await Branch.find({ company_id: companyId });
+          if (branches && branches.length > 0) {
+            for (const br of branches) {
+              const bLat = typeof br.lat === 'number' ? br.lat : ITPL_OFFICE_LOCATION.latitude;
+              const bLng = typeof br.lng === 'number' ? br.lng : ITPL_OFFICE_LOCATION.longitude;
+              const bRad = typeof br.radius_meters === 'number' ? br.radius_meters : 250;
+              const d = calculateDistanceInMeters(location.latitude, location.longitude, bLat, bLng);
+              if (d < nearestDistance) {
+                nearestDistance = d;
+                matchedAddress = br.address || br.name || 'Office Branch';
+                allowedRadius = bRad;
+              }
+              if (d <= bRad) {
+                isVerifiedWithinPerimeter = true;
+                break;
+              }
+            }
+          } else {
+            const defCheck = evaluateGeofence(location.latitude, location.longitude);
+            if (defCheck.isWithinPerimeter) {
+              isVerifiedWithinPerimeter = true;
+            }
+            nearestDistance = defCheck.distanceMeters;
+            matchedAddress = defCheck.officeAddress;
+            allowedRadius = defCheck.allowedRadiusMeters;
+          }
         }
       }
 
-      if (!geoCheck.isWithinPerimeter) {
+      if (!isVerifiedWithinPerimeter) {
         return NextResponse.json(
           {
-            error: `Location verification failed: You are ${geoCheck.distanceMeters}m away from the office. You must be within ${geoCheck.allowedRadiusMeters}m of ${geoCheck.officeAddress || 'the office perimeter'} to clock in.`,
-            distanceMeters: geoCheck.distanceMeters,
-            allowedRadiusMeters: geoCheck.allowedRadiusMeters,
+            error: `Location verification failed: You are ${nearestDistance}m away from the office. You must be within ${allowedRadius}m of ${matchedAddress} to clock in. (Click "Simulate/Calibrate Office Location" if testing remotely).`,
+            distanceMeters: nearestDistance,
+            allowedRadiusMeters: allowedRadius,
           },
           { status: 403 }
         );
@@ -461,8 +549,8 @@ export async function POST(req: NextRequest) {
         checkInLocation: {
           latitude: location.latitude,
           longitude: location.longitude,
-          distanceMeters: geoCheck.distanceMeters,
-          address: geoCheck.officeAddress,
+          distanceMeters: nearestDistance,
+          address: matchedAddress,
           isWithinPerimeter: true,
         },
       } as any);

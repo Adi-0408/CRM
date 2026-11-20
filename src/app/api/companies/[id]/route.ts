@@ -25,7 +25,22 @@ export async function GET(
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
-    const company = (await Company.findById(targetId)) || (await Company.findOne({ slug: targetId }));
+    let company =
+      (await Company.findById(targetId)) ||
+      (await Company.findOne({ slug: targetId })) ||
+      (await Company.findOne({ id: targetId })) ||
+      (await Company.findOne({ _id: targetId }));
+
+    if (!company) {
+      const all = await Company.find();
+      company = all.find(
+        (c: any) =>
+          String(c._id || c.id || '').toLowerCase() === String(targetId).toLowerCase() ||
+          String(c.slug || '').toLowerCase() === String(targetId).toLowerCase() ||
+          String(c.name || c.companyName || '').toLowerCase().replace(/[^a-z0-9_-]/g, '-') === String(targetId).toLowerCase()
+      );
+    }
+
     if (!company) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
@@ -66,7 +81,29 @@ export async function PUT(
 
     body.updatedAt = new Date();
 
-    const updated = await Company.findByIdAndUpdate(targetId, body, {
+    // Robust company resolution before update
+    let targetCompany =
+      (await Company.findById(targetId)) ||
+      (await Company.findOne({ slug: targetId })) ||
+      (await Company.findOne({ id: targetId })) ||
+      (await Company.findOne({ _id: targetId }));
+
+    if (!targetCompany) {
+      const all = await Company.find();
+      targetCompany = all.find(
+        (c: any) =>
+          String(c._id || c.id || '').toLowerCase() === String(targetId).toLowerCase() ||
+          String(c.slug || '').toLowerCase() === String(targetId).toLowerCase() ||
+          String(c.name || c.companyName || '').toLowerCase().replace(/[^a-z0-9_-]/g, '-') === String(targetId).toLowerCase()
+      );
+    }
+
+    if (!targetCompany) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+
+    const docId = String(targetCompany._id || targetCompany.id || targetId);
+    const updated = await Company.findByIdAndUpdate(docId, body, {
       new: true,
       runValidators: true,
     });

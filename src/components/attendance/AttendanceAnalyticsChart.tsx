@@ -81,7 +81,11 @@ function formatDeptName(dept?: string): string {
   return dept
     .split(' ')
     .filter(Boolean)
-    .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : ''))
+    .map((word) =>
+      typeof word === 'string' && word.length > 0
+        ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        : ''
+    )
     .join(' ');
 }
 

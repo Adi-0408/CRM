@@ -443,7 +443,7 @@ export default function ManagementView({ onRefresh }: ManagementViewProps) {
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <Palette className="w-3.5 h-3.5 text-[#635BFF]" />
+            <Palette className="w-3.5 h-3.5" style={{ color: branding.primary_color || 'var(--color-primary, #635BFF)' }} />
             <span>White-Label &amp; Branding</span>
           </button>
           <button
@@ -496,7 +496,7 @@ export default function ManagementView({ onRefresh }: ManagementViewProps) {
                 type="button"
                 onClick={handleSaveBranding}
                 disabled={savingBranding}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#635BFF] hover:bg-[#5249EC] shadow-sm hover:shadow-md transition active:scale-95 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white btn-brand-primary shadow-sm hover:shadow-md transition active:scale-95 disabled:opacity-50"
               >
                 <Save className="w-3.5 h-3.5" />
                 <span>{savingBranding ? 'Saving...' : 'Save Branding'}</span>
@@ -1191,7 +1191,7 @@ export default function ManagementView({ onRefresh }: ManagementViewProps) {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-[#635BFF] hover:bg-[#5249EC] text-white shadow-sm transition disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl text-xs font-bold btn-brand-primary text-white shadow-sm transition disabled:opacity-50"
                 >
                   {saving ? 'Saving...' : editingBranch ? 'Update Location' : 'Create Branch'}
                 </button>

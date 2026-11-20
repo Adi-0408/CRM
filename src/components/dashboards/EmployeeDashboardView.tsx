@@ -265,7 +265,7 @@ export default function EmployeeDashboardView({
 
           <div className="space-y-3">
             {myTasks && myTasks.length > 0 ? (
-              myTasks.slice(0, 5).map((t) => {
+              (myTasks || []).slice(0, 5).map((t) => {
                 const isCompleted = t.status === 'completed';
                 return (
                   <div
@@ -352,7 +352,7 @@ export default function EmployeeDashboardView({
 
           <div className="space-y-3">
             {projects && projects.length > 0 ? (
-              projects.slice(0, 5).map((p) => (
+              (projects || []).slice(0, 5).map((p) => (
                 <div
                   key={p._id}
                   className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/50 hover:bg-slate-50 border border-slate-100/80 transition-colors"

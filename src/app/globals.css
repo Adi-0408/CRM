@@ -6,19 +6,49 @@
   --background: #f6f5fb;
   --foreground: #0f172a;
   --color-primary: #635BFF;
+  --color-primary-hover: #5249EC;
+  --color-primary-light: #F0EEFF;
+  --color-primary-border: #D8D4FF;
   --color-accent: #00D4B2;
+  --color-accent-light: #e6faf7;
 }
 
 .bg-brand-primary {
-  background-color: var(--color-primary, #635BFF);
+  background-color: var(--color-primary, #635BFF) !important;
 }
 
 .text-brand-primary {
-  color: var(--color-primary, #635BFF);
+  color: var(--color-primary, #635BFF) !important;
 }
 
 .border-brand-primary {
-  border-color: var(--color-primary, #635BFF);
+  border-color: var(--color-primary, #635BFF) !important;
+}
+
+.bg-brand-light {
+  background-color: var(--color-primary-light, #F0EEFF) !important;
+}
+
+.border-brand-light {
+  border-color: var(--color-primary-border, #D8D4FF) !important;
+}
+
+.text-brand-accent {
+  color: var(--color-accent, #00D4B2) !important;
+}
+
+.bg-brand-accent {
+  background-color: var(--color-accent, #00D4B2) !important;
+}
+
+.btn-brand-primary {
+  background-color: var(--color-primary, #635BFF) !important;
+  color: #ffffff !important;
+  transition: all 0.15s ease;
+}
+
+.btn-brand-primary:hover {
+  filter: brightness(0.92);
 }
 
 html,

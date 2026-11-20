@@ -204,6 +204,20 @@ export function matchesFilter(docData: any, filter?: any): boolean {
       continue;
     }
 
+    // Relation / Reference matching: handle docVal or filterVal being object with _id or id
+    const unwrappedDocVal = docVal && typeof docVal === 'object' && (docVal._id || docVal.id)
+      ? String(docVal._id || docVal.id)
+      : docVal;
+    const unwrappedFilterVal = filterVal && typeof filterVal === 'object' && (filterVal._id || filterVal.id)
+      ? String(filterVal._id || filterVal.id)
+      : filterVal;
+
+    if (unwrappedDocVal !== undefined && unwrappedFilterVal !== undefined) {
+      if (String(unwrappedDocVal) === String(unwrappedFilterVal)) {
+        continue;
+      }
+    }
+
     if (docVal !== filterVal) {
       return false;
     }

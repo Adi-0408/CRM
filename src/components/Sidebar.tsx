@@ -126,9 +126,17 @@ export default function Sidebar({
                   onClick={() => handleSelectTab(item.id)}
                   className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-150 active:scale-95 relative ${
                     isActive
-                      ? 'bg-[#F0EEFF] text-[#635BFF] font-bold shadow-xs'
+                      ? 'font-bold shadow-xs'
                       : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'
                   }`}
+                  style={
+                    isActive
+                      ? {
+                          backgroundColor: 'var(--color-primary-light, #F0EEFF)',
+                          color: branding.primary_color || 'var(--color-primary, #635BFF)',
+                        }
+                      : undefined
+                  }
                   aria-label={item.label}
                 >
                   <Icon className="w-4 h-4" />
@@ -148,16 +156,21 @@ export default function Sidebar({
               onClick={() => handleSelectTab(item.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] transition-all duration-150 active:scale-[0.99] group text-left ${
                 isActive
-                  ? 'bg-[#F0EEFF] text-[#635BFF] font-semibold shadow-xs'
+                  ? 'font-semibold shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80 font-medium'
               }`}
+              style={
+                isActive
+                  ? {
+                      backgroundColor: 'var(--color-primary-light, #F0EEFF)',
+                      color: branding.primary_color || 'var(--color-primary, #635BFF)',
+                    }
+                  : undefined
+              }
             >
               <Icon
-                className={`w-4 h-4 shrink-0 transition-colors ${
-                  isActive
-                    ? 'text-[#635BFF]'
-                    : 'text-slate-400 group-hover:text-slate-600'
-                }`}
+                className="w-4 h-4 shrink-0 transition-colors"
+                style={isActive ? { color: branding.primary_color || 'var(--color-primary, #635BFF)' } : undefined}
               />
               <span className="truncate flex-1 tracking-tight">{item.label}</span>
             </button>
@@ -217,7 +230,14 @@ export default function Sidebar({
           {!collapsed ? (
             <div className="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/70 transition-colors">
               <div className="relative shrink-0">
-                <div className="w-8 h-8 rounded-full bg-[#F0EEFF] text-[#635BFF] border border-[#635BFF]/15 flex items-center justify-center font-bold text-xs overflow-hidden">
+                <div
+                  className="w-8 h-8 rounded-full border flex items-center justify-center font-bold text-xs overflow-hidden"
+                  style={{
+                    backgroundColor: 'var(--color-primary-light, #F0EEFF)',
+                    color: branding.primary_color || 'var(--color-primary, #635BFF)',
+                    borderColor: 'var(--color-primary-border, rgba(99,91,255,0.15))',
+                  }}
+                >
                   {user?.avatar ? (
                     <img
                       src={user.avatar}
@@ -305,7 +325,14 @@ export default function Sidebar({
             <div className="p-3 border-t border-slate-200/50 bg-white/50 backdrop-blur-md">
               <div className="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white/70 transition-colors">
                 <div className="relative shrink-0">
-                  <div className="w-8 h-8 rounded-full bg-[#F0EEFF] text-[#635BFF] border border-[#635BFF]/15 flex items-center justify-center font-bold text-xs overflow-hidden">
+                  <div
+                  className="w-8 h-8 rounded-full border flex items-center justify-center font-bold text-xs overflow-hidden"
+                  style={{
+                    backgroundColor: 'var(--color-primary-light, #F0EEFF)',
+                    color: branding.primary_color || 'var(--color-primary, #635BFF)',
+                    borderColor: 'var(--color-primary-border, rgba(99,91,255,0.15))',
+                  }}
+                >
                     {user?.avatar ? (
                       <img
                         src={user.avatar}
