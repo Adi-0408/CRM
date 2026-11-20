@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import {
   Lock,
   Mail,
   ArrowRight,
+  ArrowLeft,
   Eye,
   EyeOff,
   AlertCircle,
@@ -124,6 +126,17 @@ export default function LoginPage({
 
       {/* Main Centered Floating Card */}
       <div className="relative z-10 bg-white/95 backdrop-blur-xl rounded-3xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 sm:p-8 max-w-md w-full animate-in fade-in zoom-in-95 duration-200">
+        {/* Back to Landing Page Link */}
+        <div className="mb-4">
+          <Link
+            href="/landing"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#635BFF] transition-colors group p-1 -ml-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#635BFF]"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+            <span>Back to Website</span>
+          </Link>
+        </div>
+
         {/* Brand Header */}
         <div className="text-center mb-6">
           <div
@@ -273,10 +286,19 @@ export default function LoginPage({
         )}
 
         {/* Footer */}
-        <div className="mt-5 text-center">
+        <div className="mt-5 text-center space-y-2">
           <p className="text-[11px] text-slate-400 font-medium">
             Strict Role-Based Multi-Tenant Separation • {tenantBrand.brand_name}
           </p>
+          <div>
+            <Link
+              href="/landing"
+              className="text-[11px] font-semibold text-slate-500 hover:text-[#635BFF] transition-colors inline-flex items-center gap-1"
+            >
+              <ArrowLeft className="w-3 h-3" />
+              <span>Return to Public Landing Page</span>
+            </Link>
+          </div>
         </div>
       </div>
     </div>

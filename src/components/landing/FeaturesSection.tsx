@@ -14,8 +14,18 @@ import {
   Building2,
   Lock,
 } from 'lucide-react';
+import { ILandingContent, DEFAULT_LANDING_CONTENT } from '@/models/LandingContent';
 
-export default function FeaturesSection() {
+interface FeaturesSectionProps {
+  features?: ILandingContent['features'];
+}
+
+export default function FeaturesSection({ features = DEFAULT_LANDING_CONTENT.features }: FeaturesSectionProps) {
+  const sectionBadge = features?.sectionBadge || DEFAULT_LANDING_CONTENT.features.sectionBadge;
+  const sectionTitle = features?.sectionTitle || DEFAULT_LANDING_CONTENT.features.sectionTitle;
+  const sectionSubtitle = features?.sectionSubtitle || DEFAULT_LANDING_CONTENT.features.sectionSubtitle;
+  const bannerTitle = features?.multiTenantBannerTitle || DEFAULT_LANDING_CONTENT.features.multiTenantBannerTitle;
+  const bannerSubtitle = features?.multiTenantBannerSubtitle || DEFAULT_LANDING_CONTENT.features.multiTenantBannerSubtitle;
   const modules = [
     {
       icon: TrendingUp,
@@ -90,13 +100,13 @@ export default function FeaturesSection() {
         <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16 space-y-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-[#635BFF] text-xs font-bold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Built-in Capabilities</span>
+            <span>{sectionBadge}</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
-            Everything your organization needs to execute
+            {sectionTitle}
           </h2>
           <p className="text-sm sm:text-base text-slate-600">
-            Engineered as a cohesive ecosystem — eliminating scattered SaaS subscriptions and disconnected databases.
+            {sectionSubtitle}
           </p>
         </div>
 
@@ -140,11 +150,10 @@ export default function FeaturesSection() {
               <span>Multi-Company Tenant Architecture</span>
             </div>
             <h3 className="text-xl sm:text-2xl font-bold tracking-tight">
-              Dedicated Workspaces with Custom Branding & Branch Isolation
+              {bannerTitle}
             </h3>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Every company tenant operates inside a strictly isolated boundary with custom logos,
-              brand color themes, branch coordinates, and company-specific administrator logins.
+              {bannerSubtitle}
             </p>
           </div>
           <div className="flex-shrink-0">

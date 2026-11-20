@@ -2,10 +2,12 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Layers, Menu, X, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Layers, Menu, X, ArrowRight, ShieldCheck, LayoutDashboard } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 export default function LandingNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isAuthenticated } = useAuth();
 
   const scrollToSection = (id: string) => {
     setMobileMenuOpen(false);
@@ -64,12 +66,22 @@ export default function LandingNav() {
 
         {/* Right CTA Actions */}
         <div className="hidden md:flex items-center gap-3">
-          <Link
-            href="/login"
-            className="px-4 py-2.5 rounded-xl border border-slate-200/80 hover:border-slate-300 text-slate-700 hover:text-slate-900 font-semibold text-xs sm:text-sm bg-white hover:bg-slate-50 transition-all shadow-xs min-h-[44px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#635BFF]"
-          >
-            Log in
-          </Link>
+          {isAuthenticated ? (
+            <Link
+              href="/"
+              className="px-4 py-2.5 rounded-xl border border-purple-200 hover:border-purple-300 text-purple-700 bg-purple-50 hover:bg-purple-100 font-semibold text-xs sm:text-sm transition-all shadow-xs min-h-[44px] flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#635BFF]"
+            >
+              <LayoutDashboard className="w-4 h-4 text-purple-600" />
+              <span>Open Dashboard</span>
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className="px-4 py-2.5 rounded-xl border border-slate-200/80 hover:border-slate-300 text-slate-700 hover:text-slate-900 font-semibold text-xs sm:text-sm bg-white hover:bg-slate-50 transition-all shadow-xs min-h-[44px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#635BFF]"
+            >
+              Log in
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => scrollToSection('contact')}
@@ -82,12 +94,21 @@ export default function LandingNav() {
 
         {/* Mobile Hamburger Button */}
         <div className="flex md:hidden items-center gap-2">
-          <Link
-            href="/login"
-            className="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold text-xs bg-white min-h-[44px] flex items-center"
-          >
-            Log in
-          </Link>
+          {isAuthenticated ? (
+            <Link
+              href="/"
+              className="px-3 py-2 rounded-xl border border-purple-200 text-purple-700 font-semibold text-xs bg-purple-50 min-h-[44px] flex items-center"
+            >
+              Dashboard
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold text-xs bg-white min-h-[44px] flex items-center"
+            >
+              Log in
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

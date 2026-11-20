@@ -14,3 +14,4 @@ export * from './Quotation';
 export * from './Notification';
 export * from './Standup';
 export * from './Inquiry';
+export * from './LandingContent';

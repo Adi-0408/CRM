@@ -26,8 +26,11 @@ import {
   MapPin,
   Phone,
   Inbox,
+  Globe,
+  ExternalLink,
 } from 'lucide-react';
 import InquiriesPanel from './InquiriesPanel';
+import LandingEditorPanel from './LandingEditorPanel';
 
 export interface CompanyItem {
   id: string;
@@ -78,7 +81,7 @@ export default function SuperAdminView(_props: SuperAdminViewProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
-  const [subTab, setSubTab] = useState<'organizations' | 'inquiries'>('organizations');
+  const [subTab, setSubTab] = useState<'organizations' | 'inquiries' | 'landing_cms'>('organizations');
   const [newInquiriesCount, setNewInquiriesCount] = useState<number>(0);
 
   const fetchInquiryBadge = async () => {
@@ -429,6 +432,18 @@ export default function SuperAdminView(_props: SuperAdminViewProps) {
             <span>Reset Platform Data</span>
           </button>
 
+          <a
+            href="/landing"
+            target="_blank"
+            rel="noreferrer"
+            className="px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold inline-flex items-center gap-1.5 transition-all shadow-2xs"
+            title="Preview live public landing page in new tab"
+          >
+            <Globe className="w-4 h-4 text-purple-600" />
+            <span>Landing Page</span>
+            <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+          </a>
+
           <button
             type="button"
             onClick={fetchCompanies}
@@ -504,10 +519,25 @@ export default function SuperAdminView(_props: SuperAdminViewProps) {
             </span>
           )}
         </button>
+
+        <button
+          type="button"
+          onClick={() => setSubTab('landing_cms')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+            subTab === 'landing_cms'
+              ? 'bg-purple-600 text-white shadow-xs'
+              : 'bg-white/80 hover:bg-white text-slate-600 hover:text-slate-900 border border-slate-200/70'
+          }`}
+        >
+          <Globe className="w-4 h-4" />
+          <span>Landing Page CMS</span>
+        </button>
       </div>
 
       {subTab === 'inquiries' ? (
         <InquiriesPanel onCountChange={(cnt) => setNewInquiriesCount(cnt)} />
+      ) : subTab === 'landing_cms' ? (
+        <LandingEditorPanel />
       ) : (
         <>
           {/* KPI Cards */}

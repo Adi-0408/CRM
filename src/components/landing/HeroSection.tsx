@@ -15,12 +15,23 @@ import {
   Users,
   Camera,
 } from 'lucide-react';
+import { ILandingContent, DEFAULT_LANDING_CONTENT } from '@/models/LandingContent';
 
-export default function HeroSection() {
+interface HeroSectionProps {
+  hero?: ILandingContent['hero'];
+}
+
+export default function HeroSection({ hero = DEFAULT_LANDING_CONTENT.hero }: HeroSectionProps) {
   const scrollToContact = () => {
     const el = document.getElementById('contact');
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
+
+  const badgeText = hero?.badgeText || DEFAULT_LANDING_CONTENT.hero.badgeText;
+  const headline = hero?.headline || DEFAULT_LANDING_CONTENT.hero.headline;
+  const subheadline = hero?.subheadline || DEFAULT_LANDING_CONTENT.hero.subheadline;
+  const primaryCta = hero?.primaryCtaText || DEFAULT_LANDING_CONTENT.hero.primaryCtaText;
+  const secondaryCta = hero?.secondaryCtaText || DEFAULT_LANDING_CONTENT.hero.secondaryCtaText;
 
   return (
     <section className="relative pt-12 pb-16 sm:pt-20 sm:pb-24 overflow-hidden">
@@ -30,21 +41,17 @@ export default function HeroSection() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#F0EEFF] border border-[#D8D4FF] text-[#635BFF] text-xs font-semibold shadow-2xs">
             <ShieldCheck className="w-4 h-4 text-[#635BFF]" />
-            <span>Complete Multi-Tenant CRM & Operations Platform</span>
+            <span>{badgeText}</span>
           </div>
 
           {/* Single H1 */}
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.12]">
-            The unified operating system for{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#635BFF] via-[#5249EC] to-[#00D4B2]">
-              modern enterprise teams
-            </span>
+            {headline}
           </h1>
 
           {/* Subheadline */}
           <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed font-normal">
-            Unify your leads, quotations, project workflows, attendance with dynamic geofencing,
-            payroll, invoicing, and support desk inside an isolated, custom-branded workspace.
+            {subheadline}
           </p>
 
           {/* CTAs */}
@@ -54,14 +61,14 @@ export default function HeroSection() {
               onClick={scrollToContact}
               className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#635BFF] hover:bg-[#5249EC] text-white font-bold text-sm sm:text-base shadow-lg shadow-[#635BFF]/30 hover:shadow-xl hover:shadow-[#635BFF]/40 active:scale-95 transition-all flex items-center justify-center gap-2.5 min-h-[48px] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#635BFF]"
             >
-              <span>Send an inquiry</span>
+              <span>{primaryCta}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
             <Link
               href="/login"
               className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold text-sm sm:text-base shadow-xs hover:shadow-md active:scale-95 transition-all flex items-center justify-center min-h-[48px] focus:outline-none focus:ring-2 focus:ring-[#635BFF]"
             >
-              Sign in to workspace
+              {secondaryCta}
             </Link>
           </div>
         </div>

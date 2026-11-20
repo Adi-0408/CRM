@@ -2,30 +2,39 @@
 
 import React from 'react';
 import { Send, PhoneCall, KeyRound, ArrowRight } from 'lucide-react';
+import { ILandingContent, DEFAULT_LANDING_CONTENT } from '@/models/LandingContent';
 
-export default function HowItWorksSection() {
+interface HowItWorksSectionProps {
+  howItWorks?: ILandingContent['howItWorks'];
+}
+
+export default function HowItWorksSection({ howItWorks = DEFAULT_LANDING_CONTENT.howItWorks }: HowItWorksSectionProps) {
+  const step1Title = howItWorks?.step1Title || DEFAULT_LANDING_CONTENT.howItWorks.step1Title;
+  const step1Desc = howItWorks?.step1Desc || DEFAULT_LANDING_CONTENT.howItWorks.step1Desc;
+  const step2Title = howItWorks?.step2Title || DEFAULT_LANDING_CONTENT.howItWorks.step2Title;
+  const step2Desc = howItWorks?.step2Desc || DEFAULT_LANDING_CONTENT.howItWorks.step2Desc;
+  const step3Title = howItWorks?.step3Title || DEFAULT_LANDING_CONTENT.howItWorks.step3Title;
+  const step3Desc = howItWorks?.step3Desc || DEFAULT_LANDING_CONTENT.howItWorks.step3Desc;
+
   const steps = [
     {
       number: '01',
-      title: 'Send an inquiry',
-      description:
-        'Submit the inquiry form below with your company name, team size, and operational requirements.',
+      title: step1Title,
+      description: step1Desc,
       icon: Send,
       color: 'text-indigo-600 bg-indigo-50 border-indigo-200/60',
     },
     {
       number: '02',
-      title: 'We contact you',
-      description:
-        'Our platform engineering team reviews your needs, schedules an alignment call, and configures your tenant instance.',
+      title: step2Title,
+      description: step2Desc,
       icon: PhoneCall,
       color: 'text-purple-600 bg-purple-50 border-purple-200/60',
     },
     {
       number: '03',
-      title: 'Get your workspace',
-      description:
-        'Receive your dedicated company portal URL, initial administrator credentials, and set up your branch geofences and staff.',
+      title: step3Title,
+      description: step3Desc,
       icon: KeyRound,
       color: 'text-emerald-600 bg-emerald-50 border-emerald-200/60',
     },
