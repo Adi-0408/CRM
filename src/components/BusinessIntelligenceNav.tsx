@@ -13,6 +13,7 @@ import {
   HelpCircle,
   CreditCard,
   UserCheck,
+  Shield,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -30,6 +31,7 @@ export default function BusinessIntelligenceNav({
   const { roleConfig } = useAuth();
 
   const allTabs = [
+    { id: 'super_admin', label: 'Tenants', icon: Shield },
     { id: 'overview', label: 'Overview', icon: Activity },
     { id: 'tasks', label: 'Tasks', icon: CheckSquare },
     { id: 'leads', label: 'Leads', icon: Users2 },

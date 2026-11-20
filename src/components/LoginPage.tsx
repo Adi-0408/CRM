@@ -100,11 +100,7 @@ export default function LoginPage({
       setError('');
       const res = await login(email.trim(), password.trim());
       if (res.success && res.user) {
-        if (res.user.role === 'platform_super_admin') {
-          router.push('/super-admin');
-        } else {
-          router.push('/dashboard');
-        }
+        router.push('/');
         if (onSuccess) onSuccess();
       } else {
         setError(res.error || 'Invalid credentials. Please verify your email & password.');
@@ -116,10 +112,8 @@ export default function LoginPage({
     }
   };
 
-  // Only show demo credentials on generic platform login, NOT for specific branded client companies
-  const showDemoGrid =
-    !effectiveSlug &&
-    process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN !== 'false';
+  // Show demo credentials for fast testing and working structure
+  const showDemoGrid = process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN !== 'false';
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-gradient-to-br from-[#F4F3FA] via-[#FAF9FE] to-[#EFEBFD] flex items-center justify-center p-4 sm:p-6 select-none">

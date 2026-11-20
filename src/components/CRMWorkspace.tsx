@@ -18,6 +18,7 @@ import PayrollView from '@/components/views/PayrollView';
 import LeavesView from '@/components/views/LeavesView';
 import EmployeesView from '@/components/views/EmployeesView';
 import ManagementView from '@/components/views/ManagementView';
+import SuperAdminView from '@/components/views/SuperAdminView';
 
 import CreateTaskModal from '@/components/modals/CreateTaskModal';
 import AddLeadModal from '@/components/modals/AddLeadModal';
@@ -77,7 +78,10 @@ export default function CRMWorkspace({
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeTab, setActiveTab] = useState(
+    role === 'platform_super_admin' ? 'super_admin' : initialTab
+  );
+  const [previewCompany, setPreviewCompany] = useState<any>(null);
   const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -86,11 +90,19 @@ export default function CRMWorkspace({
     [initialTab]: true,
     overview: true,
     dashboard: true,
+    super_admin: role === 'platform_super_admin',
   });
 
   useEffect(() => {
     setVisitedTabs((prev) => (prev[activeTab] ? prev : { ...prev, [activeTab]: true }));
   }, [activeTab]);
+
+  // If role is Super Admin and no preview company is active, default to super_admin
+  useEffect(() => {
+    if (role === 'platform_super_admin' && !previewCompany && initialTab === 'overview') {
+      setActiveTab('super_admin');
+    }
+  }, [role, previewCompany, initialTab]);
 
   // If initialTab changes due to deep-linking or route change, sync activeTab
   useEffect(() => {
@@ -122,10 +134,6 @@ export default function CRMWorkspace({
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-    if (typeof window !== 'undefined') {
-      const targetRoute = tabToRoute[tab] || `/${tab}`;
-      window.history.pushState({ crmApp: true, tab }, '', targetRoute);
-    }
   };
 
   const navigateToTab = (tab: string, section?: 'leads' | 'quotations') => {
@@ -291,6 +299,8 @@ export default function CRMWorkspace({
   // Map active navigation title
   const getHeaderTitle = () => {
     switch (activeTab) {
+      case 'super_admin':
+        return 'Super Admin Console';
       case 'overview':
       case 'dashboard':
         return 'Dashboard';
@@ -367,6 +377,42 @@ export default function CRMWorkspace({
             </div>
           ) : (
             <>
+              {/* Super Admin Company Preview Header Banner */}
+              {previewCompany && role === 'platform_super_admin' && (
+                <div className="mb-5 p-3.5 bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 border border-purple-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-purple-900 shadow-xs animate-in fade-in duration-150">
+                  <div className="flex items-center space-x-2.5">
+                    <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse" />
+                    <span className="font-bold">Super Admin Testing Mode:</span>
+                    <span className="font-semibold bg-white px-2.5 py-0.5 rounded-lg border border-purple-200 text-purple-950">
+                      {previewCompany.name || previewCompany.brand_name}
+                    </span>
+                    <span className="text-purple-600 font-mono text-[11px]">/{previewCompany.slug}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPreviewCompany(null);
+                      setActiveTab('super_admin');
+                    }}
+                    className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs transition-all active:scale-95 shadow-xs whitespace-nowrap self-start sm:self-auto"
+                  >
+                    Return to Super Admin Console
+                  </button>
+                </div>
+              )}
+
+              {/* 0. Super Admin Platform Console Section */}
+              {(visitedTabs.super_admin || role === 'platform_super_admin') && (
+                <div className={activeTab === 'super_admin' ? 'block' : 'hidden'}>
+                  <SuperAdminView
+                    onEnterWorkspace={(comp) => {
+                      setPreviewCompany(comp);
+                      setActiveTab('overview');
+                    }}
+                  />
+                </div>
+              )}
+
               {/* 1. Dashboard (Overview) with Dynamic Role Rendering */}
               {(visitedTabs.overview || visitedTabs.dashboard) && (
                 <div className={activeTab === 'overview' || activeTab === 'dashboard' ? 'block' : 'hidden'}>
