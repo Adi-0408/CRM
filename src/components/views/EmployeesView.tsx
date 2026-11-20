@@ -295,7 +295,7 @@ export default function EmployeesView({
                             <div>
                               <p className="font-bold text-slate-900 leading-snug">{emp.name}</p>
                               <p className="text-[11px] text-slate-400 font-mono">
-                                ID: {String(emp._id).slice(-6)}
+                                ID: {String(emp._id || emp.id || 'EMP').slice(-6)}
                               </p>
                             </div>
                           </div>

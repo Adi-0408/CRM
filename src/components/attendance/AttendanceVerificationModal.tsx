@@ -430,7 +430,7 @@ export default function AttendanceVerificationModal({
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-500 font-medium hidden sm:block leading-tight">
-                  Live biometric selfie &amp; office perimeter (&le; {ITPL_OFFICE_LOCATION.allowedRadiusMeters}m)
+                  Live biometric selfie &amp; office perimeter (&le; {activeOffice?.allowedRadiusMeters || 250}m)
                 </p>
               </div>
             </div>

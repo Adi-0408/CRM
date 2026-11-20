@@ -220,9 +220,10 @@ export default function DailyStandupsDigestView({
                     {s.employeeAvatar ? (
                       <img src={s.employeeAvatar} alt={s.employeeName} className="w-full h-full object-cover" />
                     ) : (
-                      s.employeeName
-                        ?.split(' ')
-                        .map((n: string) => n[0])
+                      (s.employeeName || 'Staff')
+                        .split(' ')
+                        .filter(Boolean)
+                        .map((n: string) => n[0] || '')
                         .join('')
                         .toUpperCase()
                         .slice(0, 2)

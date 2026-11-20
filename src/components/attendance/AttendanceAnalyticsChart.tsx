@@ -77,10 +77,11 @@ function formatMonthDisplay(monthStr: string): string {
 
 // Format department display name (e.g., "sales" -> "Sales")
 function formatDeptName(dept?: string): string {
-  if (!dept || dept.trim() === '') return 'General';
+  if (!dept || typeof dept !== 'string' || dept.trim() === '') return 'General';
   return dept
     .split(' ')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .filter(Boolean)
+    .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : ''))
     .join(' ');
 }
 
@@ -1770,7 +1771,7 @@ export default function AttendanceAnalyticsChart({
                 </div>
 
                 <div className="space-y-3 my-auto py-2">
-                  {departmentData
+                  {(departmentData || [])
                     .slice()
                     .sort((a, b) => b.attendanceRate - a.attendanceRate)
                     .map((d, idx) => (

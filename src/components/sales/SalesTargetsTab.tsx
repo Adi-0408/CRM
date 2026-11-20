@@ -310,9 +310,10 @@ export default function SalesTargetsTab({
                       {rep.avatar ? (
                         <img src={rep.avatar} alt={rep.name} className="w-full h-full object-cover" />
                       ) : (
-                        rep.name
+                        (rep.name || 'Sales Rep')
                           .split(' ')
-                          .map((n) => n[0])
+                          .filter(Boolean)
+                          .map((n) => n[0] || '')
                           .join('')
                           .toUpperCase()
                           .slice(0, 2)

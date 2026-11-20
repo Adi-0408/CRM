@@ -332,7 +332,7 @@ export default function HRDashboardView({ onNavigate, onOpenAddEmployee }: HRDas
           </div>
 
           <div className="space-y-3">
-            {attendances.length > 0 ? (
+            {attendances && attendances.length > 0 ? (
               attendances.slice(0, 5).map((a) => {
                 const isLate = a.isLate || a.evaluation?.isLate;
                 const status = a.status || a.evaluation?.status || 'working';

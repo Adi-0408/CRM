@@ -225,11 +225,12 @@ export default function SuperAdminPage() {
   };
 
   const handleToggleStatus = async (comp: CompanyItem) => {
+    const compDisplayName = comp.name || comp.brand_name || (comp as any).companyName || comp.slug || 'this company';
     const nextStatus = comp.status === 'active' ? 'suspended' : 'active';
     const confirmMsg =
       nextStatus === 'suspended'
-        ? `Are you sure you want to SUSPEND '${comp.name}'? All users in this company will be blocked from logging in.`
-        : `Reactivate '${comp.name}'? Users will immediately regain access.`;
+        ? `Are you sure you want to SUSPEND '${compDisplayName}'? All users in this company will be blocked from logging in.`
+        : `Reactivate '${compDisplayName}'? Users will immediately regain access.`;
 
     if (!confirm(confirmMsg)) return;
 
@@ -591,11 +592,11 @@ export default function SuperAdminPage() {
                         <td className="px-5 py-4">
                           <div className="flex items-center space-x-3">
                             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-slate-100 to-indigo-50 border border-slate-200 flex items-center justify-center font-bold text-indigo-700 text-sm">
-                              {comp.name.slice(0, 2).toUpperCase()}
+                              {(comp.name || comp.brand_name || (comp as any).companyName || comp.slug || 'CO').slice(0, 2).toUpperCase()}
                             </div>
                             <div>
                               <div className="font-bold text-slate-900 text-sm leading-tight flex items-center space-x-1.5">
-                                <span>{comp.name}</span>
+                                <span>{comp.name || comp.brand_name || (comp as any).companyName || 'Unnamed Company'}</span>
                                 {comp.id === 'company_unique_digital' && (
                                   <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-[#635BFF] border border-indigo-100">
                                     DEFAULT TENANT
@@ -674,8 +675,8 @@ export default function SuperAdminPage() {
                               onClick={() => {
                                 setEditCompany(comp);
                                 setEditForm({
-                                  name: comp.name,
-                                  brand_name: comp.brand_name || comp.name,
+                                  name: comp.name || comp.brand_name || (comp as any).companyName || '',
+                                  brand_name: comp.brand_name || comp.name || (comp as any).companyName || '',
                                   phone: comp.phone || '',
                                   address: comp.address || '',
                                   currency_code: comp.currency_code,

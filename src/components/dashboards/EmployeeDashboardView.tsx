@@ -264,7 +264,7 @@ export default function EmployeeDashboardView({
           </div>
 
           <div className="space-y-3">
-            {myTasks.length > 0 ? (
+            {myTasks && myTasks.length > 0 ? (
               myTasks.slice(0, 5).map((t) => {
                 const isCompleted = t.status === 'completed';
                 return (
@@ -351,7 +351,7 @@ export default function EmployeeDashboardView({
           </div>
 
           <div className="space-y-3">
-            {projects.length > 0 ? (
+            {projects && projects.length > 0 ? (
               projects.slice(0, 5).map((p) => (
                 <div
                   key={p._id}

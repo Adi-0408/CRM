@@ -132,12 +132,12 @@ export default function OverviewView({
 
   // 2. Default: Super Admin Dashboard View
   const {
-    stats,
-    topPerformers,
-    upcomingDeadlines,
-    projectStatusDistribution,
-    recentTickets,
-  } = data;
+    stats = { totalEmployees: 0, activeProjects: 0, attendanceRate: 0 },
+    topPerformers = [],
+    upcomingDeadlines = [],
+    projectStatusDistribution = [],
+    recentTickets = [],
+  } = data || {};
 
   const formatDate = (dateStr: string) => {
     try {

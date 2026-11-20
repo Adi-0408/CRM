@@ -1,7 +1,7 @@
 import { AuthUser, UserRole } from '@/types/auth';
 
 export function isUserAdminManager(user: AuthUser | null): boolean {
-  return user?.role === 'admin_manager';
+  return user?.role === 'admin_manager' || user?.role === 'company_admin' || user?.role === 'platform_super_admin';
 }
 
 export function isUserTeamLead(user: AuthUser | null): boolean {
@@ -13,7 +13,12 @@ export function isUserHR(user: AuthUser | null): boolean {
 }
 
 export function isUserAdminOrHR(user: AuthUser | null): boolean {
-  return user?.role === 'admin_manager' || user?.role === 'hr';
+  return (
+    user?.role === 'admin_manager' ||
+    user?.role === 'company_admin' ||
+    user?.role === 'platform_super_admin' ||
+    user?.role === 'hr'
+  );
 }
 
 export function isUserAccounts(user: AuthUser | null): boolean {
@@ -88,7 +93,7 @@ export function isRecordOwner(user: AuthUser | null, record: any): boolean {
  */
 export function canApproveLeave(user: AuthUser | null, leave?: any): boolean {
   if (!user) return false;
-  if (user.role === 'admin_manager') return true;
+  if (user.role === 'admin_manager' || user.role === 'company_admin' || user.role === 'platform_super_admin') return true;
 
   if (user.role === 'hr') {
     if (leave && isRecordOwner(user, leave)) {
@@ -103,7 +108,7 @@ export function canApproveLeave(user: AuthUser | null, leave?: any): boolean {
 /**
  * Permission checker for Leave cancellation:
  * - Can only cancel if status is 'pending'
- * - Only the owner, HR, or admin_manager can cancel
+ * - Only the owner, HR, or admin_manager / company_admin can cancel
  */
 export function canCancelLeave(user: AuthUser | null, leave: any): boolean {
   if (!user || !leave) return false;
@@ -113,50 +118,78 @@ export function canCancelLeave(user: AuthUser | null, leave: any): boolean {
   return (
     isRecordOwner(user, leave) ||
     user.role === 'admin_manager' ||
+    user.role === 'company_admin' ||
+    user.role === 'platform_super_admin' ||
     user.role === 'hr'
   );
 }
 
 /**
  * Permission checker for Payroll editing and disbursal
- * - Strictly admin_manager & accounts
+ * - Strictly admin_manager, company_admin & accounts
  */
 export function canManagePayroll(user: AuthUser | null): boolean {
-  return user?.role === 'admin_manager' || user?.role === 'accounts';
+  return (
+    user?.role === 'admin_manager' ||
+    user?.role === 'company_admin' ||
+    user?.role === 'platform_super_admin' ||
+    user?.role === 'accounts'
+  );
 }
 
 /**
  * Permission checker for Attendance regularization & overrides
- * - Strictly admin_manager & hr
+ * - Strictly admin_manager, company_admin & hr
  */
 export function canRegularizeAttendance(user: AuthUser | null): boolean {
-  return user?.role === 'admin_manager' || user?.role === 'hr';
+  return (
+    user?.role === 'admin_manager' ||
+    user?.role === 'company_admin' ||
+    user?.role === 'platform_super_admin' ||
+    user?.role === 'hr'
+  );
 }
 
 /**
  * Permission checker for creating & managing projects
- * - Strictly admin_manager & team_lead
+ * - Strictly admin_manager, company_admin & team_lead
  */
 export function canManageProjects(user: AuthUser | null): boolean {
-  return user?.role === 'admin_manager' || user?.role === 'team_lead';
+  return (
+    user?.role === 'admin_manager' ||
+    user?.role === 'company_admin' ||
+    user?.role === 'platform_super_admin' ||
+    user?.role === 'team_lead'
+  );
 }
 
 /**
  * Permission checker for distributing projects & team assignment to developers
- * - Strictly admin_manager & team_lead
+ * - Strictly admin_manager, company_admin & team_lead
  */
 export function canDistributeProject(user: AuthUser | null): boolean {
-  return user?.role === 'admin_manager' || user?.role === 'team_lead';
+  return (
+    user?.role === 'admin_manager' ||
+    user?.role === 'company_admin' ||
+    user?.role === 'platform_super_admin' ||
+    user?.role === 'team_lead'
+  );
 }
 
 /**
  * Permission checker for editing what the client wants in a project
- * - admin_manager & team_lead can edit any project
+ * - admin_manager, company_admin & team_lead can edit any project
  * - sales can ONLY edit projects for clients/leads THEY personally won
  */
 export function canSalesEditProject(user: AuthUser | null, project: any, lead?: any): boolean {
   if (!user) return false;
-  if (user.role === 'admin_manager' || user.role === 'team_lead') return true;
+  if (
+    user.role === 'admin_manager' ||
+    user.role === 'company_admin' ||
+    user.role === 'platform_super_admin' ||
+    user.role === 'team_lead'
+  )
+    return true;
   if (user.role !== 'sales') return false;
 
   const userId = String(user.id || (user as any)._id || '');
@@ -178,56 +211,90 @@ export function canSalesEditProject(user: AuthUser | null, project: any, lead?: 
 
 /**
  * Permission checker for creating and delegating tasks
- * - admin_manager & team_lead
+ * - admin_manager, company_admin & team_lead
  */
 export function canManageTasks(user: AuthUser | null): boolean {
-  return user?.role === 'admin_manager' || user?.role === 'team_lead';
+  return (
+    user?.role === 'admin_manager' ||
+    user?.role === 'company_admin' ||
+    user?.role === 'platform_super_admin' ||
+    user?.role === 'team_lead'
+  );
 }
 
 /**
  * Permission checker for managing Invoices & Client Receivables
- * - Strictly admin_manager & accounts
+ * - Strictly admin_manager, company_admin & accounts
  */
 export function canManageInvoices(user: AuthUser | null): boolean {
-  return user?.role === 'admin_manager' || user?.role === 'accounts';
+  return (
+    user?.role === 'admin_manager' ||
+    user?.role === 'company_admin' ||
+    user?.role === 'platform_super_admin' ||
+    user?.role === 'accounts'
+  );
 }
 
 /**
  * Permission checker for Leads management (Add Leads, delete, pipeline stages)
- * - Strictly admin_manager & sales
+ * - Strictly admin_manager, company_admin & sales
  */
 export function canManageLeads(user: AuthUser | null): boolean {
-  return user?.role === 'admin_manager' || user?.role === 'sales';
+  return (
+    user?.role === 'admin_manager' ||
+    user?.role === 'company_admin' ||
+    user?.role === 'platform_super_admin' ||
+    user?.role === 'sales'
+  );
 }
 
 /**
  * Permission checker for Quotations & Proposals
- * - Strictly admin_manager & sales
+ * - Strictly admin_manager, company_admin & sales
  */
 export function canManageQuotations(user: AuthUser | null): boolean {
-  return user?.role === 'admin_manager' || user?.role === 'sales';
+  return (
+    user?.role === 'admin_manager' ||
+    user?.role === 'company_admin' ||
+    user?.role === 'platform_super_admin' ||
+    user?.role === 'sales'
+  );
 }
 
 /**
  * Permission checker for managing Tech Support Tickets
- * - Strictly admin_manager & tech_support
+ * - Strictly admin_manager, company_admin & tech_support
  */
 export function canManageTickets(user: AuthUser | null): boolean {
-  return user?.role === 'admin_manager' || user?.role === 'tech_support';
+  return (
+    user?.role === 'admin_manager' ||
+    user?.role === 'company_admin' ||
+    user?.role === 'platform_super_admin' ||
+    user?.role === 'tech_support'
+  );
 }
 
 /**
  * Permission checker for managing employee credentials & passwords
- * - Strictly admin_manager & hr
+ * - Strictly admin_manager, company_admin & hr
  */
 export function canManageCredentials(user: AuthUser | null): boolean {
-  return user?.role === 'admin_manager' || user?.role === 'hr';
+  return (
+    user?.role === 'admin_manager' ||
+    user?.role === 'company_admin' ||
+    user?.role === 'platform_super_admin' ||
+    user?.role === 'hr'
+  );
 }
 
 /**
  * Permission checker for deleting employee accounts
- * - Strictly admin_manager
+ * - Strictly admin_manager, company_admin & platform_super_admin
  */
 export function canDeleteEmployee(user: AuthUser | null): boolean {
-  return user?.role === 'admin_manager';
+  return (
+    user?.role === 'admin_manager' ||
+    user?.role === 'company_admin' ||
+    user?.role === 'platform_super_admin'
+  );
 }

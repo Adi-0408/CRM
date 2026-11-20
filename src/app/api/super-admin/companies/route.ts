@@ -35,11 +35,11 @@ export async function GET(req: NextRequest) {
         return false;
       }
       if (search) {
-        const nameMatch = c.name?.toLowerCase().includes(search);
-        const slugMatch = c.slug?.toLowerCase().includes(search);
-        const emailMatch = c.support_email?.toLowerCase().includes(search);
-        const brandMatch = c.brand_name?.toLowerCase().includes(search);
-        if (!nameMatch && !slugMatch && !emailMatch && !brandMatch) {
+        const compName = (c.name || c.companyName || c.brand_name || '').toLowerCase();
+        const slugMatch = (c.slug || '').toLowerCase().includes(search);
+        const emailMatch = (c.support_email || '').toLowerCase().includes(search);
+        const brandMatch = (c.brand_name || '').toLowerCase().includes(search);
+        if (!compName.includes(search) && !slugMatch && !emailMatch && !brandMatch) {
           return false;
         }
       }
@@ -50,6 +50,10 @@ export async function GET(req: NextRequest) {
     const enrichedCompanies = await Promise.all(
       filteredCompanies.map(async (comp: any) => {
         const compId = comp._id || comp.id;
+        const compData = typeof comp.toObject === 'function' ? comp.toObject() : comp;
+        const normalizedName = compData.name || compData.companyName || compData.brand_name || compData.slug || 'Company';
+        const normalizedBrandName = compData.brand_name || normalizedName;
+
         const [userCount, branchCount, adminEmp] = await Promise.all([
           Employee.countDocuments({ company_id: compId }),
           Branch.countDocuments({ company_id: compId }),
@@ -60,9 +64,14 @@ export async function GET(req: NextRequest) {
         ]);
 
         return {
-          ...comp.toObject(),
+          ...compData,
           id: compId,
           _id: compId,
+          name: normalizedName,
+          companyName: normalizedName,
+          brand_name: normalizedBrandName,
+          slug: compData.slug || compId,
+          status: compData.status || 'active',
           userCount,
           branchCount,
           admin: adminEmp
