@@ -16,6 +16,7 @@ import {
   ArrowRight,
   ShieldCheck,
 } from 'lucide-react';
+import CustomSelect from '@/components/common/CustomSelect';
 
 interface FormState {
   name: string;
@@ -369,20 +370,18 @@ export default function InquiryForm() {
                     <label htmlFor="inquiry-teamsize" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                       Estimated Team Size
                     </label>
-                    <div className="relative">
-                      <Users className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      <select
-                        id="inquiry-teamsize"
-                        value={formData.teamSize}
-                        onChange={(e) => handleChange('teamSize', e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#635BFF] cursor-pointer"
-                      >
-                        <option value="1-10">1 - 10 Team Members</option>
-                        <option value="11-50">11 - 50 Team Members</option>
-                        <option value="51-200">51 - 200 Team Members</option>
-                        <option value="200+">200+ Enterprise Staff</option>
-                      </select>
-                    </div>
+                    <CustomSelect
+                      value={formData.teamSize}
+                      onChange={(val) => handleChange('teamSize', val)}
+                      icon={<Users className="w-4 h-4 text-slate-400" />}
+                      buttonClassName="!py-3 !rounded-2xl !bg-slate-50/50 hover:!bg-white text-sm"
+                      options={[
+                        { value: '1-10', label: '1 - 10 Team Members' },
+                        { value: '11-50', label: '11 - 50 Team Members' },
+                        { value: '51-200', label: '51 - 200 Team Members' },
+                        { value: '200+', label: '200+ Enterprise Staff' },
+                      ]}
+                    />
                   </div>
 
                   <div className="sm:col-span-2">

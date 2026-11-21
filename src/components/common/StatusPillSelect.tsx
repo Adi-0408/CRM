@@ -134,8 +134,8 @@ export default function StatusPillSelect({
 
       {/* Floating Popover Menu */}
       {isOpen && (
-        <div className="absolute left-0 sm:left-auto sm:right-0 mt-1.5 w-36 bg-white/95 backdrop-blur-xl rounded-xl border border-slate-200/80 shadow-[0_12px_28px_-4px_rgba(15,23,42,0.15)] py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
-          <div className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">
+        <div className="absolute left-0 sm:left-auto sm:right-0 mt-1.5 w-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-2xl border border-slate-200/90 dark:border-slate-700/80 shadow-[0_16px_36px_-4px_rgba(15,23,42,0.16)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+          <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800">
             Set Status
           </div>
           <div className="p-1 space-y-0.5">
@@ -146,17 +146,17 @@ export default function StatusPillSelect({
                   key={opt.value}
                   type="button"
                   onClick={() => handleSelect(opt.value)}
-                  className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs font-semibold text-left transition-colors cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold text-left transition-colors cursor-pointer ${
                     isSelected
-                      ? 'bg-slate-100 text-slate-900 font-bold'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-[var(--color-primary-light,#F0EEFF)] dark:bg-[var(--color-primary,#635BFF)]/20 text-[var(--color-primary,#635BFF)] dark:text-indigo-300 font-bold'
+                      : 'text-slate-700 dark:text-slate-200 hover:bg-[var(--color-primary-light,#F0EEFF)]/50 dark:hover:bg-slate-800 hover:text-[var(--color-primary,#635BFF)]'
                   }`}
                 >
                   <div className="flex items-center space-x-2">
                     <span className={`w-2 h-2 rounded-full ${opt.dotColor}`} />
                     <span className="text-[11px]">{opt.label}</span>
                   </div>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-indigo-600" />}
+                  {isSelected && <Check className="w-3.5 h-3.5 text-[var(--color-primary,#635BFF)]" />}
                 </button>
               );
             })}

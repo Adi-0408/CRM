@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/apiClient';
+import CustomSelect from '@/components/common/CustomSelect';
 import {
   ITPL_OFFICE_LOCATION,
   calculateDistanceInMeters,
@@ -1031,20 +1032,20 @@ export default function OperationalComplianceHub({
 
               <div className="flex items-center gap-2 flex-wrap">
                 {branches.length > 1 && (
-                  <select
-                    value={selectedBranchId}
-                    onChange={(e) => {
-                      setSelectedBranchId(e.target.value);
-                      setTimeout(() => handleRefreshGps(), 100);
-                    }}
-                    className="px-2.5 py-1 text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none shadow-2xs"
-                  >
-                    {branches.map((b: any) => (
-                      <option key={b._id || b.id} value={b._id || b.id}>
-                        {b.name || b.city || 'Office Branch'} ({b.radius_meters || 250}m)
-                      </option>
-                    ))}
-                  </select>
+                  <div className="min-w-[180px]">
+                    <CustomSelect
+                      value={selectedBranchId}
+                      onChange={(val) => {
+                        setSelectedBranchId(val);
+                        setTimeout(() => handleRefreshGps(), 100);
+                      }}
+                      size="xs"
+                      options={branches.map((b: any) => ({
+                        value: b._id || b.id,
+                        label: `${b.name || b.city || 'Office Branch'} (${b.radius_meters || 250}m)`,
+                      }))}
+                    />
+                  </div>
                 )}
 
                 {/* Live Status Pill: Within Office Perimeter */}

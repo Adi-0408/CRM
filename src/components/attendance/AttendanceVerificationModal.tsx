@@ -25,6 +25,7 @@ import {
   GeofenceResult,
 } from '@/lib/geoFence';
 import { IAttendanceLocation } from '@/models/Attendance';
+import CustomSelect from '@/components/common/CustomSelect';
 
 interface AttendanceVerificationModalProps {
   isOpen: boolean;
@@ -600,22 +601,22 @@ export default function AttendanceVerificationModal({
 
               {/* Office Target Card */}
               <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 text-xs space-y-1">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   {branches.length > 1 ? (
-                    <select
-                      value={selectedBranch?._id || ''}
-                      onChange={(e) => {
-                        const b = branches.find((item) => item._id === e.target.value);
-                        if (b) setSelectedBranch(b);
-                      }}
-                      className="font-bold text-slate-800 text-[11px] bg-transparent border-none outline-none cursor-pointer pr-1"
-                    >
-                      {branches.map((b) => (
-                        <option key={b._id} value={b._id}>
-                          {b.name} {b.isHeadOffice ? '(HQ)' : ''}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex-1 max-w-[220px]">
+                      <CustomSelect
+                        value={selectedBranch?._id || ''}
+                        onChange={(val) => {
+                          const b = branches.find((item) => item._id === val);
+                          if (b) setSelectedBranch(b);
+                        }}
+                        size="xs"
+                        options={branches.map((b) => ({
+                          value: b._id,
+                          label: `${b.name} ${b.isHeadOffice ? '(HQ)' : ''}`,
+                        }))}
+                      />
+                    </div>
                   ) : (
                     <span className="font-bold text-slate-800 flex items-center gap-1 text-[11px]">
                       <Navigation className="w-3 h-3 text-[#0D9488]" />

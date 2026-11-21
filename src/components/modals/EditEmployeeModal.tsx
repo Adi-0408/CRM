@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, UserCheck, AlertCircle, Save, Phone, Mail, Building, Briefcase, IndianRupee } from 'lucide-react';
 import { authFetch } from '@/lib/apiClient';
+import CustomSelect from '@/components/common/CustomSelect';
 
 interface EditEmployeeModalProps {
   isOpen: boolean;
@@ -202,17 +203,12 @@ export default function EditEmployeeModal({
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 System Role *
               </label>
-              <select
+              <CustomSelect
                 value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-              >
-                {ROLE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                onChange={setRole}
+                size="sm"
+                options={ROLE_OPTIONS}
+              />
             </div>
 
             <div>
@@ -225,7 +221,7 @@ export default function EditEmployeeModal({
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
                 placeholder="e.g. Engineering, Sales, Operations"
-                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#635BFF]/20 focus:border-[#635BFF]"
               />
             </div>
           </div>
@@ -237,14 +233,14 @@ export default function EditEmployeeModal({
                 Base Monthly Salary
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">₹</span>
+                <span className="absolute left-3 top-2 text-xs font-bold text-slate-400">₹</span>
                 <input
                   type="number"
                   min={0}
                   step={500}
                   value={salary}
                   onChange={(e) => setSalary(Number(e.target.value))}
-                  className="w-full pl-8 pr-3 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#635BFF]/20 focus:border-[#635BFF]"
                 />
               </div>
             </div>
@@ -253,15 +249,16 @@ export default function EditEmployeeModal({
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Account Status *
               </label>
-              <select
+              <CustomSelect
                 value={status}
-                onChange={(e) => setStatus(e.target.value as any)}
-                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-              >
-                <option value="active">Active (Access Granted)</option>
-                <option value="inactive">Inactive / Suspended</option>
-                <option value="on_leave">On Leave</option>
-              </select>
+                onChange={(val) => setStatus(val as any)}
+                size="sm"
+                options={[
+                  { value: 'active', label: 'Active (Access Granted)' },
+                  { value: 'inactive', label: 'Inactive / Suspended' },
+                  { value: 'on_leave', label: 'On Leave' },
+                ]}
+              />
             </div>
           </div>
 

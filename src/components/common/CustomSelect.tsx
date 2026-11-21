@@ -209,8 +209,8 @@ export default function CustomSelect({
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between border border-slate-200/90 bg-white font-semibold text-slate-800 shadow-2xs hover:border-[#635BFF]/70 hover:shadow-xs focus:outline-none focus:ring-2 focus:ring-[#635BFF]/20 focus:border-[#635BFF] transition-all cursor-pointer select-none ${sizeStyles} ${
-          disabled ? 'opacity-50 cursor-not-allowed bg-slate-50' : ''
+        className={`w-full flex items-center justify-between border border-slate-200/90 dark:border-slate-700/80 bg-white dark:bg-slate-800/95 font-semibold text-slate-800 dark:text-slate-100 shadow-2xs hover:border-[var(--color-primary,#635BFF)]/60 hover:shadow-xs focus:outline-none focus:ring-2 focus:ring-[var(--color-primary,#635BFF)]/20 focus:border-[var(--color-primary,#635BFF)] transition-all cursor-pointer select-none ${sizeStyles} ${
+          disabled ? 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-900/50' : ''
         } ${buttonClassName}`}
       >
         <div className="flex items-center space-x-1.5 truncate">
@@ -225,7 +225,7 @@ export default function CustomSelect({
 
         <ChevronDown
           className={`${chevronSizeStyles} text-slate-400 transition-transform duration-200 shrink-0 ml-1.5 ${
-            isOpen ? 'rotate-180 text-[#635BFF]' : ''
+            isOpen ? 'rotate-180 text-[var(--color-primary,#635BFF)]' : ''
           }`}
         />
       </button>
@@ -253,7 +253,7 @@ export default function CustomSelect({
               minWidth: `${menuCoords.width}px`,
               zIndex: 99999,
             }}
-            className={`fixed bg-white rounded-2xl border border-slate-200/90 shadow-[0_16px_40px_-6px_rgba(15,23,42,0.18),0_6px_16px_-3px_rgba(15,23,42,0.08)] py-1.5 max-h-64 overflow-y-auto scrollbar-thin transition-all animate-in fade-in-0 zoom-in-95 duration-100 select-none ${menuClassName}`}
+            className={`fixed bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-2xl border border-slate-200/90 dark:border-slate-700/80 shadow-[0_18px_45px_-6px_rgba(15,23,42,0.18),0_6px_16px_-3px_rgba(99,91,255,0.10)] py-1.5 max-h-64 overflow-y-auto scrollbar-thin transition-all animate-in fade-in-0 zoom-in-95 duration-100 select-none ${menuClassName}`}
           >
             {normalizedOptions.length === 0 ? (
               <div className="px-3.5 py-2 text-xs text-slate-400 text-center font-medium">
@@ -287,11 +287,14 @@ export default function CustomSelect({
                       opt.disabled
                         ? 'opacity-40 cursor-not-allowed text-slate-400'
                         : isSelected
-                        ? 'bg-[#F0EEFF] text-[#635BFF] font-bold'
-                        : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900 cursor-pointer'
+                        ? 'bg-[var(--color-primary-light,#F0EEFF)] dark:bg-[var(--color-primary,#635BFF)]/20 text-[var(--color-primary,#635BFF)] dark:text-indigo-300 font-bold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-[var(--color-primary-light,#F0EEFF)]/50 dark:hover:bg-slate-800/80 hover:text-[var(--color-primary,#635BFF)] dark:hover:text-white cursor-pointer'
                     } ${optionClassName}`}
                   >
                     <div className="flex items-center space-x-2 truncate">
+                      {isSelected && (
+                        <span className="w-1 h-3.5 rounded-full bg-[var(--color-primary,#635BFF)] mr-1 shrink-0" />
+                      )}
                       {opt.icon && <span className="shrink-0">{opt.icon}</span>}
                       <span className="truncate">{opt.label}</span>
                     </div>
@@ -307,7 +310,7 @@ export default function CustomSelect({
                         </span>
                       )}
                       {isSelected && (
-                        <Check className="w-3.5 h-3.5 text-[#635BFF] shrink-0" />
+                        <Check className="w-3.5 h-3.5 text-[var(--color-primary,#635BFF)] shrink-0" />
                       )}
                     </div>
                   </button>

@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import InquiriesPanel from './InquiriesPanel';
 import LandingEditorPanel from './LandingEditorPanel';
+import CustomSelect from '@/components/common/CustomSelect';
 
 export interface CompanyItem {
   id: string;
@@ -1066,14 +1067,15 @@ export default function SuperAdminView({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Status</label>
-                <select
+                <CustomSelect
                   value={editForm.status}
-                  onChange={(e: any) => setEditForm({ ...editForm, status: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-purple-500"
-                >
-                  <option value="active">Active</option>
-                  <option value="suspended">Suspended</option>
-                </select>
+                  onChange={(val: any) => setEditForm({ ...editForm, status: val })}
+                  size="sm"
+                  options={[
+                    { value: 'active', label: 'Active', badge: 'Active', badgeColor: 'bg-emerald-100 text-emerald-700' },
+                    { value: 'suspended', label: 'Suspended', badge: 'Suspended', badgeColor: 'bg-rose-100 text-rose-700' },
+                  ]}
+                />
               </div>
 
               <div className="flex items-center space-x-3 pt-3 border-t border-slate-100">

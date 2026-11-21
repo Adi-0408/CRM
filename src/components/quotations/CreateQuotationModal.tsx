@@ -20,6 +20,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { authFetch } from '@/lib/apiClient';
+import CustomSelect from '@/components/common/CustomSelect';
 
 interface LineItem {
   id: string;
@@ -418,21 +419,21 @@ export default function CreateQuotationModal({
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                 Link to Existing CRM Lead
               </label>
-              <select
+              <CustomSelect
                 value={selectedLeadId}
-                onChange={(e) => handleLeadSelect(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition"
-              >
-                <option value="">Custom Prospect (New Company)</option>
-                {leads.map((l) => {
-                  const id = l._id || l.id;
-                  return (
-                    <option key={id} value={id}>
-                      {l.company} — {l.name} (₹{(l.value || 0).toLocaleString()})
-                    </option>
-                  );
-                })}
-              </select>
+                onChange={handleLeadSelect}
+                placeholder="Custom Prospect (New Company)"
+                options={[
+                  { value: '', label: 'Custom Prospect (New Company)' },
+                  ...leads.map((l) => {
+                    const id = l._id || l.id;
+                    return {
+                      value: id,
+                      label: `${l.company} — ${l.name} (₹${(l.value || 0).toLocaleString()})`,
+                    };
+                  }),
+                ]}
+              />
             </div>
 
             <div>

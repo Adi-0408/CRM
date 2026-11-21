@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, Plus, Trash2, IndianRupee, FileText, Building2, Calendar, AlertCircle } from 'lucide-react';
 import { authFetch } from '@/lib/apiClient';
+import CustomSelect from '@/components/common/CustomSelect';
 
 interface LineItem {
   id: string;
@@ -217,21 +218,21 @@ export default function CreateInvoiceModal({
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                 Link Project (Optional)
               </label>
-              <select
+              <CustomSelect
                 value={projectId}
-                onChange={(e) => handleProjectChange(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#635BFF]/20 focus:border-[#635BFF] transition"
-              >
-                <option value="">No Project Linked</option>
-                {projects.map((p) => {
-                  const id = p._id || p.id;
-                  return (
-                    <option key={id} value={id}>
-                      {p.title || p.name} ({p.client || 'Internal'})
-                    </option>
-                  );
-                })}
-              </select>
+                onChange={handleProjectChange}
+                placeholder="No Project Linked"
+                options={[
+                  { value: '', label: 'No Project Linked' },
+                  ...projects.map((p) => {
+                    const id = p._id || p.id;
+                    return {
+                      value: id,
+                      label: `${p.title || p.name} (${p.client || 'Internal'})`,
+                    };
+                  }),
+                ]}
+              />
             </div>
 
             <div>
