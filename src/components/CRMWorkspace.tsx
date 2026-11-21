@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import LoginPage from '@/components/LoginPage';
@@ -8,18 +8,20 @@ import LoadingScreen from '@/components/LoadingScreen';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import BusinessIntelligenceNav from '@/components/BusinessIntelligenceNav';
-import OverviewView from '@/components/OverviewView';
-import TasksView from '@/components/views/TasksView';
-import LeadsView from '@/components/views/LeadsView';
-import ProjectsView from '@/components/views/ProjectsView';
-import AttendanceView from '@/components/views/AttendanceView';
-import SupportView from '@/components/views/SupportView';
-import PayrollView from '@/components/views/PayrollView';
-import LeavesView from '@/components/views/LeavesView';
-import EmployeesView from '@/components/views/EmployeesView';
-import ManagementView from '@/components/views/ManagementView';
-import SuperAdminView from '@/components/views/SuperAdminView';
-import InquiriesPanel from '@/components/views/InquiriesPanel';
+import ErrorBoundary from '@/components/ErrorBoundary';
+
+const OverviewView = lazy(() => import('@/components/OverviewView'));
+const TasksView = lazy(() => import('@/components/views/TasksView'));
+const LeadsView = lazy(() => import('@/components/views/LeadsView'));
+const ProjectsView = lazy(() => import('@/components/views/ProjectsView'));
+const AttendanceView = lazy(() => import('@/components/views/AttendanceView'));
+const SupportView = lazy(() => import('@/components/views/SupportView'));
+const PayrollView = lazy(() => import('@/components/views/PayrollView'));
+const LeavesView = lazy(() => import('@/components/views/LeavesView'));
+const EmployeesView = lazy(() => import('@/components/views/EmployeesView'));
+const ManagementView = lazy(() => import('@/components/views/ManagementView'));
+const SuperAdminView = lazy(() => import('@/components/views/SuperAdminView'));
+const InquiriesPanel = lazy(() => import('@/components/views/InquiriesPanel'));
 
 import CreateTaskModal from '@/components/modals/CreateTaskModal';
 import AddLeadModal from '@/components/modals/AddLeadModal';
@@ -450,19 +452,24 @@ export default function CRMWorkspace({
           ) : role === 'platform_super_admin' ? (
             /* Super Admin Platform Console: Strictly tenant management only, zero company operational data */
             <div className="block">
-              <SuperAdminView
-                activeSection={
-                  activeTab === 'inquiries'
-                    ? 'inquiries'
-                    : activeTab === 'landing_cms'
-                    ? 'landing_cms'
-                    : 'organizations'
-                }
-                onInquiriesCountChange={(cnt) => setUnreadInquiriesCount(cnt)}
-              />
+              <ErrorBoundary fallbackTitle="Error loading Super Admin Console">
+                <Suspense fallback={<div className="p-8 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
+                  <SuperAdminView
+                    activeSection={
+                      activeTab === 'inquiries'
+                        ? 'inquiries'
+                        : activeTab === 'landing_cms'
+                        ? 'landing_cms'
+                        : 'organizations'
+                    }
+                    onInquiriesCountChange={(cnt) => setUnreadInquiriesCount(cnt)}
+                  />
+                </Suspense>
+              </ErrorBoundary>
             </div>
           ) : (
-            <>
+            <ErrorBoundary fallbackTitle="Error loading workspace view">
+              <Suspense fallback={<div className="p-8 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
 
               {/* 1. Dashboard (Overview) with Dynamic Role Rendering */}
               {(visitedTabs.overview || visitedTabs.dashboard) && (
@@ -596,7 +603,8 @@ export default function CRMWorkspace({
                   />
                 </div>
               )}
-            </>
+              </Suspense>
+            </ErrorBoundary>
           )}
         </main>
       </div>

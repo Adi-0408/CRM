@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import Employee from '@/models/Employee';
 import { requireRoles, requireTenantAuth, buildTenantFilter, DEFAULT_COMPANY_ID } from '@/lib/apiAuth';
+import { hashPassword } from '@/lib/authCrypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,6 +107,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       body.joinDate = new Date().toISOString();
     }
 
+    const rawPassword = body.password || 'crm@123';
+    const hashedPassword = await hashPassword(rawPassword);
+    body.password = hashedPassword;
+
     const newEmp = await Employee.create(body);
 
     // Also sync credentials into User collection
@@ -118,7 +123,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             company_id: companyId,
             name: newEmp.name,
             email: newEmp.email,
-            password: (newEmp as any).password || 'crm@123',
+            password: hashedPassword,
             role: newEmp.role,
             department: newEmp.department,
             designation: newEmp.role,
@@ -137,7 +142,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       console.warn('Sync to User collection warning:', uErr);
     }
 
-    return NextResponse.json(newEmp, { status: 201 });
+    const sanitizedEmp = { ...newEmp };
+    delete (sanitizedEmp as any).password;
+    return NextResponse.json(sanitizedEmp, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

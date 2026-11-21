@@ -5,6 +5,7 @@ import Employee from '@/models/Employee';
 import User from '@/models/User';
 import Branch from '@/models/Branch';
 import { requireRoles, generateSlug } from '@/lib/apiAuth';
+import { hashPassword } from '@/lib/authCrypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -218,13 +219,15 @@ export async function POST(req: NextRequest) {
 
     // 3. Atomically Create Company Admin in Employee and User
     const adminId = `emp_${candidateSlug}_admin`;
+    const hashedAdminPassword = await hashPassword(cleanPassword);
+
     const newAdminEmp = await Employee.create({
       _id: adminId,
       id: adminId,
       company_id: newCompanyId,
       name: cleanAdminName,
       email: cleanAdminEmail,
-      password: cleanPassword,
+      password: hashedAdminPassword,
       role: 'company_admin',
       department: 'Executive Management',
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanAdminName)}`,
@@ -243,7 +246,7 @@ export async function POST(req: NextRequest) {
       company_id: newCompanyId,
       name: cleanAdminName,
       email: cleanAdminEmail,
-      password: cleanPassword,
+      password: hashedAdminPassword,
       role: 'company_admin',
       department: 'Executive Management',
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanAdminName)}`,

@@ -10,7 +10,7 @@ export interface ILeave {
   endDate: Date | string;
   days: number;
   reason: string;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   approvedBy?: any;
   remarks?: string;
   createdAt?: Date | string;

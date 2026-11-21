@@ -15,6 +15,7 @@ import {
   documentId,
   Firestore,
   QueryConstraint,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -765,7 +766,14 @@ export function createFirestoreModel<T = any>(collectionName: string) {
 
     static async updateMany(filter: any, update: any, options: any = {}): Promise<any> {
       const colRef = collection(db, collectionName);
-      const snap = await getDocs(colRef);
+      let snap;
+      try {
+        const constraints = buildQueryConstraints(filter);
+        const q = constraints.length > 0 ? query(colRef, ...constraints) : colRef;
+        snap = await getDocs(q);
+      } catch {
+        snap = await getDocs(colRef);
+      }
       let count = 0;
       await Promise.all(
         snap.docs.map(async (d) => {
@@ -832,18 +840,37 @@ export function createFirestoreModel<T = any>(collectionName: string) {
 
     static async deleteMany(filter: any = {}): Promise<{ deletedCount: number }> {
       const colRef = collection(db, collectionName);
-      const snap = await getDocs(colRef);
-      let count = 0;
+      let snap;
+      try {
+        const constraints = buildQueryConstraints(filter);
+        const q = constraints.length > 0 ? query(colRef, ...constraints) : colRef;
+        snap = await getDocs(q);
+      } catch {
+        snap = await getDocs(colRef);
+      }
 
-      await Promise.all(
-        snap.docs.map(async (d) => {
-          const data = d.data();
-          if (matchesFilter({ ...data, _id: d.id, id: d.id }, filter)) {
-            await deleteDoc(d.ref);
-            count++;
+      let count = 0;
+      let batch = writeBatch(db);
+      let batchOps = 0;
+
+      for (const d of snap.docs) {
+        const data = d.data();
+        if (matchesFilter({ ...data, _id: d.id, id: d.id }, filter)) {
+          batch.delete(d.ref);
+          count++;
+          batchOps++;
+          if (batchOps >= 450) {
+            await batch.commit();
+            batch = writeBatch(db);
+            batchOps = 0;
           }
-        })
-      );
+        }
+      }
+
+      if (batchOps > 0) {
+        await batch.commit();
+      }
+
       invalidatePopulateCache(collectionName);
       return { deletedCount: count };
     }

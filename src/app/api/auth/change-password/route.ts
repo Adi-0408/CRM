@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/db';
 import Employee from '@/models/Employee';
 import User from '@/models/User';
 import { getAuthUser } from '@/lib/apiAuth';
+import { hashPassword, verifyPassword, signAuthToken } from '@/lib/authCrypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,17 +30,22 @@ export async function POST(req: NextRequest) {
     // Verify current password if provided and not in first-login forced state
     if (currentPassword) {
       const emp = await Employee.findOne({ email: authUser.email.toLowerCase() });
-      if (emp && emp.password && emp.password !== currentPassword && emp.password !== 'pass123') {
-        return NextResponse.json({ error: 'Current password does not match.' }, { status: 400 });
+      if (emp && emp.password) {
+        const { matches } = await verifyPassword(currentPassword, emp.password);
+        if (!matches) {
+          return NextResponse.json({ error: 'Current password does not match.' }, { status: 400 });
+        }
       }
     }
+
+    const hashedPassword = await hashPassword(cleanNewPass);
 
     // Update in Employee
     await Employee.updateOne(
       { email: authUser.email.toLowerCase() },
       {
         $set: {
-          password: cleanNewPass,
+          password: hashedPassword,
           must_change_password: false,
           updatedAt: new Date(),
         },
@@ -51,7 +57,7 @@ export async function POST(req: NextRequest) {
       { email: authUser.email.toLowerCase() },
       {
         $set: {
-          password: cleanNewPass,
+          password: hashedPassword,
           must_change_password: false,
           updatedAt: new Date(),
         },
@@ -63,20 +69,33 @@ export async function POST(req: NextRequest) {
       must_change_password: false,
     };
 
+    const token = await signAuthToken({
+      sub: String(updatedUser.id),
+      email: updatedUser.email,
+      role: updatedUser.role,
+      company_id: updatedUser.company_id ?? null,
+      name: updatedUser.name,
+      department: updatedUser.department,
+      must_change_password: false,
+    });
+
     const response = NextResponse.json({
       success: true,
       message: 'Password successfully updated.',
       must_change_password: false,
+      token,
       user: updatedUser,
     });
 
-    // Refresh the session cookie with must_change_password cleared
+    // Refresh the session cookie with signed JWT and HttpOnly
     response.cookies.set({
       name: 'crm_session',
-      value: encodeURIComponent(JSON.stringify(updatedUser)),
+      value: token,
       path: '/',
       maxAge: 30 * 24 * 60 * 60,
       sameSite: 'lax',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
     });
 
     return response;

@@ -231,7 +231,7 @@ export default function DailyStandupModal({
             <textarea
               rows={2}
               required
-              placeholder="e.g. • Integrate Razorpay webhook&#10;• Review mobile responsive layout"
+              placeholder="e.g. • Integrate webhook API&#10;• Review mobile responsive layout"
               value={plannedTomorrow}
               onChange={(e) => setPlannedTomorrow(e.target.value)}
               className="w-full px-3 py-1.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-xs text-slate-900 leading-relaxed font-mono resize-none placeholder:text-slate-400"

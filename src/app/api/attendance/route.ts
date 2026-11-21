@@ -112,7 +112,6 @@ export async function POST(req: NextRequest) {
     const authUser = authResult.user!;
 
     await connectToDatabase();
-    initAutoClockOutJob();
     triggerAutoClockOutIfDue().catch(() => {});
     triggerPhotoCleanupIfDue().catch(() => {});
 

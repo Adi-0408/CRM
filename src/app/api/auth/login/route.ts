@@ -5,17 +5,20 @@ import User from '@/models/User';
 import Company from '@/models/Company';
 import { DEMO_CREDENTIALS, UserRole } from '@/types/auth';
 import { normalizeRole, DEFAULT_COMPANY_ID, isCompanySuspended } from '@/lib/apiAuth';
+import { signAuthToken, verifyPassword, hashPassword } from '@/lib/authCrypto';
 
 export const dynamic = 'force-dynamic';
 
-function createLoginResponse(user: any, token: string) {
-  const sessionData = {
-    id: user.id,
+async function createLoginResponse(user: any) {
+  const token = await signAuthToken({
+    sub: String(user.id),
     email: user.email,
     role: user.role,
     company_id: user.company_id,
-  };
-  const sessionCookieVal = encodeURIComponent(JSON.stringify(sessionData));
+    name: user.name,
+    department: user.department,
+    must_change_password: !!user.must_change_password,
+  });
 
   const response = NextResponse.json({
     success: true,
@@ -25,10 +28,12 @@ function createLoginResponse(user: any, token: string) {
 
   response.cookies.set({
     name: 'crm_session',
-    value: sessionCookieVal,
+    value: token,
     path: '/',
     maxAge: 30 * 24 * 60 * 60, // 30 days
     sameSite: 'lax',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
   });
 
   return response;
@@ -56,10 +61,25 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanEmail = String(email).trim().toLowerCase();
+    await connectToDatabase();
 
     // 1. Platform Super Admin Check (company_id: null)
     if (cleanEmail === 'superadmin@crm.com') {
-      const isSuperMatch = password === 'pass123' || password === 'admin123';
+      const superEmp = await Employee.findOne({ email: 'superadmin@crm.com' });
+      const storedSuperPass = (superEmp as any)?.password;
+      let isSuperMatch = false;
+      let needsSuperRehash = false;
+
+      if (storedSuperPass) {
+        const v = await verifyPassword(password, storedSuperPass);
+        isSuperMatch = v.matches;
+        needsSuperRehash = v.needsRehash;
+      } else {
+        // Fallback for initial unseeded environment
+        isSuperMatch = password === 'admin123' || password === 'pass123';
+        needsSuperRehash = isSuperMatch;
+      }
+
       if (!isSuperMatch) {
         return NextResponse.json(
           { error: 'Invalid platform super admin password.' },
@@ -67,33 +87,40 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      return createLoginResponse(
-        {
-          id: 'user_superadmin',
-          name: 'Platform Super Admin',
-          email: 'superadmin@crm.com',
-          role: 'platform_super_admin' as UserRole,
-          department: 'Platform Engineering',
-          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
-          phone: '+91 99999 00000',
-          salary: 150000,
-          baseSalary: 150000,
-          status: 'active',
-          company_id: null,
-          must_change_password: false,
-        },
-        `token_superadmin_${Date.now()}`
-      );
+      // Transparent password rehash on super admin login
+      if (needsSuperRehash) {
+        hashPassword(password).then(async (h) => {
+          try {
+            await Employee.updateOne({ email: 'superadmin@crm.com' }, { $set: { password: h } });
+            await User.updateOne({ email: 'superadmin@crm.com' }, { $set: { password: h } });
+          } catch (e) {
+            console.error('Super admin password rehash error:', e);
+          }
+        });
+      }
+
+      return await createLoginResponse({
+        id: 'user_superadmin',
+        name: 'Platform Super Admin',
+        email: 'superadmin@crm.com',
+        role: 'platform_super_admin' as UserRole,
+        department: 'Platform Engineering',
+        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
+        phone: '+91 99999 00000',
+        salary: 150000,
+        baseSalary: 150000,
+        status: 'active',
+        company_id: null,
+        must_change_password: false,
+      });
     }
 
-    // 2. Check if matching demo credentials
+    // 2. Demo credentials match check
     const demoMatch = DEMO_CREDENTIALS.find(
       (d: any) =>
         (d.email.toLowerCase() === cleanEmail || (d.altEmail && d.altEmail.toLowerCase() === cleanEmail)) &&
-        (d.password === password || password === 'pass123')
+        d.password === password
     );
-
-    await connectToDatabase();
 
     // 3. Query employee collection
     const employee = await Employee.findOne({
@@ -124,39 +151,45 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Validate password
-      const storedPassword = (employee as any).password || 'pass123';
-      const isMatch =
-        password === storedPassword ||
-        password === 'pass123' ||
-        (demoMatch && demoMatch.password === password);
+      // Validate password with transparent upgrade
+      const storedPassword = (employee as any).password;
+      const { matches, needsRehash } = await verifyPassword(password, storedPassword);
 
-      if (!isMatch) {
+      if (!matches && (!demoMatch || demoMatch.password !== password)) {
         return NextResponse.json(
           { error: 'Invalid email or password. Please check with HR/Admin.' },
           { status: 401 }
         );
       }
 
+      // Transparently re-hash legacy plaintext password to bcrypt
+      if (needsRehash) {
+        hashPassword(password).then(async (hashed) => {
+          try {
+            await Employee.updateOne({ _id: employee._id }, { $set: { password: hashed } });
+            await User.updateOne({ email: cleanEmail }, { $set: { password: hashed } });
+          } catch (e) {
+            console.error('Password rehash error:', e);
+          }
+        });
+      }
+
       const role: UserRole = normalizeRole(employee.role);
 
-      return createLoginResponse(
-        {
-          id: String(employee._id),
-          name: employee.name,
-          email: employee.email,
-          role: role,
-          department: employee.department || 'General',
-          avatar: employee.avatar || '',
-          phone: employee.phone || '',
-          salary: employee.salary || employee.baseSalary || 50000,
-          baseSalary: employee.baseSalary || employee.salary || 50000,
-          status: employee.status || 'active',
-          company_id: companyId,
-          must_change_password: !!employee.must_change_password,
-        },
-        `token_${employee._id}_${Date.now()}`
-      );
+      return await createLoginResponse({
+        id: String(employee._id),
+        name: employee.name,
+        email: employee.email,
+        role: role,
+        department: employee.department || 'General',
+        avatar: employee.avatar || '',
+        phone: employee.phone || '',
+        salary: employee.salary || employee.baseSalary || 50000,
+        baseSalary: employee.baseSalary || employee.salary || 50000,
+        status: employee.status || 'active',
+        company_id: companyId,
+        must_change_password: !!employee.must_change_password,
+      });
     }
 
     // 4. Query user collection if employee record not found
@@ -171,37 +204,46 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const storedPassword = (userDoc as any).password || 'pass123';
-      const isMatch = password === storedPassword || password === 'pass123';
-      if (!isMatch) {
+      const storedPassword = (userDoc as any).password;
+      const { matches, needsRehash } = await verifyPassword(password, storedPassword);
+
+      if (!matches && (!demoMatch || demoMatch.password !== password)) {
         return NextResponse.json(
           { error: 'Invalid email or password.' },
           { status: 401 }
         );
       }
 
+      // Transparently re-hash legacy plaintext password to bcrypt
+      if (needsRehash) {
+        hashPassword(password).then(async (hashed) => {
+          try {
+            await User.updateOne({ _id: userDoc._id }, { $set: { password: hashed } });
+          } catch (e) {
+            console.error('User password rehash error:', e);
+          }
+        });
+      }
+
       const role: UserRole = normalizeRole(userDoc.role);
 
-      return createLoginResponse(
-        {
-          id: String(userDoc._id),
-          name: userDoc.name,
-          email: userDoc.email,
-          role: role,
-          department: userDoc.department || 'General',
-          avatar: userDoc.avatar || '',
-          phone: userDoc.phone || '',
-          salary: userDoc.baseSalary || 50000,
-          baseSalary: userDoc.baseSalary || 50000,
-          status: userDoc.status || 'active',
-          company_id: companyId,
-          must_change_password: !!userDoc.must_change_password,
-        },
-        `token_${userDoc._id}_${Date.now()}`
-      );
+      return await createLoginResponse({
+        id: String(userDoc._id),
+        name: userDoc.name,
+        email: userDoc.email,
+        role: role,
+        department: userDoc.department || 'General',
+        avatar: userDoc.avatar || '',
+        phone: userDoc.phone || '',
+        salary: userDoc.baseSalary || 50000,
+        baseSalary: userDoc.baseSalary || 50000,
+        status: userDoc.status || 'active',
+        company_id: companyId,
+        must_change_password: !!userDoc.must_change_password,
+      });
     }
 
-    // 5. Fallback to demo credentials
+    // 5. Fallback to demo credentials only if password strictly matches demo credentials
     if (demoMatch) {
       const companyId = demoMatch.company_id !== undefined ? demoMatch.company_id : DEFAULT_COMPANY_ID;
       const suspended = await isCompanySuspended(companyId);
@@ -212,22 +254,19 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      return createLoginResponse(
-        {
-          id: `demo_${demoMatch.role}`,
-          name: demoMatch.name,
-          email: demoMatch.email,
-          role: demoMatch.role,
-          department: demoMatch.department,
-          avatar: demoMatch.avatar,
-          salary: demoMatch.baseSalary,
-          baseSalary: demoMatch.baseSalary,
-          status: 'active',
-          company_id: companyId,
-          must_change_password: false,
-        },
-        `token_demo_${demoMatch.role}_${Date.now()}`
-      );
+      return await createLoginResponse({
+        id: `demo_${demoMatch.role}`,
+        name: demoMatch.name,
+        email: demoMatch.email,
+        role: demoMatch.role,
+        department: demoMatch.department,
+        avatar: demoMatch.avatar,
+        salary: demoMatch.baseSalary,
+        baseSalary: demoMatch.baseSalary,
+        status: 'active',
+        company_id: companyId,
+        must_change_password: false,
+      });
     }
 
     return NextResponse.json(

@@ -71,13 +71,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password?: string
   ): Promise<{ success: boolean; user?: AuthUser; error?: string }> => {
     try {
+      if (!email || !password) {
+        return { success: false, error: 'Email and password are required' };
+      }
+
       setAuthMessage('Verifying credentials...');
       setIsAuthenticating(true);
 
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: password || 'pass123' }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
 
       const data = await res.json();
@@ -94,44 +98,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.token) {
         localStorage.setItem('crm_auth_token', data.token);
       }
-      try {
-        const sessionPayload = encodeURIComponent(
-          JSON.stringify({
-            id: data.user.id,
-            email: data.user.email,
-            role: data.user.role,
-            company_id: data.user.company_id,
-          })
-        );
-        document.cookie = `crm_session=${sessionPayload}; path=/; max-age=2592000; SameSite=Lax`;
-      } catch {}
 
       return { success: true, user: data.user };
     } catch (err: any) {
       console.error('Login error:', err);
-      // Resilient fallback to demo user if network disconnects
-      const match = DEMO_CREDENTIALS.find(
-        (d) => d.email.toLowerCase() === email.toLowerCase()
-      );
-      if (match) {
-        const fallbackUser: AuthUser = {
-          id: `demo_${match.role}`,
-          name: match.name,
-          email: match.email,
-          role: match.role,
-          department: match.department,
-          avatar: match.avatar,
-          salary: match.baseSalary,
-          baseSalary: match.baseSalary,
-        };
-        const roleLabel = ROLE_CONFIGS[match.role]?.label || 'Workspace';
-        setAuthMessage(`Preparing ${roleLabel} Dashboard...`);
-        await new Promise((r) => setTimeout(r, 800));
-
-        setUser(fallbackUser);
-        localStorage.setItem('crm_auth_user', JSON.stringify(fallbackUser));
-        return { success: true, user: fallbackUser };
-      }
       return { success: false, error: err.message || 'Network error during login' };
     } finally {
       setIsAuthenticating(false);
@@ -166,17 +136,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     setUser(switchedUser);
     localStorage.setItem('crm_auth_user', JSON.stringify(switchedUser));
-    try {
-      const sessionPayload = encodeURIComponent(
-        JSON.stringify({
-          id: switchedUser.id,
-          email: switchedUser.email,
-          role: switchedUser.role,
-          company_id: switchedUser.company_id,
-        })
-      );
-      document.cookie = `crm_session=${sessionPayload}; path=/; max-age=2592000; SameSite=Lax`;
-    } catch {}
+    const demoToken = `token_demo_${demo.role}_${Date.now()}`;
+    localStorage.setItem('crm_auth_token', demoToken);
     setIsAuthenticating(false);
   };
 
@@ -187,15 +148,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const updated = { ...prev, ...updates };
       try {
         localStorage.setItem('crm_auth_user', JSON.stringify(updated));
-        const sessionPayload = encodeURIComponent(
-          JSON.stringify({
-            id: updated.id,
-            email: updated.email,
-            role: updated.role,
-            company_id: updated.company_id,
-          })
-        );
-        document.cookie = `crm_session=${sessionPayload}; path=/; max-age=2592000; SameSite=Lax`;
       } catch (err) {
         console.error('Error persisting user update:', err);
       }

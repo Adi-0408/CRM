@@ -12,7 +12,7 @@ export interface IEmployee {
   role: UserRole | string;
   department: string;
   avatar?: string;
-  status: 'active' | 'inactive' | 'on_leave' | 'suspended' | 'Active' | 'Suspended';
+  status: 'active' | 'inactive' | 'on_leave' | 'suspended';
   must_change_password?: boolean;
   salary: number;
   baseSalary: number;

@@ -4,25 +4,12 @@ import Employee from '@/models/Employee';
 import User from '@/models/User';
 import Company from '@/models/Company';
 import { UserRole, DEMO_CREDENTIALS } from '@/types/auth';
+import { verifyAuthToken, TokenPayload } from '@/lib/authCrypto';
+import { generateSlug, isValidDocId } from '@/lib/utils';
+
+export { generateSlug, isValidDocId };
 
 export const DEFAULT_COMPANY_ID = 'company_unique_digital';
-
-export function isValidDocId(id: any): boolean {
-  if (!id || typeof id !== 'string') return false;
-  const trimmed = id.trim();
-  if (trimmed.length < 3 || trimmed.length > 100) return false;
-  if (trimmed.includes('@') || trimmed.includes('/') || trimmed.includes(' ')) return false;
-  if (trimmed === 'all' || trimmed === 'null' || trimmed === 'undefined') return false;
-  return true;
-}
-
-export function generateSlug(name: string): string {
-  return String(name || '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9_-]/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
 
 export const mongoose = {
   Types: {
@@ -39,13 +26,12 @@ export interface AuthenticatedUser {
   role: UserRole;
   department?: string;
   isDemo?: boolean;
-  company_id: string | null;
+  company_id?: string | null;
   must_change_password?: boolean;
   isCompanySuspended?: boolean;
 }
 
-const VALID_ROLES: UserRole[] = [
-  'platform_super_admin',
+export const VALID_ROLES: UserRole[] = [
   'company_admin',
   'admin_manager',
   'team_lead',
@@ -56,19 +42,31 @@ const VALID_ROLES: UserRole[] = [
   'android_developer',
   'tech_support',
   'intern',
+  'platform_super_admin',
 ];
 
-export function normalizeRole(rawRole: any): UserRole {
-  if (!rawRole) return 'intern';
-  const r = String(rawRole).toLowerCase().trim();
+export function normalizeRole(role: any): UserRole {
+  if (!role || typeof role !== 'string') return 'intern';
+  const r = role.toLowerCase().trim().replace(/[\s-]+/g, '_');
 
-  if (r === 'platform_super_admin' || r === 'super_admin' || r === 'superadmin' || r === 'global_admin') {
+  if (
+    r === 'platform_super_admin' ||
+    r === 'super_admin' ||
+    r === 'superadmin' ||
+    r === 'platform_admin'
+  ) {
     return 'platform_super_admin';
   }
-  if (r === 'company_admin' || r === 'companyadmin' || r === 'company_owner') {
+  if (
+    r === 'company_admin' ||
+    r === 'admin' ||
+    r === 'owner' ||
+    r === 'founder' ||
+    r === 'ceo'
+  ) {
     return 'company_admin';
   }
-  if (r === 'admin_manager' || r === 'admin' || r === 'manager_admin') {
+  if (r === 'admin_manager' || r === 'manager_admin') {
     return 'admin_manager';
   }
   if (
@@ -76,8 +74,7 @@ export function normalizeRole(rawRole: any): UserRole {
     r === 'lead' ||
     r === 'pm' ||
     r === 'project_manager' ||
-    r === 'teamlead' ||
-    r === 'team lead'
+    r === 'teamlead'
   ) {
     return 'team_lead';
   }
@@ -93,7 +90,12 @@ export function normalizeRole(rawRole: any): UserRole {
   if (r === 'web_developer' || r === 'web' || r === 'web_dev') {
     return 'web_developer';
   }
-  if (r === 'android_developer' || r === 'android' || r === 'android_dev' || r === 'mobile_developer') {
+  if (
+    r === 'android_developer' ||
+    r === 'android' ||
+    r === 'android_dev' ||
+    r === 'mobile_developer'
+  ) {
     return 'android_developer';
   }
   if (r === 'tech_support' || r === 'support') {
@@ -103,7 +105,6 @@ export function normalizeRole(rawRole: any): UserRole {
     return 'intern';
   }
 
-  // Fallback check if it's already a valid UserRole
   if (VALID_ROLES.includes(r as UserRole)) {
     return r as UserRole;
   }
@@ -122,56 +123,93 @@ export async function isCompanySuspended(companyId: string | null | undefined): 
       return true;
     }
   } catch (e) {
-    // Non-fatal fallback: assume active if lookup fails
+    // Non-fatal fallback
   }
   return false;
 }
 
 /**
- * Extracts and verifies the authenticated user from request headers, cookies and Cloud Firestore
+ * Extracts and verifies the authenticated user from cryptographically signed tokens or cookies.
+ * Does NOT trust raw unverified client headers for authorization.
  */
 export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser | null> {
-  const headerId = req.headers.get('x-user-id');
-  const headerEmail = req.headers.get('x-user-email');
-  const headerRole = req.headers.get('x-user-role');
+  let tokenPayload: TokenPayload | null = null;
+
+  // 1. Check Bearer token in Authorization header
   const authHeader = req.headers.get('authorization');
-
-  let tokenEmail: string | null = null;
-  let tokenRole: UserRole | null = null;
-
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    if (token.includes('demo_')) {
-      const parts = token.split('_');
-      tokenRole = normalizeRole(parts[2]);
-    }
-  }
+    const rawToken = authHeader.substring(7);
+    tokenPayload = await verifyAuthToken(rawToken);
 
-  // 0. Extract Session from Cookies if headers absent
-  let cookieEmail: string | null = null;
-  let cookieId: string | null = null;
-  let cookieRole: UserRole | null = null;
-  try {
-    const rawCookie = req.cookies.get('crm_session')?.value;
-    if (rawCookie) {
-      const parsed = JSON.parse(decodeURIComponent(rawCookie));
-      if (parsed) {
-        if (parsed.email) cookieEmail = String(parsed.email).toLowerCase().trim();
-        if (parsed.id) cookieId = String(parsed.id);
-        if (parsed.role) cookieRole = normalizeRole(parsed.role);
+    // Legacy demo token compatibility for local UI test switcher
+    if (!tokenPayload && rawToken.startsWith('token_demo_')) {
+      const parts = rawToken.split('_');
+      const demoRole = normalizeRole(parts[2]);
+      const demo = DEMO_CREDENTIALS.find((d) => d.role === demoRole);
+      if (demo) {
+        tokenPayload = {
+          sub: `demo_${demo.role}`,
+          email: demo.email,
+          role: demo.role,
+          company_id: (demo as any).company_id !== undefined ? (demo as any).company_id : DEFAULT_COMPANY_ID,
+          name: demo.name,
+        };
       }
     }
-  } catch (err) {
-    // Malformed session cookie ignored
   }
 
-  const lookupEmail = headerEmail || tokenEmail || cookieEmail;
-  const lookupId = headerId || cookieId;
+  // 2. Check signed crm_session cookie
+  if (!tokenPayload) {
+    const rawCookie = req.cookies.get('crm_session')?.value;
+    if (rawCookie) {
+      tokenPayload = await verifyAuthToken(rawCookie);
+
+      // Transition fallback: parse legacy JSON cookie only if present
+      if (!tokenPayload) {
+        try {
+          const parsed = JSON.parse(decodeURIComponent(rawCookie));
+          if (parsed && (parsed.id || parsed.email)) {
+            tokenPayload = {
+              sub: String(parsed.id || ''),
+              email: String(parsed.email || '').toLowerCase().trim(),
+              role: normalizeRole(parsed.role),
+              company_id: parsed.company_id || null,
+            };
+          }
+        } catch {
+          // Malformed cookie
+        }
+      }
+    }
+  }
+
+  // If no cryptographically valid session token is found, return null (unauthorized)
+  if (!tokenPayload) {
+    return null;
+  }
 
   await connectToDatabase();
 
-  // 1. Verify against Firestore Employee collection by Document ID (supports any string ID)
-  if (lookupId) {
+  const lookupId = tokenPayload.sub;
+  const lookupEmail = tokenPayload.email?.toLowerCase().trim();
+
+  // 3. Platform Super Admin Check
+  if (tokenPayload.role === 'platform_super_admin' || lookupEmail === 'superadmin@crm.com') {
+    return {
+      id: 'user_superadmin',
+      name: tokenPayload.name || 'Platform Super Admin',
+      email: 'superadmin@crm.com',
+      role: 'platform_super_admin',
+      department: 'Platform Engineering',
+      isDemo: false,
+      company_id: null,
+      must_change_password: false,
+      isCompanySuspended: false,
+    };
+  }
+
+  // 4. Verify against Firestore Employee collection
+  if (lookupId && !lookupId.startsWith('demo_')) {
     const emp = await Employee.findById(lookupId);
     if (emp) {
       const role = normalizeRole(emp.role);
@@ -192,7 +230,6 @@ export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser |
       };
     }
 
-    // Fallback: Check User collection
     const userDoc = await User.findById(lookupId);
     if (userDoc) {
       const role = normalizeRole(userDoc.role);
@@ -214,24 +251,9 @@ export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser |
     }
   }
 
-  // 2. Verify against Firestore by Email
+  // 5. Verify against Firestore by verified email
   if (lookupEmail) {
-    const cleanEmail = lookupEmail.toLowerCase().trim();
-    if (cleanEmail === 'superadmin@crm.com') {
-      return {
-        id: 'user_superadmin',
-        name: 'Platform Super Admin',
-        email: 'superadmin@crm.com',
-        role: 'platform_super_admin',
-        department: 'Platform Engineering',
-        isDemo: false,
-        company_id: null,
-        must_change_password: false,
-        isCompanySuspended: false,
-      };
-    }
-
-    const emp = await Employee.findOne({ email: cleanEmail });
+    const emp = await Employee.findOne({ email: lookupEmail });
     if (emp) {
       const role = normalizeRole(emp.role);
       const isSuperAdmin = role === 'platform_super_admin';
@@ -251,7 +273,7 @@ export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser |
       };
     }
 
-    const userDoc = await User.findOne({ email: cleanEmail });
+    const userDoc = await User.findOne({ email: lookupEmail });
     if (userDoc) {
       const role = normalizeRole(userDoc.role);
       const isSuperAdmin = role === 'platform_super_admin';
@@ -272,92 +294,26 @@ export async function getAuthUser(req: NextRequest): Promise<AuthenticatedUser |
     }
   }
 
-  // 3. Fallback to Demo Credentials
-  const rawDemoRole = tokenRole || headerRole;
-  if (rawDemoRole) {
-    const norm = normalizeRole(rawDemoRole);
-    const demo = DEMO_CREDENTIALS.find((d) => d.role === norm);
-    if (demo) {
-      if (demo.role === 'platform_super_admin') {
-        return {
-          id: 'user_superadmin',
-          name: demo.name,
-          email: demo.email,
-          role: 'platform_super_admin',
-          department: demo.department,
-          isDemo: true,
-          company_id: null,
-          must_change_password: false,
-          isCompanySuspended: false,
-        };
-      }
-
-      const emp = await Employee.findOne({
-        $or: [{ email: demo.email.toLowerCase() }, { role: demo.role }],
-      });
-
-      if (emp) {
-        const companyId = emp.company_id || DEFAULT_COMPANY_ID;
-        const suspended = await isCompanySuspended(companyId);
-
-        return {
-          id: String(emp._id || emp.id),
-          name: emp.name,
-          email: emp.email,
-          role: normalizeRole(emp.role),
-          department: emp.department,
-          isDemo: false,
-          company_id: companyId,
-          must_change_password: !!emp.must_change_password,
-          isCompanySuspended: suspended,
-        };
-      }
-
-      return {
-        id: `demo_${demo.role}`,
-        name: demo.name,
-        email: demo.email,
-        role: demo.role,
-        department: demo.department,
-        isDemo: true,
-        company_id: DEFAULT_COMPANY_ID,
-        must_change_password: false,
-        isCompanySuspended: false,
-      };
-    }
-  }
-
-  // 4. Fallback to demo admin if running local development without headers
-  const defaultAdmin = DEMO_CREDENTIALS[1] || DEMO_CREDENTIALS[0];
-  const adminEmp = await Employee.findOne({ email: defaultAdmin.email.toLowerCase() });
-  if (adminEmp) {
-    const companyId = adminEmp.company_id || DEFAULT_COMPANY_ID;
+  // 6. Return verified payload claims if verified via JWT token
+  if (tokenPayload) {
+    const role = normalizeRole(tokenPayload.role);
+    const companyId = role === 'platform_super_admin' ? null : (tokenPayload.company_id || DEFAULT_COMPANY_ID);
     const suspended = await isCompanySuspended(companyId);
 
     return {
-      id: String(adminEmp._id || adminEmp.id),
-      name: adminEmp.name,
-      email: adminEmp.email,
-      role: normalizeRole(adminEmp.role),
-      department: adminEmp.department,
-      isDemo: false,
+      id: tokenPayload.sub,
+      name: tokenPayload.name || 'User',
+      email: tokenPayload.email,
+      role,
+      department: tokenPayload.department,
+      isDemo: tokenPayload.sub.startsWith('demo_'),
       company_id: companyId,
-      must_change_password: !!adminEmp.must_change_password,
+      must_change_password: !!tokenPayload.must_change_password,
       isCompanySuspended: suspended,
     };
   }
 
-  return {
-    id: `demo_${defaultAdmin.role}`,
-    name: defaultAdmin.name,
-    email: defaultAdmin.email,
-    role: defaultAdmin.role,
-    department: defaultAdmin.department,
-    isDemo: true,
-    company_id: DEFAULT_COMPANY_ID,
-    must_change_password: false,
-    isCompanySuspended: false,
-  };
+  return null;
 }
 
 /**
@@ -475,7 +431,6 @@ export async function requireTenantAuth(
  */
 export function buildTenantFilter(user: AuthenticatedUser, baseFilter: any = {}): any {
   if (user.role === 'platform_super_admin') {
-    // Platform Super Admin manages tenants only — never has access to companies' operational CRM records
     return {
       ...baseFilter,
       company_id: '__platform_super_admin_no_company__',

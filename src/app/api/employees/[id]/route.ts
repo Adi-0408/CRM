@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/db';
 import Employee from '@/models/Employee';
 import User from '@/models/User';
 import { getAuthUser, requireRoles } from '@/lib/apiAuth';
+import { hashPassword } from '@/lib/authCrypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,8 +74,9 @@ export async function PUT(
       );
     }
 
-    // If changing password, must_change_password should be marked false if previously required
+    // If changing password, hash it and mark must_change_password false
     if (body.password) {
+      body.password = await hashPassword(String(body.password).trim());
       body.must_change_password = false;
     }
 
@@ -108,7 +110,9 @@ export async function PUT(
       console.warn('Sync to user error on employee update:', e);
     }
 
-    return NextResponse.json(updated);
+    const sanitized = { ...updated };
+    delete (sanitized as any).password;
+    return NextResponse.json(sanitized);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

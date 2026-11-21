@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import { requireRoles, DEFAULT_COMPANY_ID } from '@/lib/apiAuth';
+import { hashPassword } from '@/lib/authCrypto';
 import Company from '@/models/Company';
 import Employee from '@/models/Employee';
 import User from '@/models/User';
@@ -25,7 +26,23 @@ export async function POST(req: NextRequest) {
     const authResult = await requireRoles(req, ['platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {}
+
+    if (body.confirm_token !== 'PERMANENT_WIPE_ALL_CONFIRM') {
+      return NextResponse.json(
+        {
+          error:
+            'Confirmation token required: You must provide { confirm_token: "PERMANENT_WIPE_ALL_CONFIRM" } to execute a full platform reset.',
+        },
+        { status: 400 }
+      );
+    }
+
     await connectToDatabase();
+    const superAdminHashedPassword = await hashPassword('admin123');
 
     // 1. Delete all operational data across all tenants
     await Promise.all([
@@ -72,7 +89,7 @@ export async function POST(req: NextRequest) {
           status: 'active',
           company_id: null,
           must_change_password: false,
-          password: 'pass123',
+          password: superAdminHashedPassword,
         },
       },
       { upsert: true, new: true }
@@ -90,7 +107,7 @@ export async function POST(req: NextRequest) {
           department: 'Platform Engineering',
           company_id: null,
           must_change_password: false,
-          password: 'pass123',
+          password: superAdminHashedPassword,
         },
       },
       { upsert: true, new: true }
@@ -151,13 +168,14 @@ export async function POST(req: NextRequest) {
     for (const d of DEMO_CREDENTIALS) {
       if (d.role === 'platform_super_admin') continue;
       const empId = `emp_${d.role}`;
+      const hashedDemoPass = await hashPassword(d.password);
       await Employee.create({
         _id: empId,
         id: empId,
         company_id: DEFAULT_COMPANY_ID,
         name: d.name,
         email: d.email.toLowerCase(),
-        password: d.password,
+        password: hashedDemoPass,
         role: d.role,
         department: d.department,
         avatar: d.avatar,
@@ -175,7 +193,7 @@ export async function POST(req: NextRequest) {
         company_id: DEFAULT_COMPANY_ID,
         name: d.name,
         email: d.email.toLowerCase(),
-        password: d.password,
+        password: hashedDemoPass,
         role: d.role,
         department: d.department,
         avatar: d.avatar,

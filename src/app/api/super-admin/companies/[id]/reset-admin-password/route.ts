@@ -4,6 +4,7 @@ import Company from '@/models/Company';
 import Employee from '@/models/Employee';
 import User from '@/models/User';
 import { requireRoles } from '@/lib/apiAuth';
+import { hashPassword } from '@/lib/authCrypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,13 +56,14 @@ export async function POST(
     }
 
     const newTempPassword = generateRandomPassword();
+    const hashedTempPassword = await hashPassword(newTempPassword);
 
     // Update in Employee
     await Employee.updateOne(
       { email: admin.email },
       {
         $set: {
-          password: newTempPassword,
+          password: hashedTempPassword,
           must_change_password: true,
           updatedAt: new Date(),
         },
@@ -73,7 +75,7 @@ export async function POST(
       { email: admin.email },
       {
         $set: {
-          password: newTempPassword,
+          password: hashedTempPassword,
           must_change_password: true,
           updatedAt: new Date(),
         },

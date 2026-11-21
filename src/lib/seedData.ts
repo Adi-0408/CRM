@@ -16,6 +16,7 @@ import Notification from '@/models/Notification';
 import Standup from '@/models/Standup';
 import { DEFAULT_COMPANY_ID } from '@/lib/apiAuth';
 import { invalidatePayrollCache } from '@/lib/payrollEngine';
+import { hashPassword } from '@/lib/authCrypto';
 
 export const DEFAULT_COMPANY = {
   _id: DEFAULT_COMPANY_ID,
@@ -90,12 +91,13 @@ export async function wipeAndSeedDatabase(targetCompanyId: string = DEFAULT_COMP
 
   // 3. Seed Platform Super Admin Account (Global, company_id = null)
   if (isPlatformWipe) {
+    const superAdminHashed = await hashPassword('admin123');
     await User.create({
       _id: 'user_superadmin',
       id: 'user_superadmin',
       name: 'Platform Super Admin',
       email: 'superadmin@crm.com',
-      password: 'pass123',
+      password: superAdminHashed,
       role: 'platform_super_admin',
       department: 'Platform Engineering',
       company_id: null,
@@ -111,7 +113,7 @@ export async function wipeAndSeedDatabase(targetCompanyId: string = DEFAULT_COMP
       id: 'emp_superadmin',
       name: 'Platform Super Admin',
       email: 'superadmin@crm.com',
-      password: 'pass123',
+      password: superAdminHashed,
       role: 'platform_super_admin',
       department: 'Platform Engineering',
       company_id: null,
@@ -302,14 +304,17 @@ export async function wipeAndSeedDatabase(targetCompanyId: string = DEFAULT_COMP
     },
   ];
 
+  const hashedEmployeePass = await hashPassword('pass123');
+
   for (const empData of seedEmployeeList) {
-    await Employee.create(empData);
+    await Employee.create({ ...empData, password: hashedEmployeePass });
     await User.create({
       _id: empData._id,
       id: empData._id,
       company_id: targetCompanyId,
       name: empData.name,
       email: empData.email,
+      password: hashedEmployeePass,
       role: empData.role,
       department: empData.department,
       avatar: empData.avatar,
@@ -329,6 +334,7 @@ export async function wipeAndSeedDatabase(targetCompanyId: string = DEFAULT_COMP
       company_id: targetCompanyId,
       name: 'Aditya Varma',
       email: 'admin@gmail.com',
+      password: hashedEmployeePass,
       role: 'admin_manager',
       department: 'Executive Management',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',

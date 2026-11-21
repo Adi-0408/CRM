@@ -103,24 +103,21 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const fetchCompanyBranding = useCallback(async () => {
     if (!isAuthenticated) {
       setBranding(DEFAULT_BRANDING);
-      applyBrandingToDOM(DEFAULT_BRANDING);
       return;
     }
 
     // Platform Super Admin uses clean platform branding only - never any tenant's branding or custom logo
     if (user?.role === 'platform_super_admin') {
       setBranding(DEFAULT_BRANDING);
-      applyBrandingToDOM(DEFAULT_BRANDING);
       return;
     }
 
     try {
       setLoading(true);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('crm_auth_token') : null;
       const res = await fetch('/api/companies/current', {
         headers: {
-          'x-user-id': user?.id || '',
-          'x-user-email': user?.email || '',
-          'x-user-role': user?.role || '',
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
         },
       });
 
@@ -147,7 +144,6 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           };
 
           setBranding(merged);
-          applyBrandingToDOM(merged);
           const cacheKey = user?.company_id ? `crm_branding_${user.company_id}` : (comp.id || comp._id ? `crm_branding_${comp.id || comp._id}` : null);
           if (cacheKey) {
             try {
@@ -161,16 +157,15 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, user?.id, user?.email, user?.role, user?.company_id, applyBrandingToDOM]);
+  }, [isAuthenticated, user?.role, user?.company_id]);
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchCompanyBranding();
     } else {
       setBranding(DEFAULT_BRANDING);
-      applyBrandingToDOM(DEFAULT_BRANDING);
     }
-  }, [isAuthenticated, user?.company_id, user?.role, fetchCompanyBranding, applyBrandingToDOM]);
+  }, [isAuthenticated, user?.company_id, user?.role, fetchCompanyBranding]);
 
   useEffect(() => {
     applyBrandingToDOM(branding);

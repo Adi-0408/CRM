@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/db';
 import Employee from '@/models/Employee';
 import { User } from '@/models/User';
 import { requireRoles, DEFAULT_COMPANY_ID } from '@/lib/apiAuth';
+import { hashPassword } from '@/lib/authCrypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest) {
     }
 
     await connectToDatabase();
+    const hashedPassword = await hashPassword(cleanPassword);
 
     // Guard against modifying employee belonging to a different tenant
     const existing = await Employee.findOne({ email: cleanEmail });
@@ -60,7 +62,7 @@ export async function POST(req: NextRequest) {
           company_id: companyId,
           name,
           email: cleanEmail,
-          password: cleanPassword,
+          password: hashedPassword,
           role: cleanRole,
           department: department || 'Engineering',
           salary: Number(salary) || 50000,
@@ -88,7 +90,7 @@ export async function POST(req: NextRequest) {
           company_id: companyId,
           name,
           email: cleanEmail,
-          password: cleanPassword,
+          password: hashedPassword,
           role: cleanRole,
           department: department || 'Engineering',
           designation: cleanRole,
