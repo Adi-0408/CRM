@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const authResult = await requireRoles(req, [
@@ -27,7 +27,8 @@ export async function PUT(
     const authUser = authResult.user!;
 
     await connectToDatabase();
-    const currentProject = await Project.findById(params.id);
+    const resolvedParams = await Promise.resolve(context.params);
+    const currentProject = await Project.findById(resolvedParams.id);
     if (!currentProject) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
@@ -93,12 +94,12 @@ export async function PUT(
       if (body.title !== undefined) allowedSalesUpdates.title = body.title;
       if (body.salesRep !== undefined) allowedSalesUpdates.salesRep = body.salesRep;
 
-      const updated = await Project.findByIdAndUpdate(params.id, allowedSalesUpdates, {
+      const updated = await Project.findByIdAndUpdate(resolvedParams.id, allowedSalesUpdates, {
         new: true,
         runValidators: true,
       });
 
-      const populated = await Project.findById(params.id)
+      const populated = await Project.findById(resolvedParams.id)
         .populate('teamMembers', 'name email avatar role')
         .populate('salesRep', 'name email avatar role');
       return NextResponse.json(populated || updated);
@@ -126,7 +127,7 @@ export async function PUT(
       }
     }
 
-    const updated = await Project.findByIdAndUpdate(params.id, body, {
+    const updated = await Project.findByIdAndUpdate(resolvedParams.id, body, {
       new: true,
       runValidators: true,
     });
@@ -138,7 +139,7 @@ export async function PUT(
     // Cascade on_hold status to associated tasks in the same company
     if (body.status === 'on_hold') {
       try {
-        const linkedTasks = await Task.find({ project: params.id, company_id: currentProject.company_id });
+        const linkedTasks = await Task.find({ project: resolvedParams.id, company_id: currentProject.company_id });
         for (const t of linkedTasks) {
           if (t.status !== 'completed' && t.status !== 'on_hold') {
             await Task.findByIdAndUpdate(t._id || t.id, { status: 'on_hold' });
@@ -149,7 +150,7 @@ export async function PUT(
       }
     } else if (currentProject.status === 'on_hold' && body.status && body.status !== 'on_hold') {
       try {
-        const linkedTasks = await Task.find({ project: params.id, company_id: currentProject.company_id, status: 'on_hold' });
+        const linkedTasks = await Task.find({ project: resolvedParams.id, company_id: currentProject.company_id, status: 'on_hold' });
         const targetStatus = body.status === 'in_progress' ? 'in_progress' : 'new';
         for (const t of linkedTasks) {
           await Task.findByIdAndUpdate(t._id || t.id, { status: targetStatus });
@@ -159,7 +160,7 @@ export async function PUT(
       }
     }
 
-    const populated = await Project.findById(params.id)
+    const populated = await Project.findById(resolvedParams.id)
       .populate('teamMembers', 'name email avatar role')
       .populate('salesRep', 'name email avatar role');
     return NextResponse.json(populated || updated);
@@ -170,14 +171,15 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'team_lead', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
-    const existing = await Project.findById(params.id);
+    const resolvedParams = await Promise.resolve(context.params);
+    const existing = await Project.findById(resolvedParams.id);
     if (!existing) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
@@ -187,7 +189,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    const deleted = await Project.findByIdAndDelete(params.id);
+    const deleted = await Project.findByIdAndDelete(resolvedParams.id);
     if (!deleted) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }

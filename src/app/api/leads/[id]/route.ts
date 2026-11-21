@@ -8,14 +8,15 @@ export const dynamic = 'force-dynamic';
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'sales', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
-    const existing = await Lead.findById(params.id);
+    const resolvedParams = await Promise.resolve(context.params);
+    const existing = await Lead.findById(resolvedParams.id);
     if (!existing) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
     }
@@ -28,7 +29,7 @@ export async function PUT(
     const body = await req.json();
     delete body.company_id;
 
-    const updated = await Lead.findByIdAndUpdate(params.id, body, {
+    const updated = await Lead.findByIdAndUpdate(resolvedParams.id, body, {
       new: true,
       runValidators: true,
     });
@@ -44,7 +45,7 @@ export async function PUT(
 
       if (!matchingProject) {
         matchingProject = await Project.findOne({
-          leadId: params.id,
+          leadId: resolvedParams.id,
           company_id: existing.company_id,
         });
       }
@@ -60,13 +61,13 @@ export async function PUT(
 
         // Ensure cross-references are saved
         if (!updated.projectId) {
-          await Lead.findByIdAndUpdate(params.id, {
+          await Lead.findByIdAndUpdate(resolvedParams.id, {
             projectId: linkedProjectId,
             projectTitle: matchingProject.title,
           });
         }
         if (!matchingProject.leadId) {
-          await Project.findByIdAndUpdate(linkedProjectId, { leadId: params.id });
+          await Project.findByIdAndUpdate(linkedProjectId, { leadId: resolvedParams.id });
         }
 
         if (body.status !== 'won') {
@@ -80,7 +81,7 @@ export async function PUT(
       }
     }
 
-    const populated = await Lead.findById(params.id).populate('assignedTo', 'name email avatar role');
+    const populated = await Lead.findById(resolvedParams.id).populate('assignedTo', 'name email avatar role');
     return NextResponse.json(populated || updated);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -89,14 +90,15 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'sales', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
-    const existing = await Lead.findById(params.id);
+    const resolvedParams = await Promise.resolve(context.params);
+    const existing = await Lead.findById(resolvedParams.id);
     if (!existing) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
     }
@@ -106,7 +108,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
     }
 
-    const deleted = await Lead.findByIdAndDelete(params.id);
+    const deleted = await Lead.findByIdAndDelete(resolvedParams.id);
     if (!deleted) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
     }

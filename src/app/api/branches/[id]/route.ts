@@ -3,9 +3,11 @@ import { connectToDatabase } from '@/lib/db';
 import Branch from '@/models/Branch';
 import { requireRoles } from '@/lib/apiAuth';
 
+export const dynamic = 'force-dynamic';
+
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'platform_super_admin']);
@@ -14,7 +16,8 @@ export async function PUT(
     }
 
     await connectToDatabase();
-    const branch = await Branch.findById(params.id);
+    const resolvedParams = await Promise.resolve(context.params);
+    const branch = await Branch.findById(resolvedParams.id);
     if (!branch) {
       return NextResponse.json({ error: 'Branch not found' }, { status: 404 });
     }
@@ -42,12 +45,12 @@ export async function PUT(
       body.isHeadOffice = true;
       body.status = 'Head Office';
       await Branch.updateMany(
-        { company_id: branch.company_id, _id: { $ne: params.id } },
+        { company_id: branch.company_id, _id: { $ne: resolvedParams.id } },
         { isHeadOffice: false }
       );
     }
 
-    const updated = await Branch.findByIdAndUpdate(params.id, body, { new: true });
+    const updated = await Branch.findByIdAndUpdate(resolvedParams.id, body, { new: true });
     return NextResponse.json(updated);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -56,7 +59,7 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'platform_super_admin']);
@@ -65,7 +68,8 @@ export async function DELETE(
     }
 
     await connectToDatabase();
-    const branch = await Branch.findById(params.id);
+    const resolvedParams = await Promise.resolve(context.params);
+    const branch = await Branch.findById(resolvedParams.id);
 
     if (!branch) {
       return NextResponse.json({ error: 'Branch not found' }, { status: 404 });
@@ -85,7 +89,7 @@ export async function DELETE(
       );
     }
 
-    await Branch.findByIdAndDelete(params.id);
+    await Branch.findByIdAndDelete(resolvedParams.id);
     return NextResponse.json({ success: true, message: 'Branch deleted successfully' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

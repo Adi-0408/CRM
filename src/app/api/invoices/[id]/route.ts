@@ -7,14 +7,15 @@ export const dynamic = 'force-dynamic';
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'accounts', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
-    const existing = await Invoice.findById(params.id);
+    const resolvedParams = await Promise.resolve(context.params);
+    const existing = await Invoice.findById(resolvedParams.id);
     if (!existing) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
@@ -31,7 +32,7 @@ export async function PUT(
       body.paidAt = new Date();
     }
 
-    const updated = await Invoice.findByIdAndUpdate(params.id, body, {
+    const updated = await Invoice.findByIdAndUpdate(resolvedParams.id, body, {
       new: true,
       runValidators: true,
     });
@@ -44,14 +45,15 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'accounts', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
-    const existing = await Invoice.findById(params.id);
+    const resolvedParams = await Promise.resolve(context.params);
+    const existing = await Invoice.findById(resolvedParams.id);
     if (!existing) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
@@ -61,7 +63,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
-    await Invoice.findByIdAndDelete(params.id);
+    await Invoice.findByIdAndDelete(resolvedParams.id);
     return NextResponse.json({ message: 'Invoice deleted successfully' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -3,6 +3,8 @@ import { connectToDatabase } from '@/lib/db';
 import Branch from '@/models/Branch';
 import { requireTenantAuth, requireRoles, DEFAULT_COMPANY_ID, buildTenantFilter } from '@/lib/apiAuth';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const authResult = await requireTenantAuth(req);

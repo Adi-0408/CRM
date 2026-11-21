@@ -8,14 +8,15 @@ export const dynamic = 'force-dynamic';
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'sales', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
-    const existing = await Quotation.findById(params.id);
+    const resolvedParams = await Promise.resolve(context.params);
+    const existing = await Quotation.findById(resolvedParams.id);
     if (!existing) {
       return NextResponse.json({ error: 'Quotation not found' }, { status: 404 });
     }
@@ -28,7 +29,7 @@ export async function PUT(
     const body = await req.json();
     delete body.company_id;
 
-    const updated = await Quotation.findByIdAndUpdate(params.id, body, {
+    const updated = await Quotation.findByIdAndUpdate(resolvedParams.id, body, {
       new: true,
       runValidators: true,
     });
@@ -63,14 +64,15 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'sales', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
-    const existing = await Quotation.findById(params.id);
+    const resolvedParams = await Promise.resolve(context.params);
+    const existing = await Quotation.findById(resolvedParams.id);
     if (!existing) {
       return NextResponse.json({ error: 'Quotation not found' }, { status: 404 });
     }
@@ -80,7 +82,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Quotation not found' }, { status: 404 });
     }
 
-    await Quotation.findByIdAndDelete(params.id);
+    await Quotation.findByIdAndDelete(resolvedParams.id);
     return NextResponse.json({ message: 'Quotation deleted successfully' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

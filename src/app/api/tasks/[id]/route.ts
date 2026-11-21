@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const authUser = await getAuthUser(req);
@@ -21,7 +21,8 @@ export async function PUT(
     }
 
     await connectToDatabase();
-    const oldTask = await Task.findById(params.id);
+    const resolvedParams = await Promise.resolve(context.params);
+    const oldTask = await Task.findById(resolvedParams.id);
     if (!oldTask) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
@@ -62,7 +63,7 @@ export async function PUT(
       if (body.status === 'completed') safeUpdate.completedAt = new Date();
       else if (body.status && body.status !== 'completed') safeUpdate.completedAt = null;
 
-      const updated = await Task.findByIdAndUpdate(params.id, safeUpdate, { new: true })
+      const updated = await Task.findByIdAndUpdate(resolvedParams.id, safeUpdate, { new: true })
         .populate('assignedTo', 'name email avatar role')
         .populate('project', 'title client status');
 
@@ -90,7 +91,7 @@ export async function PUT(
       }
     }
 
-    const updated = await Task.findByIdAndUpdate(params.id, body, {
+    const updated = await Task.findByIdAndUpdate(resolvedParams.id, body, {
       new: true,
       runValidators: true,
     })
@@ -112,14 +113,15 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ): Promise<NextResponse> {
   try {
     const authResult = await requireRoles(req, ['admin_manager', 'company_admin', 'team_lead', 'platform_super_admin']);
     if (authResult.errorResponse) return authResult.errorResponse;
 
     await connectToDatabase();
-    const task = await Task.findById(params.id);
+    const resolvedParams = await Promise.resolve(context.params);
+    const task = await Task.findById(resolvedParams.id);
     if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
@@ -135,7 +137,7 @@ export async function DELETE(
       });
     }
 
-    await Task.findByIdAndDelete(params.id);
+    await Task.findByIdAndDelete(resolvedParams.id);
 
     if (task.project) {
       await recalculateProjectProgress(String(task.project));
