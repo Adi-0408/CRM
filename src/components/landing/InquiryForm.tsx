@@ -15,8 +15,12 @@ import {
   Sparkles,
   ArrowRight,
   ShieldCheck,
+  MapPin,
+  Clock,
+  Headphones,
 } from 'lucide-react';
 import CustomSelect from '@/components/common/CustomSelect';
+import { ILandingContent, DEFAULT_LANDING_CONTENT } from '@/models/LandingContent';
 
 interface FormState {
   name: string;
@@ -47,7 +51,11 @@ const MODULE_OPTIONS = [
   'Technical Support Desk',
 ];
 
-export default function InquiryForm() {
+interface InquiryFormProps {
+  contact?: ILandingContent['contact'];
+}
+
+export default function InquiryForm({ contact = DEFAULT_LANDING_CONTENT.contact }: InquiryFormProps) {
   const [formData, setFormData] = useState<FormState>({
     name: '',
     email: '',
@@ -195,27 +203,141 @@ export default function InquiryForm() {
     setIsSuccess(false);
   };
 
+  const email = contact?.email || DEFAULT_LANDING_CONTENT.contact.email;
+  const phone = contact?.phone || DEFAULT_LANDING_CONTENT.contact.phone;
+  const address = contact?.address || DEFAULT_LANDING_CONTENT.contact.address;
+
   return (
-    <section id="contact" className="py-20 sm:py-28 relative scroll-mt-20 overflow-hidden bg-gradient-to-b from-white via-slate-50 to-white">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="contact" className="py-20 sm:py-28 relative scroll-mt-20 overflow-hidden bg-gradient-to-b from-white via-slate-50/70 to-white">
+      {/* Background ambient lighting blobs */}
+      <div className="absolute top-1/2 left-0 -translate-y-1/2 w-96 h-96 bg-[#635BFF]/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#00D4B2]/5 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-12 space-y-4">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#F0EEFF] border border-[#D8D4FF] text-[#635BFF] text-xs font-bold uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5 text-[#00D4B2]" />
-            <span>Direct Enterprise Inquiries</span>
+        <div className="text-center max-w-3xl mx-auto mb-14 space-y-4">
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#F0EEFF] border border-[#D8D4FF] text-[#635BFF] text-xs font-bold uppercase tracking-wider shadow-xs">
+            <Mail className="w-3.5 h-3.5 text-[#635BFF]" />
+            <span>Contact &amp; Enterprise Support</span>
           </div>
 
           <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-900 leading-tight">
-            Let&apos;s Build a Smarter Workplace Together.
+            Get in Touch with Our Team
           </h2>
 
           <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal">
-            Tell us about your organization and discover how PrismCRM can simplify your business operations.
+            Have questions about PrismCRM features, multi-tenant deployment, or custom enterprise requirements? Reach out directly or send us an inquiry.
           </p>
         </div>
 
-        {/* Form Container */}
-        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-[0_20px_50px_rgba(15,23,42,0.08)] p-6 sm:p-10 transition-all duration-300">
+        {/* Two-Column Grid: Contact Information Cards + Interactive Inquiry Form */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+          {/* Left Column: Direct Contact Details & Enterprise Desk (5 cols) */}
+          <div className="lg:col-span-5 space-y-6">
+            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-lg shadow-slate-100 p-6 sm:p-8 space-y-6">
+              <div className="space-y-1">
+                <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">Direct Channels</h3>
+                <p className="text-xs sm:text-sm text-slate-500">Connect with our solutions specialists across any preferred medium.</p>
+              </div>
+
+              <div className="space-y-4 pt-1">
+                {/* Email Channel */}
+                {email && (
+                  <a
+                    href={`mailto:${email}`}
+                    className="group flex items-start gap-4 p-4 rounded-2xl bg-slate-50/70 border border-slate-200/70 hover:border-[#635BFF]/40 hover:bg-[#F0EEFF]/30 transition-all"
+                  >
+                    <div className="w-11 h-11 rounded-xl bg-indigo-50 border border-indigo-100 text-[#635BFF] flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:bg-[#635BFF] group-hover:text-white transition-all shadow-xs">
+                      <Mail className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Email Us</div>
+                      <div className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-[#635BFF] transition-colors truncate">
+                        {email}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">Response within 2&ndash;4 business hours</div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#635BFF] group-hover:translate-x-1 transition-all mt-3 shrink-0" />
+                  </a>
+                )}
+
+                {/* Phone Channel */}
+                {phone && (
+                  <a
+                    href={`tel:${phone}`}
+                    className="group flex items-start gap-4 p-4 rounded-2xl bg-slate-50/70 border border-slate-200/70 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all"
+                  >
+                    <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-xs">
+                      <Phone className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Direct Phone</div>
+                      <div className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                        {phone}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">Mon &ndash; Sat from 9:00 AM to 7:00 PM IST</div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all mt-3 shrink-0" />
+                  </a>
+                )}
+
+                {/* Corporate Address */}
+                {address && (
+                  <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50/70 border border-slate-200/70">
+                    <div className="w-11 h-11 rounded-xl bg-purple-50 border border-purple-100 text-purple-600 flex items-center justify-center shrink-0 shadow-xs">
+                      <MapPin className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Corporate Headquarters</div>
+                      <div className="text-sm font-bold text-slate-900 mt-0.5">{address}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">Visits scheduled by prior appointment</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Operating Hours */}
+                <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50/70 border border-slate-200/70">
+                  <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center shrink-0 shadow-xs">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Operational Schedule</div>
+                    <div className="text-sm font-bold text-slate-900 mt-0.5">Monday &ndash; Saturday: 9:00 AM &ndash; 7:00 PM IST</div>
+                    <div className="text-xs text-slate-500 mt-0.5">Automated Cloud Monitoring Active 24/7</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Existing Tenant Support Card */}
+            <div className="rounded-3xl p-6 bg-gradient-to-br from-[#0F172A] to-[#1E1B4B] text-white border border-slate-800 shadow-xl space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center border border-white/15">
+                  <Headphones className="w-5 h-5 text-[#00D4B2]" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm sm:text-base text-white">Existing Workspace Member?</h4>
+                  <p className="text-xs text-slate-300">Fast-track ticket resolution</p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed font-normal">
+                If your company already uses PrismCRM, log into your tenant workspace to raise an internal support ticket for immediate SLA-backed technical assistance.
+              </p>
+              <div className="pt-1 flex items-center gap-2 text-xs font-semibold text-[#00D4B2]">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>99.99% Guaranteed Cloud Availability</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Inquiry & Demo Request Form (7 cols) */}
+          <div className="lg:col-span-7">
+            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-[0_20px_50px_rgba(15,23,42,0.08)] p-6 sm:p-10 transition-all duration-300">
+              <div className="mb-8 space-y-1">
+                <div className="text-xs font-bold text-[#635BFF] uppercase tracking-wider">Quick Inquiry Form</div>
+                <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight">Request a Personalized Demo</h3>
+                <p className="text-xs sm:text-sm text-slate-500">Fill in your requirements and we will configure a demo workspace for you.</p>
+              </div>
           {isSuccess ? (
             /* Success Feedback State */
             <div className="text-center py-10 sm:py-16 space-y-6 animate-in fade-in zoom-in-95 duration-300">
@@ -462,6 +584,8 @@ export default function InquiryForm() {
               </div>
             </form>
           )}
+            </div>
+          </div>
         </div>
       </div>
     </section>

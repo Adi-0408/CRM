@@ -28,6 +28,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'How It Works', targetId: 'how-it-works' },
   { label: 'Security', targetId: 'security' },
   { label: 'FAQ', targetId: 'faq' },
+  { label: 'Contact', targetId: 'contact' },
 ];
 
 export default function LandingNav() {

@@ -84,8 +84,8 @@ export default function LandingPage() {
         {/* 12. 10-Item Expandable FAQ Accordion */}
         <FaqSection />
 
-        {/* 13. Upgraded Enterprise Inquiry Form */}
-        <InquiryForm />
+        {/* 13. Upgraded Enterprise Contact & Inquiry Section */}
+        <InquiryForm contact={content.contact} />
       </main>
 
       {/* 14. Professional 5-Column Enterprise Footer */}
