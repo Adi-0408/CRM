@@ -82,7 +82,9 @@ export default function CRMWorkspace({
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(
-    role === 'platform_super_admin' ? 'organizations' : initialTab
+    role === 'platform_super_admin'
+      ? 'organizations'
+      : (initialTab === 'super_admin' || initialTab === 'organizations' ? 'overview' : initialTab)
   );
   const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -102,15 +104,19 @@ export default function CRMWorkspace({
     setVisitedTabs((prev) => (prev[activeTab] ? prev : { ...prev, [activeTab]: true }));
   }, [activeTab]);
 
-  // If role is Super Admin, validate active tab
+  // If role is Super Admin, validate active tab; if company tenant user, forbid super_admin / organizations
   useEffect(() => {
     if (role === 'platform_super_admin') {
       const allowed = ['organizations', 'inquiries', 'landing_cms', 'super_admin'];
       if (!allowed.includes(activeTab)) {
         setActiveTab('organizations');
       }
+    } else {
+      if (activeTab === 'super_admin' || activeTab === 'organizations') {
+        setActiveTab('overview');
+      }
     }
-  }, [role]);
+  }, [role, activeTab]);
 
   // Fetch unread inquiries count for Super Admin & Company Admin sidebar badge
   useEffect(() => {
@@ -168,6 +174,11 @@ export default function CRMWorkspace({
       }
       return;
     }
+    // Strictly block company admins and users from entering super_admin or organizations
+    if (tab === 'super_admin' || tab === 'organizations') {
+      setActiveTab('overview');
+      return;
+    }
     setActiveTab(tab);
   };
 
@@ -177,6 +188,11 @@ export default function CRMWorkspace({
       if (allowed.includes(tab)) {
         setActiveTab(tab === 'super_admin' ? 'organizations' : tab);
       }
+      return;
+    }
+    // Strictly block company admins and users from entering super_admin or organizations
+    if (tab === 'super_admin' || tab === 'organizations') {
+      setActiveTab('overview');
       return;
     }
     if (tab === 'quotations') {

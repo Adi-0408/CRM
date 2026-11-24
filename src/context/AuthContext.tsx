@@ -174,6 +174,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (role === 'platform_super_admin') {
       return ['super_admin', 'organizations', 'inquiries', 'landing_cms'].includes(tabId);
     }
+    // Company admin and other tenant users must NEVER have access to super_admin or organizations
+    if (tabId === 'super_admin' || tabId === 'organizations') return false;
     if (role === 'admin_manager' || role === 'company_admin') return true;
     return roleConfig.allowedViews.includes(tabId);
   };

@@ -7,7 +7,6 @@ import TrustSection from './TrustSection';
 import FeaturesSection from './FeaturesSection';
 import ProductShowcaseSection from './ProductShowcaseSection';
 import ArchitectureSection from './ArchitectureSection';
-import WhyChooseSection from './WhyChooseSection';
 import HowItWorksSection from './HowItWorksSection';
 import RolesSection from './RolesSection';
 import SecuritySection from './SecuritySection';
@@ -70,10 +69,7 @@ export default function LandingPage() {
         {/* 6. Multi-Tenant Architecture & Workspace Isolation Visualizer */}
         <ArchitectureSection />
 
-        {/* 7. Why Choose PrismCRM Operational Advantage */}
-        <WhyChooseSection />
-
-        {/* 8. 3-Step Animated Onboarding Timeline */}
+        {/* 7. 3-Step Animated Onboarding Timeline */}
         <HowItWorksSection howItWorks={content.howItWorks} />
 
         {/* 9. Role-Based Access Control (8 Roles Grid) */}

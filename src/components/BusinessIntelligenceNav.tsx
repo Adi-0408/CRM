@@ -28,10 +28,11 @@ export default function BusinessIntelligenceNav({
   setActiveTab,
   syncing = false,
 }: BINavProps) {
-  const { roleConfig } = useAuth();
+  const { roleConfig, user } = useAuth();
+  const isSuperAdmin = user?.role === 'platform_super_admin';
 
   const allTabs = [
-    { id: 'super_admin', label: 'Tenants', icon: Shield },
+    ...(isSuperAdmin ? [{ id: 'super_admin', label: 'Tenants', icon: Shield }] : []),
     { id: 'overview', label: 'Overview', icon: Activity },
     { id: 'tasks', label: 'Tasks', icon: CheckSquare },
     { id: 'leads', label: 'Leads', icon: Users2 },
@@ -43,10 +44,13 @@ export default function BusinessIntelligenceNav({
     { id: 'employees', label: 'Employees', icon: UserCheck },
   ];
 
-  // Dynamically filter tabs by role
-  const tabs = allTabs.filter((tab) =>
-    roleConfig.biNavTabs.includes(tab.id)
-  );
+  // Dynamically filter tabs by role - strictly ensure Tenants (super_admin) is only visible to super admin
+  const tabs = allTabs.filter((tab) => {
+    if (tab.id === 'super_admin') {
+      return isSuperAdmin;
+    }
+    return roleConfig.biNavTabs.includes(tab.id);
+  });
 
   return (
     <div className="mb-6">

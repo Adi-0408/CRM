@@ -53,6 +53,7 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
       'landing_cms',
     ],
     biNavTabs: [
+      'super_admin',
       'organizations',
       'inquiries',
       'landing_cms',
@@ -74,7 +75,6 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
     badgeText: 'text-[#635BFF]',
     badgeBorder: 'border-purple-200',
     sidebarTabs: [
-      'super_admin',
       'dashboard',
       'tasks',
       'leads',
@@ -88,7 +88,6 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
       'management',
     ],
     biNavTabs: [
-      'super_admin',
       'overview',
       'tasks',
       'leads',
@@ -101,7 +100,6 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
       'branches',
     ],
     allowedViews: [
-      'super_admin',
       'overview',
       'dashboard',
       'tasks',
@@ -127,7 +125,6 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
     badgeText: 'text-[#635BFF]',
     badgeBorder: 'border-purple-200',
     sidebarTabs: [
-      'super_admin',
       'dashboard',
       'tasks',
       'leads',
@@ -141,7 +138,6 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
       'management',
     ],
     biNavTabs: [
-      'super_admin',
       'overview',
       'tasks',
       'leads',
@@ -154,7 +150,6 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
       'branches',
     ],
     allowedViews: [
-      'super_admin',
       'overview',
       'dashboard',
       'tasks',
