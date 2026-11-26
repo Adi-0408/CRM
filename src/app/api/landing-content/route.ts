@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/db';
 import LandingContent, { DEFAULT_LANDING_CONTENT } from '@/models/LandingContent';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(_req: NextRequest) {
   try {
@@ -10,7 +11,13 @@ export async function GET(_req: NextRequest) {
     const doc = await LandingContent.findById('landing_content');
 
     if (!doc) {
-      return NextResponse.json(DEFAULT_LANDING_CONTENT);
+      return NextResponse.json(DEFAULT_LANDING_CONTENT, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      });
     }
 
     const data = typeof doc.toObject === 'function' ? doc.toObject() : doc;
@@ -37,10 +44,20 @@ export async function GET(_req: NextRequest) {
       updatedAt: data.updatedAt,
     };
 
-    return NextResponse.json(merged);
+    return NextResponse.json(merged, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
   } catch (error: any) {
     console.error('Error fetching landing content:', error);
     // Graceful fallback to default landing content on any error
-    return NextResponse.json(DEFAULT_LANDING_CONTENT);
+    return NextResponse.json(DEFAULT_LANDING_CONTENT, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      },
+    });
   }
 }

@@ -4,6 +4,7 @@ import LandingContent, { DEFAULT_LANDING_CONTENT } from '@/models/LandingContent
 import { requireRoles } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,7 +16,12 @@ export async function GET(req: NextRequest) {
     await connectToDatabase();
     const doc = await LandingContent.findById('landing_content');
     if (!doc) {
-      return NextResponse.json(DEFAULT_LANDING_CONTENT);
+      return NextResponse.json(DEFAULT_LANDING_CONTENT, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      });
     }
 
     const data = typeof doc.toObject === 'function' ? doc.toObject() : doc;
@@ -28,7 +34,12 @@ export async function GET(req: NextRequest) {
       updatedAt: data.updatedAt,
     };
 
-    return NextResponse.json(merged);
+    return NextResponse.json(merged, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Pragma': 'no-cache',
+      },
+    });
   } catch (error: any) {
     console.error('Super Admin landing content GET error:', error);
     return NextResponse.json({ error: error.message || 'Failed to fetch landing content' }, { status: 500 });
@@ -53,7 +64,12 @@ export async function PATCH(req: NextRequest) {
         id: 'landing_content',
         updatedAt: new Date().toISOString(),
       };
-      await LandingContent.findByIdAndUpdate('landing_content', resetPayload, { upsert: true });
+      const existing = await LandingContent.findById('landing_content');
+      if (!existing) {
+        await LandingContent.create(resetPayload);
+      } else {
+        await LandingContent.findByIdAndUpdate('landing_content', resetPayload, { upsert: true });
+      }
       return NextResponse.json({ ok: true, content: resetPayload });
     }
 
@@ -64,36 +80,44 @@ export async function PATCH(req: NextRequest) {
       _id: 'landing_content',
       id: 'landing_content',
       hero: {
-        badgeText: String(body.hero?.badgeText || existingData.hero?.badgeText || DEFAULT_LANDING_CONTENT.hero.badgeText).trim(),
-        headline: String(body.hero?.headline || existingData.hero?.headline || DEFAULT_LANDING_CONTENT.hero.headline).trim(),
-        subheadline: String(body.hero?.subheadline || existingData.hero?.subheadline || DEFAULT_LANDING_CONTENT.hero.subheadline).trim(),
-        primaryCtaText: String(body.hero?.primaryCtaText || existingData.hero?.primaryCtaText || DEFAULT_LANDING_CONTENT.hero.primaryCtaText).trim(),
-        secondaryCtaText: String(body.hero?.secondaryCtaText || existingData.hero?.secondaryCtaText || DEFAULT_LANDING_CONTENT.hero.secondaryCtaText).trim(),
+        badgeText: body.hero?.badgeText !== undefined ? String(body.hero.badgeText).trim() : (existingData.hero?.badgeText || DEFAULT_LANDING_CONTENT.hero.badgeText),
+        headline: body.hero?.headline !== undefined ? String(body.hero.headline).trim() : (existingData.hero?.headline || DEFAULT_LANDING_CONTENT.hero.headline),
+        subheadline: body.hero?.subheadline !== undefined ? String(body.hero.subheadline).trim() : (existingData.hero?.subheadline || DEFAULT_LANDING_CONTENT.hero.subheadline),
+        primaryCtaText: body.hero?.primaryCtaText !== undefined ? String(body.hero.primaryCtaText).trim() : (existingData.hero?.primaryCtaText || DEFAULT_LANDING_CONTENT.hero.primaryCtaText),
+        secondaryCtaText: body.hero?.secondaryCtaText !== undefined ? String(body.hero.secondaryCtaText).trim() : (existingData.hero?.secondaryCtaText || DEFAULT_LANDING_CONTENT.hero.secondaryCtaText),
       },
       features: {
-        sectionBadge: String(body.features?.sectionBadge || existingData.features?.sectionBadge || DEFAULT_LANDING_CONTENT.features.sectionBadge).trim(),
-        sectionTitle: String(body.features?.sectionTitle || existingData.features?.sectionTitle || DEFAULT_LANDING_CONTENT.features.sectionTitle).trim(),
-        sectionSubtitle: String(body.features?.sectionSubtitle || existingData.features?.sectionSubtitle || DEFAULT_LANDING_CONTENT.features.sectionSubtitle).trim(),
-        multiTenantBannerTitle: String(body.features?.multiTenantBannerTitle || existingData.features?.multiTenantBannerTitle || DEFAULT_LANDING_CONTENT.features.multiTenantBannerTitle).trim(),
-        multiTenantBannerSubtitle: String(body.features?.multiTenantBannerSubtitle || existingData.features?.multiTenantBannerSubtitle || DEFAULT_LANDING_CONTENT.features.multiTenantBannerSubtitle).trim(),
+        sectionBadge: body.features?.sectionBadge !== undefined ? String(body.features.sectionBadge).trim() : (existingData.features?.sectionBadge || DEFAULT_LANDING_CONTENT.features.sectionBadge),
+        sectionTitle: body.features?.sectionTitle !== undefined ? String(body.features.sectionTitle).trim() : (existingData.features?.sectionTitle || DEFAULT_LANDING_CONTENT.features.sectionTitle),
+        sectionSubtitle: body.features?.sectionSubtitle !== undefined ? String(body.features.sectionSubtitle).trim() : (existingData.features?.sectionSubtitle || DEFAULT_LANDING_CONTENT.features.sectionSubtitle),
+        multiTenantBannerTitle: body.features?.multiTenantBannerTitle !== undefined ? String(body.features.multiTenantBannerTitle).trim() : (existingData.features?.multiTenantBannerTitle || DEFAULT_LANDING_CONTENT.features.multiTenantBannerTitle),
+        multiTenantBannerSubtitle: body.features?.multiTenantBannerSubtitle !== undefined ? String(body.features.multiTenantBannerSubtitle).trim() : (existingData.features?.multiTenantBannerSubtitle || DEFAULT_LANDING_CONTENT.features.multiTenantBannerSubtitle),
       },
       howItWorks: {
-        step1Title: String(body.howItWorks?.step1Title || existingData.howItWorks?.step1Title || DEFAULT_LANDING_CONTENT.howItWorks.step1Title).trim(),
-        step1Desc: String(body.howItWorks?.step1Desc || existingData.howItWorks?.step1Desc || DEFAULT_LANDING_CONTENT.howItWorks.step1Desc).trim(),
-        step2Title: String(body.howItWorks?.step2Title || existingData.howItWorks?.step2Title || DEFAULT_LANDING_CONTENT.howItWorks.step2Title).trim(),
-        step2Desc: String(body.howItWorks?.step2Desc || existingData.howItWorks?.step2Desc || DEFAULT_LANDING_CONTENT.howItWorks.step2Desc).trim(),
-        step3Title: String(body.howItWorks?.step3Title || existingData.howItWorks?.step3Title || DEFAULT_LANDING_CONTENT.howItWorks.step3Title).trim(),
-        step3Desc: String(body.howItWorks?.step3Desc || existingData.howItWorks?.step3Desc || DEFAULT_LANDING_CONTENT.howItWorks.step3Desc).trim(),
+        step1Title: body.howItWorks?.step1Title !== undefined ? String(body.howItWorks.step1Title).trim() : (existingData.howItWorks?.step1Title || DEFAULT_LANDING_CONTENT.howItWorks.step1Title),
+        step1Desc: body.howItWorks?.step1Desc !== undefined ? String(body.howItWorks.step1Desc).trim() : (existingData.howItWorks?.step1Desc || DEFAULT_LANDING_CONTENT.howItWorks.step1Desc),
+        step2Title: body.howItWorks?.step2Title !== undefined ? String(body.howItWorks.step2Title).trim() : (existingData.howItWorks?.step2Title || DEFAULT_LANDING_CONTENT.howItWorks.step2Title),
+        step2Desc: body.howItWorks?.step2Desc !== undefined ? String(body.howItWorks.step2Desc).trim() : (existingData.howItWorks?.step2Desc || DEFAULT_LANDING_CONTENT.howItWorks.step2Desc),
+        step3Title: body.howItWorks?.step3Title !== undefined ? String(body.howItWorks.step3Title).trim() : (existingData.howItWorks?.step3Title || DEFAULT_LANDING_CONTENT.howItWorks.step3Title),
+        step3Desc: body.howItWorks?.step3Desc !== undefined ? String(body.howItWorks.step3Desc).trim() : (existingData.howItWorks?.step3Desc || DEFAULT_LANDING_CONTENT.howItWorks.step3Desc),
       },
       contact: {
-        email: String(body.contact?.email || existingData.contact?.email || DEFAULT_LANDING_CONTENT.contact.email).trim(),
-        phone: String(body.contact?.phone || existingData.contact?.phone || DEFAULT_LANDING_CONTENT.contact.phone).trim(),
-        address: String(body.contact?.address || existingData.contact?.address || DEFAULT_LANDING_CONTENT.contact.address).trim(),
+        email: body.contact?.email !== undefined ? String(body.contact.email).trim() : (existingData.contact?.email || DEFAULT_LANDING_CONTENT.contact.email),
+        phone: body.contact?.phone !== undefined ? String(body.contact.phone).trim() : (existingData.contact?.phone || DEFAULT_LANDING_CONTENT.contact.phone),
+        address: body.contact?.address !== undefined ? String(body.contact.address).trim() : (existingData.contact?.address || DEFAULT_LANDING_CONTENT.contact.address),
       },
       updatedAt: new Date().toISOString(),
     };
 
-    await LandingContent.findByIdAndUpdate('landing_content', updatedPayload, { upsert: true });
+    if (!existing) {
+      await LandingContent.create({
+        ...updatedPayload,
+        _id: 'landing_content',
+        id: 'landing_content',
+      });
+    } else {
+      await LandingContent.findByIdAndUpdate('landing_content', updatedPayload, { upsert: true });
+    }
 
     return NextResponse.json({ ok: true, content: updatedPayload });
   } catch (error: any) {

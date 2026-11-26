@@ -22,30 +22,24 @@ export default function HowItWorksSection({
     {
       num: '01',
       icon: Send,
-      title: howItWorks?.step1Title || 'Request Your Workspace',
-      desc:
-        howItWorks?.step1Desc ||
-        'Submit your organization details, estimated team size, and operational requirements through our inquiry portal.',
+      title: howItWorks?.step1Title || DEFAULT_LANDING_CONTENT.howItWorks.step1Title,
+      desc: howItWorks?.step1Desc || DEFAULT_LANDING_CONTENT.howItWorks.step1Desc,
       badge: 'Step 1: Consultation',
       color: 'from-[#635BFF] to-[#5249EC]',
     },
     {
       num: '02',
       icon: Sliders,
-      title: howItWorks?.step2Title || 'Workspace Configuration',
-      desc:
-        howItWorks?.step2Desc ||
-        'The PrismCRM platform engineering team provisions your isolated tenant instance, applies your custom branding, and sets initial admin access.',
+      title: howItWorks?.step2Title || DEFAULT_LANDING_CONTENT.howItWorks.step2Title,
+      desc: howItWorks?.step2Desc || DEFAULT_LANDING_CONTENT.howItWorks.step2Desc,
       badge: 'Step 2: Setup',
       color: 'from-[#5249EC] to-[#00D4B2]',
     },
     {
       num: '03',
       icon: Rocket,
-      title: howItWorks?.step3Title || 'Start Managing Your Business',
-      desc:
-        howItWorks?.step3Desc ||
-        'Receive access to your dedicated company portal. Configure branch geofence locations, invite team members, and manage end-to-end operations.',
+      title: howItWorks?.step3Title || DEFAULT_LANDING_CONTENT.howItWorks.step3Title,
+      desc: howItWorks?.step3Desc || DEFAULT_LANDING_CONTENT.howItWorks.step3Desc,
       badge: 'Step 3: Go Live',
       color: 'from-[#00D4B2] to-emerald-500',
     },

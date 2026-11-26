@@ -572,13 +572,31 @@ export default function LandingEditorPanel() {
           </div>
 
           {/* Bottom Save Bar */}
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex items-center justify-end gap-3 pt-2">
+            {saveSuccess && (
+              <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5 animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                <span>Changes Saved &amp; Live!</span>
+              </span>
+            )}
             <button
               type="submit"
               disabled={saving}
               className="px-6 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white text-xs sm:text-sm font-bold inline-flex items-center gap-2 shadow-md transition-all active:scale-95"
             >
-              {saving ? 'Saving Changes...' : 'Save All Landing Page Changes'}
+              {saving ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Saving Changes...</span>
+                </>
+              ) : saveSuccess ? (
+                <>
+                  <Check className="w-4 h-4 text-white" />
+                  <span>Saved Live!</span>
+                </>
+              ) : (
+                'Save All Landing Page Changes'
+              )}
             </button>
           </div>
         </form>

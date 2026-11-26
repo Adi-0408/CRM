@@ -22,10 +22,13 @@ export default function LandingPage() {
   useEffect(() => {
     const loadContent = async () => {
       try {
-        const res = await fetch('/api/landing-content');
+        const res = await fetch('/api/landing-content', {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' },
+        });
         if (res.ok) {
           const data = await res.json();
-          if (data && data.hero) {
+          if (data && (data.hero || data.contact)) {
             setContent(data);
           }
         }

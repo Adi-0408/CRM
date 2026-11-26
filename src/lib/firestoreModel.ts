@@ -704,7 +704,41 @@ export function createFirestoreModel<T = any>(collectionName: string) {
       if (!id) return null;
       const docRef = doc(db, collectionName, String(id));
       const snap = await getDoc(docRef);
-      if (!snap.exists()) return null;
+      if (!snap.exists()) {
+        if (options.upsert) {
+          const rawPayload: any = {
+            ...update,
+            createdAt: update.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+
+          if (update.$inc) {
+            for (const incKey of Object.keys(update.$inc)) {
+              rawPayload[incKey] = update.$inc[incKey];
+            }
+            delete rawPayload.$inc;
+          }
+
+          if (update.$set) {
+            Object.assign(rawPayload, update.$set);
+            delete rawPayload.$set;
+          }
+
+          if (update.$setOnInsert) {
+            Object.assign(rawPayload, update.$setOnInsert);
+            delete rawPayload.$setOnInsert;
+          }
+
+          delete rawPayload._id;
+          delete rawPayload.id;
+
+          const payload: any = sanitizeForFirestore(rawPayload);
+          await setDoc(docRef, payload, { merge: true });
+          invalidatePopulateCache(collectionName, String(id));
+          return createDocumentWrapper({ ...payload, _id: String(id), id: String(id) }, collectionName);
+        }
+        return null;
+      }
 
       const current = snap.data();
       const rawPayload: any = { ...update, updatedAt: new Date().toISOString() };

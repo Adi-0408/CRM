@@ -22,5 +22,5 @@ export async function authFetch(url: string, options: RequestInit = {}): Promise
     ...authHeaders,
     ...(options.headers || {}),
   };
-  return fetch(url, { ...options, headers });
+  return fetch(url, { credentials: 'include', ...options, headers });
 }
